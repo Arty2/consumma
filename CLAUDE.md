@@ -1,0 +1,51 @@
+# Consumma
+
+Shared end-to-end encrypted checklist. SvelteKit 2 / Svelte 5 runes / TypeScript strict.
+
+## Commands
+
+pnpm dev · pnpm check · pnpm lint · pnpm gates · pnpm test · pnpm test:e2e · pnpm build
+
+`pnpm gates` runs `scripts/gates.sh`, which enforces the rules below that a
+linter cannot. CI runs it first, before anything else.
+
+## Non-negotiable
+
+- The share code, derived keys, and plaintext never leave the browser. Server sees ciphertext only.
+- The code never goes in a URL — not a query, not a fragment, not the native share link.
+- Server code must not import from src/lib/crypto.
+- The browser only ever talks to our own origin. No cross-origin requests, no third-party scripts, no CDN fonts — this is what keeps the CSP strict. Nothing carries a blob host URL to the client.
+- Palette is #000 and #fff. No greys, no colour, no shadows, ever.
+- No image files, no icon fonts, no CSS borders on drawn elements. Every mark is an inline SVG path from src/lib/draw, seeded by a stable id so it never re-jitters.
+- Merge logic in src/lib/doc/merge.ts is pure and must stay commutative, associative, idempotent. It takes no clock — skew clamping and tombstone GC are separate functions applied by the sync and write paths.
+- Collapsed state is local, never synced.
+- CLEAR sweeps done tasks only. DELETE is local-only and never calls the server. Undo re-stamps forward, never rewinds.
+- Two long-presses, separated by hit area: on the checkbox it sets half, on the row text it starts a drag. Never merge them.
+- UI labels are uppercased in CSS only. Stored titles and markdown exports keep the casing the user typed.
+- Limits: 100 chars/task, 100 tasks, 50 chars/group title, 20 groups, 128 KB blob. Enforce at input; merge never discards to fit.
+- Never {@html}, never innerHTML, never eval. `pnpm gates` fails on them.
+- All user text is sanitised at the input boundary (src/lib/doc/clean.ts): NFC, no control or bidi characters, capped length in code points.
+
+## Decisions that override the build plan
+
+The build plan is the specification; these were settled after it was written and win where they conflict.
+
+- **`CODE_LENGTH = 12`**, not 8. 48 bits. The salt is frozen at `consumma:v1`. The SHARE modal displays the code grouped — `5e6b 7c1a 93f2` — for reading aloud; what is stored, copied and typed is bare lowercase hex, and the SYNC input strips whitespace.
+- **Sync is entirely manual.** There is no poll interval, no visibilitychange/focus/online trigger, no push debounce, and no queue that flushes on reconnect. One `syncNow()` runs on the SYNC tap and nowhere else, doing both directions, with a 10-second cooldown. §5's `head()` read path and `cacheControlMaxAge: 0` therefore stand as written — the operations budget is no longer under pressure.
+- An unsynced edit reaches nobody and dies with the device. Three things carry that, and no fourth is added: the status mark is hollow whenever local edits are unsent, the SYNC panel names how many, and the DELETE confirm says so. No nagging, no auto-sync, no banner.
+- **No `PUBLIC_BLOB_BASE`** and no `/api/room/[roomId]/version` route. Both are leftovers from a draft where the browser read the CDN directly.
+- Stamps use a per-device monotonic clock, `t = max(Date.now(), lastT + 1)`, persisted beside `clientId`. Without it two edits from one device in one millisecond collide on `(t, c)` and merge stops being commutative.
+- After a successful `PUT`, re-`GET` once and confirm our stamps came back; if not, merge and retry, bounded at 5 attempts with jittered backoff. Vercel Blob has no compare-and-set, so this is what actually makes a lost write self-healing.
+- Crypto envelope is `base64(0x01 ‖ iv ‖ ciphertext)` and the plaintext is always deflate-raw. Compression cannot be optional — a reader cannot tell the two apart — and the version byte buys a future change without orphaning lists.
+- Markdown: export `- [~]` for half; import accepts `[ ]`, `[x]`, `[X]`, `[~]`, `[/]`, `[-]`, and a bare bullet as to-do.
+- QR code in SHARE and a "move everyone to a new code" flow are **out of scope**. Work stops at M7.
+- CSP needs `trusted-types: ['svelte-trusted-html']` alongside `require-trusted-types-for: ['script']`. Svelte creates that policy for its own internal writes; Chrome will not hydrate without it.
+- The page is prerendered (`prerender = true` in `src/routes/+layout.ts`). Only `/api/*` is dynamic.
+- `src/lib/server/store.ts` is the only file that imports `@vercel/blob`.
+
+## Style
+
+- Svelte 5 runes ($state/$derived/$effect), no legacy stores.
+- No CSS framework, no component library, no crypto library.
+- Config lives in `vite.config.ts` — this scaffold has no `svelte.config.js`. `sveltekit()` takes the kit config directly.
+- Every new module gets a test before it gets wired to the UI.

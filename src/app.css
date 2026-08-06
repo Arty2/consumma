@@ -1,0 +1,30 @@
+/*
+ * Two colours, and that is the whole palette (§6). Secondary emphasis comes
+ * from stroke weight, dashes, hatching and opacity of black — never a grey
+ * fill. No shadows anywhere; scripts/gates.sh fails the build if one appears.
+ * The design pass in M2 fills the rest of this file in.
+ */
+
+:root {
+	--ink: #000;
+	--paper: #fff;
+
+	color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--paper);
+	color: var(--ink);
+}
+
+body {
+	margin: 0;
+	background: var(--paper);
+	color: var(--ink);
+}

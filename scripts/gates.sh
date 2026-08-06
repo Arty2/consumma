@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+#
+# Build gates from §6 and §13 of the build plan, so the rules that matter are
+# enforced by CI rather than only written down.
+#
+# Every search is scoped to the directories being policed — never to scripts/ —
+# because this file necessarily contains the strings it looks for.
+
+set -uo pipefail
+
+cd "$(dirname "$0")/.."
+
+status=0
+
+fail() {
+	status=1
+	printf '  FAIL  %s\n' "$1"
+	printf '%s\n' "$2" | sed 's/^/        /'
+}
+
+pass() {
+	printf '    ok  %s\n' "$1"
+}
+
+# ── 1. No route from a string to markup ──────────────────────────────────────
+# The app holds a secret in the browser; one successful injection exfiltrates it
+# and every list it opens. Svelte escapes interpolated text by default and
+# nothing here ever needs to bypass that.
+sinks=$(grep -rnF \
+	-e '{@html' \
+	-e 'innerHTML' \
+	-e 'outerHTML' \
+	-e 'insertAdjacentHTML' \
+	-e 'eval(' \
+	-e 'new Function(' \
+	-e 'document.write' \
+	-e 'dangerouslySet' \
+	src 2>/dev/null)
+
+if [ -n "$sinks" ]; then
+	fail "markup/script sink in src/" "$sinks"
+else
+	pass "no markup or script sinks in src/"
+fi
+
+# ── 2. Server code never touches key material ────────────────────────────────
+# All encryption and decryption happens in the browser. The server sees
+# ciphertext and a room id, and must not be able to see anything else.
+if [ -d src/routes/api ]; then
+	leak=$(grep -rn 'lib/crypto' src/routes/api 2>/dev/null)
+	if [ -n "$leak" ]; then
+		fail "src/routes/api imports from src/lib/crypto" "$leak"
+	else
+		pass "src/routes/api does not import src/lib/crypto"
+	fi
+else
+	pass "no api routes yet"
+fi
+
+# ── 3. No secret-shaped name is exposed to the browser ───────────────────────
+# $env/static/public is inlined into the client bundle. A PUBLIC_ variable
+# holding a token, a secret, a key — or a blob base URL — is a shipped secret.
+public=$(grep -rnE 'PUBLIC_[A-Z0-9_]*(TOKEN|SECRET|KEY|BLOB)' \
+	src .github vercel.json 2>/dev/null)
+
+if [ -n "$public" ]; then
+	fail "PUBLIC_ variable name looks like a secret" "$public"
+else
+	pass "no secret-shaped PUBLIC_ names"
+fi
+
+# ── 4. No image files of any kind ────────────────────────────────────────────
+# Every mark in the app is type or an inline SVG path generated in code. The
+# only binaries in the repo are latin-subset woff2 faces; the PWA's raster
+# icons are drawn and rasterised at build time, never committed.
+assets=$(find src static -type f \( \
+	-iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.gif' \
+	-o -iname '*.webp' -o -iname '*.avif' -o -iname '*.bmp' -o -iname '*.tif' \
+	-o -iname '*.tiff' -o -iname '*.ico' \
+	-o -iname '*.eot' -o -iname '*.ttf' -o -iname '*.otf' -o -iname '*.woff' \
+	\) 2>/dev/null)
+
+if [ -n "$assets" ]; then
+	fail "raster asset or non-woff2 font committed" "$assets"
+else
+	pass "no raster assets or icon fonts"
+fi
+
+# ── 5. Nothing that the sketch does not have ─────────────────────────────────
+# A shadow means grey, and grey does not exist here. An <img> or a
+# background-image means an asset, and the app has none.
+chrome=$(grep -rnF \
+	-e 'box-shadow' \
+	-e 'background-image' \
+	-e '<img' \
+	src 2>/dev/null)
+
+if [ -n "$chrome" ]; then
+	fail "shadow, background-image or <img> in src/" "$chrome"
+else
+	pass "no shadows, background-images or <img> elements"
+fi
+
+if [ "$status" -ne 0 ]; then
+	printf '\ngates failed\n'
+fi
+
+exit "$status"
