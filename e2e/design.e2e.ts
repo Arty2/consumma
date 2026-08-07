@@ -201,8 +201,10 @@ test('the credit names the version, the project and both authors', async ({ page
 	const dedication = credit.getByText('Dialectic Acheropoieton', { exact: false });
 	await expect(dedication).toHaveCSS('font-style', 'italic');
 
-	// The break above it is drawn, like every other line here.
-	expect(await credit.locator('svg.break path').count()).toBe(1);
+	// The break is three asterisks, not a rule: punctuation rather than a mark,
+	// so it is the one separator here that is not drawn.
+	await expect(credit.locator('.break')).toHaveText('* * *');
+	expect(await credit.locator('svg').count()).toBe(0);
 });
 
 test('every underline on the sheet is drawn, not a CSS decoration', async ({ page }) => {

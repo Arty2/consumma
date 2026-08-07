@@ -6,8 +6,6 @@
 	import SyncModal from '$lib/components/SyncModal.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
-	import { handLine } from '$lib/draw/hand';
-	import { seedFrom } from '$lib/draw/rng';
 	import { copy, paste } from '$lib/clipboard';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
@@ -29,12 +27,6 @@
 	type Panel = 'sync' | 'import' | 'clear' | 'delete' | null;
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
-
-	/* The thematic break above the credit, drawn like every other line here. */
-	let creditWidth = $state(0);
-	const creditRule = $derived(
-		creditWidth > 0 ? handLine(creditWidth, { seed: seedFrom('credit'), wobble: 2.2, y: 2 }) : ''
-	);
 
 	$effect(() => {
 		sheet.load();
@@ -145,11 +137,8 @@
 	</nav>
 
 	<footer class="credit">
-		<svg class="break" bind:clientWidth={creditWidth} aria-hidden="true">
-			{#if creditRule}
-				<path d={creditRule} class="drawn drawn--faint" />
-			{/if}
-		</svg>
+		<!-- Three asterisks, as typed. Not a rule: it is punctuation, not a mark. -->
+		<p class="break" aria-hidden="true">* * *</p>
 
 		<p>v{__VERSION__} • heracl.es/consumma</p>
 		<p class="dedication">Dialectic Acheropoieton of Heracles Papatheodorou and Claude</p>
@@ -230,12 +219,11 @@
 		text-align: center;
 	}
 
-	.break {
-		display: block;
-		width: 100%;
-		height: 5px;
-		margin-bottom: 1.5rem;
-		overflow: visible;
+	.credit .break {
+		margin: 0 0 1.25rem;
+		letter-spacing: 0.3em;
+		/* The letter-spacing hangs off the last asterisk; pull the row back. */
+		text-indent: 0.3em;
 	}
 
 	.credit p {

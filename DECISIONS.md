@@ -198,6 +198,11 @@ Numbers in brackets are the section of the build plan a decision came from.
     dedication is set in italics, which with a single face means the browser's
     synthetic oblique.
 
+    The break above it is three asterisks, and is the one separator in the app
+    that is not a drawn path. Decision 24 is about rules — a line standing in
+    for a border — and this is not one: it is punctuation, set in the same hand
+    as the words around it.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
