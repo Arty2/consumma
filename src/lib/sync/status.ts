@@ -20,14 +20,28 @@ export type StatusText = {
 	detail: string | null;
 };
 
-/** Nothing here is an error; `sync.message` carries those separately. */
-export function statusText(status: SyncStatus, unsent: number): StatusText {
+/**
+ * `refused` is passed separately because it is not a `SyncStatus` — the server
+ * answering with an error leaves the app in the same state as never having
+ * asked, and only the outcome knows the difference.
+ *
+ * Nothing here is the error itself; `sync.message` carries that.
+ */
+export function statusText(status: SyncStatus, unsent: number, refused = false): StatusText {
 	const waiting =
 		unsent === 0
 			? null
 			: unsent === 1
 				? '1 change is waiting to go.'
 				: `${unsent} changes are waiting to go.`;
+
+	if (refused) {
+		return {
+			headline: waiting ?? 'Nothing is waiting to go.',
+			// Not "sync and they will see it": syncing is what just failed.
+			detail: 'The list’s own server turned the last attempt away.'
+		};
+	}
 
 	if (status === 'offline') {
 		return {

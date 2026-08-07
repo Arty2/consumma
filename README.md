@@ -13,10 +13,12 @@ words on it are the ones someone wrote.
 
 ## Where this is
 
-Complete through M7. The app runs, syncs, installs to a home screen and works
-with the aeroplane mode on. What is left is the deployment itself — the Vercel
-project and Blob store were deferred until they were needed, and the checklist
-is below.
+Complete through M7, and deployed. The app runs, syncs between devices,
+installs to a home screen and works with the aeroplane mode on.
+
+The deployment checklist below is kept as a runbook rather than a to-do: it is
+what a second environment needs, and what to check when one of them stops
+working.
 
 ## Running it
 
@@ -84,10 +86,9 @@ keeping it clean.
   serving the JavaScript. That is true of every web app of this shape and is
   worth being clear-eyed about.
 
-## Deployment — to be done at M4
+## Deployment
 
-Nothing in M0–M3 touches a server, so the Vercel side is stood up in one sitting
-when M4 needs it. What it needs:
+The Vercel side stands up in one sitting. What it needs:
 
 1. **Import the repository** into a new Vercel project on the Hobby plan.
    Framework preset SvelteKit; the build command and output directory are

@@ -1,12 +1,7 @@
-import { expect, test, type Page, type Route } from '@playwright/test';
-import { openMenu } from './menu';
-import {
-	RoomStore,
-	isRoomId,
-	parsePutBody,
-	type BlobEntry,
-	type Blobs
-} from '../src/lib/server/store';
+import { expect, test, type Route } from '@playwright/test';
+import { FakeBlobs } from '../tests/fakes';
+import { openMenu, addTask } from './app';
+import { RoomStore, isRoomId, parsePutBody } from '../src/lib/server/store';
 
 /*
  * Two browsers on one code, converging. M5's acceptance, and the one part of
@@ -22,29 +17,6 @@ import {
  * What none of it proves is that @vercel/blob behaves like the fake. Nothing
  * short of a deploy can; see the README.
  */
-
-class FakeBlobs implements Blobs {
-	files = new Map<string, { body: string; uploadedAt: Date }>();
-
-	async get(pathname: string) {
-		return this.files.get(pathname)?.body ?? null;
-	}
-	async put(pathname: string, body: string) {
-		this.files.set(pathname, { body, uploadedAt: new Date() });
-	}
-	async list(prefix: string): Promise<BlobEntry[]> {
-		return [...this.files.entries()]
-			.filter(([path]) => path.startsWith(prefix))
-			.map(([pathname, file]) => ({
-				pathname,
-				uploadedAt: file.uploadedAt,
-				size: file.body.length
-			}));
-	}
-	async del(pathname: string) {
-		this.files.delete(pathname);
-	}
-}
 
 /** One store behind both browsers, exactly as one Blob store would be. */
 let blobs: FakeBlobs;
@@ -118,15 +90,6 @@ async function device(page: Page, code: string) {
 	await page.reload();
 
 	await expect(page.getByRole('button', { name: 'Add a task' }).first()).toBeVisible();
-}
-
-async function addTask(page: Page, text: string) {
-	await page.keyboard.press('Escape');
-	await page.getByRole('button', { name: 'Add a task' }).first().click();
-	const input = page.getByRole('textbox', { name: 'New task' });
-	await input.fill(text);
-	await input.press('Enter');
-	await page.keyboard.press('Escape');
 }
 
 async function syncNow(page: Page) {
@@ -284,9 +247,14 @@ test('the code is typed into twelve places, one underline each', async ({ page }
 		});
 	expect(typed).toBe(shown);
 
-	await page.getByRole('textbox', { name: 'Code' }).fill('ed43 a066 78e0');
+	// Typed in capitals, because a code read aloud often is.
+	await page.getByRole('textbox', { name: 'Code' }).fill('ED43 A066 78E0');
 
-	// Whitespace is not a place; the twelve characters are.
+	/*
+	 * Whitespace is not a place, and neither is case: the code is lower case, so
+	 * showing capitals back would put the two codes on this panel in different
+	 * cases — the one thing sharing a face and a size was meant to avoid.
+	 */
 	const places = await field.locator('.glyph').allInnerTexts();
 	expect(places.join('')).toBe('ed43a06678e0');
 });
@@ -315,4 +283,25 @@ test('a while after a sync, the button offers one rather than counting', async (
 	const offered = page.getByRole('button', { name: /^Sync —/ });
 	await expect(offered).toBeVisible();
 	await expect(offered).toHaveAttribute('aria-label', /not synced for a while/);
+});
+
+test('the corner sync button says when it could not sync', async ({ page }) => {
+	/*
+	 * The menu shows `sync.message` in an alert, but this button exists so that
+	 * syncing does not need the menu — so a failure had nowhere to go. Tapping it
+	 * against a dead server did nothing at all, which is how a broken deployment
+	 * came to look like an idle one.
+	 */
+	await page.route('**/api/room/**', (route) => route.abort());
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await page.getByRole('button', { name: /^Sync —/ }).click();
+
+	const toast = page.getByRole('status').filter({ hasText: /reach/i });
+	await expect(toast).toBeVisible();
+
+	// And nothing was lost saying so.
+	await expect(page.getByRole('button', { name: 'Add a task' }).first()).toBeVisible();
 });

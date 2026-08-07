@@ -368,28 +368,58 @@ Numbers in brackets are the section of the build plan a decision came from.
     wrong place reads worse than none. The solid rule moving along says where
     the next character lands.
 
+45. **A failure reaches whoever caused it.** The corner sync button called
+    `sync.sync()` and ignored the result, so tapping it against an unreachable
+    server did nothing at all — the message existed, but only the menu rendered
+    it, and the menu was not open. It says so in a toast now.
+
+    That button is the way to sync without opening anything, which made it the
+    way to be told nothing had happened. Same shape as the two storage bugs
+    before it: a thing that fails and looks idle.
+
+46. **The shell of a panel is written once.** `Panel.svelte` holds the frame,
+    the close, the focus trap and the throw-to-dismiss; `Modal` and `Menu` pass
+    `axis: 'y' | 'x'` and their contents. They had been the same 60 lines twice,
+    differing only in which coordinate the drag read.
+
+    Likewise `FakeBlobs`, which was three identical copies across
+    `tests/sync.spec.ts`, `tests/route.spec.ts` and `e2e/sync.e2e.ts` — one
+    drifting would have meant three suites agreeing with each other and none
+    with the app. It lives in `tests/fakes.ts`. `e2e/menu.ts` became
+    `e2e/app.ts` and took the four copies of `addTask` with it.
+
+47. **One owner for the clock.** `SyncButton` ticks `sync.now` every thirty
+    seconds, which is all a ten-minute staleness bar needs, and is the one
+    component always mounted. `Menu` still ticks every half-second, but only
+    while `sync.cooling` — the countdown in the SYNC NOW label is the only
+    per-second thing in the app.
+
+    Both write `now` and neither reads it. That is not incidental: an effect
+    doing both never settles, and the last time one did it took the whole
+    tree's reactivity down with it.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
 drift.
 
-27. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
+45. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
     still described reads coming straight from the CDN. §5 is right — it is what
     makes `connect-src 'self'` possible — so `PUBLIC_BLOB_BASE` and the
     `/api/room/[roomId]/version` route are both gone.
 
-28. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
+46. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
     persisted beside the client id. Without it, two edits from one device in the
     same millisecond collide on `(t, c)` and merge stops being commutative. The
     comparator also falls back to the value itself, which makes it total for any
     document, including a corrupt one.
 
-29. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
+47. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
     tombstone collection (`gc(doc, now)`) are separate functions applied by the
     sync and write paths. Folding either into merge would destroy the algebra
     the property tests check.
 
-30. **Every write is read back once.** Blob storage has no compare-and-set, so
+48. **Every write is read back once.** Blob storage has no compare-and-set, so
     two writers can both pass the version check and the second one's bytes win.
     The loser cannot tell from the version number — it was told 2, the server
     holds 2, and its next conditional read returns 304 forever. The
@@ -397,18 +427,18 @@ drift.
     `tests/sync.spec.ts` sets the race up deliberately; removing the read-back
     makes it fail.
 
-31. **The ETag is the document's own version**, not the blob's upload time and
+49. **The ETag is the document's own version**, not the blob's upload time and
     size. The latter answers a conditional read without fetching the body, but
     two writes in the same millisecond whose JSON is the same length produce an
     identical token, and the second is reported as unchanged. A saved fetch is
     not worth a lost edit.
 
-32. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
+50. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
 ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     optional, but it cannot be past the first write — a reader cannot tell a
     compressed payload from an uncompressed one.
 
-33. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
+51. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
     SvelteKit's own `#svelte-announcer` has a hardcoded `style` attribute we do
     not author and cannot switch off. `'unsafe-hashes'` permits that exact
     string and nothing else; it is not `'unsafe-inline'`. `trusted-types` names
@@ -416,7 +446,7 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `e2e/csp.e2e.ts` fails on any console error, so an upgrade that changes the
     string breaks CI rather than the policy.
 
-34. **"Loose ends" has an id no document can hold**, and that is deliberate.
+52. **"Loose ends" has an id no document can hold**, and that is deliberate.
     `__loose__` fails the `/^[A-Za-z0-9]{1,24}$/` the validator enforces, which
     is what stops it ever being written to a document and then syncing to
     someone who has no such group. The cost is that anything which can name a

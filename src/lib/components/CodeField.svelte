@@ -30,8 +30,12 @@
 		handLine(CELL - 5, { seed: seedFrom(`cell${i}`), wobble: 0.7, y: 2 })
 	);
 
-	/** What is in each place, ignoring the spaces someone may have typed. */
-	const bare = $derived(value.replace(/\s/g, '').slice(0, CODE_LENGTH));
+	/**
+	 * What is in each place: no spaces, and lower case because that is what the
+	 * code is. Showing capitals back would put the two codes in different cases,
+	 * which is the one thing sharing a face and a size was meant to avoid.
+	 */
+	const bare = $derived(value.replace(/\s/g, '').toLowerCase().slice(0, CODE_LENGTH));
 	const cells = $derived(Array.from({ length: CODE_LENGTH }, (_, i) => bare[i] ?? ''));
 </script>
 
@@ -45,6 +49,7 @@
 		autocapitalize="off"
 		autocorrect="off"
 		spellcheck="false"
+		maxlength={CODE_LENGTH + 2}
 		bind:value
 	/>
 
@@ -126,7 +131,12 @@
 		 * takes the input over it out of reach along with everything else.
 		 */
 		min-height: 1.25em;
-		/* Close under the character, the way the rule sits under a title. */
+		/*
+		 * Close under the character. --cap-lift is borrowed here rather than
+		 * measured for this: it was set to level a drawn mark beside capitals, and
+		 * the distance happens to be the one that tightens a rule under one. If
+		 * the face changes, check this as well as the marks.
+		 */
 		margin-bottom: calc(-1 * var(--cap-lift));
 	}
 

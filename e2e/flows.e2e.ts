@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { fromMenu, menuButton, openMenu } from './menu';
+import { expect, test } from '@playwright/test';
+import { fromMenu, menuButton, openMenu, addTask } from './app';
 
 /*
  * M6's acceptance, minus the two things a headless browser cannot judge: the
@@ -10,16 +10,6 @@ import { fromMenu, menuButton, openMenu } from './menu';
  * rather than pretended to work. Sync against a real store is covered by
  * tests/sync.spec.ts, which drives the actual server module.
  */
-
-async function addTask(page: Page, text: string, groupIndex = 0) {
-	await page.keyboard.press('Escape');
-	await page.getByRole('button', { name: 'Add a task' }).nth(groupIndex).click();
-
-	const input = page.getByRole('textbox', { name: 'New task' });
-	await input.fill(text);
-	await input.press('Enter');
-	await page.keyboard.press('Escape');
-}
 
 function task(page: Page, text: string) {
 	return page.getByRole('checkbox', { name: text });

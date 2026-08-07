@@ -2,6 +2,7 @@
 	import { handArrow, handRefresh } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { sync } from '$lib/state/sync.svelte';
+	import { ui } from '$lib/state/ui.svelte';
 
 	/*
 	 * Sits to the left of the burger, and only when there is something to do.
@@ -33,13 +34,30 @@
 	);
 
 	/*
-	 * Advances the clock the staleness derives from. The interval callback runs
+	 * Says what happened, because nothing else here will.
+	 *
+	 * The menu shows `sync.message` in an alert, but this button is the way to
+	 * sync without opening the menu — so a failure had no way of reaching anyone.
+	 * Tapping it with the server unreachable did nothing at all, which is exactly
+	 * how a broken deployment came to look like an idle one.
+	 */
+	async function syncNow() {
+		const outcome = await sync.sync();
+
+		// `null` means the cooldown or an in-flight sync swallowed it; the button
+		// is disabled then, so there is nothing to explain.
+		if (outcome && outcome.status !== 'synced' && sync.message) ui.say(sync.message);
+	}
+
+	/*
+	 * Owns the clock. Thirty seconds is plenty against a ten-minute bar, and
+	 * this is the one component always mounted. The interval callback runs
 	 * outside the effect, so this writes `now` without ever reading it — an
 	 * effect that does both never settles, and takes the tree down with it.
 	 */
 	$effect(() => {
 		sync.now = Date.now();
-		const tick = setInterval(() => (sync.now = Date.now()), 15_000);
+		const tick = setInterval(() => (sync.now = Date.now()), 30_000);
 		return () => clearInterval(tick);
 	});
 </script>
@@ -49,7 +67,7 @@
 		class="sync"
 		type="button"
 		disabled={sync.busy || sync.cooling}
-		onclick={() => sync.sync()}
+		onclick={syncNow}
 		aria-label={label}
 		title={label}
 	>

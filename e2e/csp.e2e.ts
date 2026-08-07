@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { openMenu } from './menu';
+import { openMenu } from './app';
 
 /*
  * The strict CSP is only worth having if the app still runs under it. Chrome

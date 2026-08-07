@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
-import { fromMenu, menuButton, openMenu } from './menu';
+import { expect, test } from '@playwright/test';
+import { fromMenu, menuButton, openMenu, addTask } from './app';
 
 /*
  * M7. The parts a browser can judge: accessibility, the installable shell, and
@@ -10,16 +10,6 @@ import { fromMenu, menuButton, openMenu } from './menu';
  * asserted against the file rather than pretended to be live here; the same
  * goes for Lighthouse. Both are in the README's deployment checklist.
  */
-
-async function addTask(page: Page, text: string) {
-	await page.keyboard.press('Escape');
-	await page.getByRole('button', { name: 'Add a task' }).first().click();
-
-	const input = page.getByRole('textbox', { name: 'New task' });
-	await input.fill(text);
-	await input.press('Enter');
-	await page.keyboard.press('Escape');
-}
 
 test.beforeEach(async ({ page }) => {
 	await page.goto('/');

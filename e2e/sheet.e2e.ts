@@ -1,22 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
-import { fromMenu } from './menu';
+import { expect, test } from '@playwright/test';
+import { fromMenu, addTask } from './app';
 
 /*
  * M1's acceptance: add, edit, reorder, tri-state, group, collapse and delete
  * all work, and a reload preserves everything.
  */
-
-async function addTask(page: Page, text: string, groupIndex = 0) {
-	// Committing leaves the row open for the next one, so close any that is
-	// already open before picking the group to add to.
-	await page.keyboard.press('Escape');
-	await page.getByRole('button', { name: 'Add a task' }).nth(groupIndex).click();
-
-	const input = page.getByRole('textbox', { name: 'New task' });
-	await input.fill(text);
-	await input.press('Enter');
-	await page.keyboard.press('Escape');
-}
 
 function task(page: Page, text: string) {
 	return page.getByRole('checkbox', { name: text });
@@ -269,7 +257,12 @@ test('a done task offers its own way out, and the way back', async ({ page }) =>
 	await addTask(page, 'Bread');
 	await addTask(page, 'Milk');
 
-	// Nothing to remove until something is done — no hover exists on a phone.
+	/*
+	 * Nothing to remove until something is done — no hover exists on a phone.
+	 * The pointer has to be moved off first: adding tasks pushes the add row
+	 * down, so it ends up resting on a task row, and the ✕ answers a hover.
+	 */
+	await page.mouse.move(0, 0);
 	await expect(page.getByRole('button', { name: 'Delete task' })).toHaveCount(0);
 
 	await page.getByRole('checkbox', { name: 'Bread' }).click();

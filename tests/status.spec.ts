@@ -28,10 +28,27 @@ describe('statusText', () => {
 		expect(detail).not.toMatch(/error|failed|couldn|problem/i);
 	});
 
+	it('does not tell someone to sync when syncing is what failed', () => {
+		const { headline, detail } = statusText('pending', 2, true);
+
+		expect(headline).toBe('2 changes are waiting to go.');
+		// "Nobody else can see them until you sync" would be advice to do the
+		// thing that just came back refused.
+		expect(detail).not.toMatch(/until you sync/);
+		expect(detail).toMatch(/server/);
+	});
+
+	it('separates a refused server from an unreachable one', () => {
+		expect(statusText('pending', 1, true).detail).not.toBe(statusText('offline', 1).detail);
+	});
+
 	it('never leaves the headline empty, whatever the state', () => {
 		for (const status of ['synced', 'pending', 'offline'] as const) {
 			for (const unsent of [0, 1, 2, 99]) {
-				expect(statusText(status, unsent).headline, `${status}/${unsent}`).not.toBe('');
+				for (const refused of [false, true]) {
+					const { headline } = statusText(status, unsent, refused);
+					expect(headline, `${status}/${unsent}/${refused}`).not.toBe('');
+				}
 			}
 		}
 	});
