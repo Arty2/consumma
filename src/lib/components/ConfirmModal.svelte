@@ -26,7 +26,7 @@
 
 	<div class="choices">
 		<button type="button" class="caps" onclick={onconfirm}>{confirmLabel}</button>
-		<span aria-hidden="true">·</span>
+		<span aria-hidden="true">•</span>
 		<button type="button" class="caps" onclick={oncancel}>Cancel</button>
 	</div>
 </Modal>

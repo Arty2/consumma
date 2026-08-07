@@ -131,7 +131,7 @@ describe('gates', () => {
 		expect(runGates().status).toBe(1);
 
 		rmSync(join(root, 'static/fonts/icons.ttf'));
-		file('static/fonts/patrick-hand-latin.woff2', 'not really a font\n');
+		file('static/fonts/graphe-alpha.woff2', 'not really a font\n');
 
 		expect(runGates().status).toBe(0);
 	});

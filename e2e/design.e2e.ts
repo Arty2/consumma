@@ -69,7 +69,7 @@ test('one handwritten face, served from our origin, and only one', async ({ page
 	const families = await page.evaluate(() => [...document.fonts].map((f) => f.family));
 
 	// Titles and body differ by size and caps, not by typeface.
-	expect(families).toStrictEqual(['Patrick Hand']);
+	expect(families).toStrictEqual(['Graphe']);
 
 	const used = await page.evaluate(() => [
 		...new Set(
@@ -77,7 +77,7 @@ test('one handwritten face, served from our origin, and only one', async ({ page
 		)
 	]);
 	for (const stack of used) {
-		expect(stack, stack).toContain('Patrick Hand');
+		expect(stack, stack).toContain('Graphe');
 	}
 });
 

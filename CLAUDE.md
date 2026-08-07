@@ -47,7 +47,9 @@ The build plan is the specification; these were settled after it was written and
 - PWA icons are drawn by scripts/icons.ts at build time into static/icons, which is gitignored. The asset gate exempts that directory only while it stays gitignored.
 - The page is prerendered (`prerender = true` in `src/routes/+layout.ts`). Only `/api/*` is dynamic.
 - `src/lib/server/store.ts` is the only file that imports `@vercel/blob`.
-- One typeface, everywhere — §6's two faces are down to one. There is exactly one `@font-face` in src/app.css and one variable, `--hand`, that names it; titles and body separate by size and caps. Swapping the face is a one-file change, and the replacement must be licensed for webfont embedding and redistribution.
+- One typeface, everywhere — §6's two faces are down to one. There is exactly one `@font-face` in src/app.css and one variable, `--hand`, that names it; titles and body separate by size and caps. The face is Graphe, the owner's own and not open-licensed; a fork that publishes must substitute its own, licensed for webfont embedding and redistribution.
+- Scale corrections for the face live in `size-adjust`/`ascent-override`/`descent-override` on that one `@font-face`, never spread across `--size-*`. Graphe is drawn on a much larger body than the rem values assume. Swapping the face means retuning those three and the preload in src/app.html — a stale preload fails the prerender rather than shipping a dead link.
+- Graphe has no `[`, `]` or `\`; they fall back deliberately. Never rewrite the markdown checkbox tokens to work around it — the export has to stay readable by other apps.
 
 ## Style
 

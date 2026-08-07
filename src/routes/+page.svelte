@@ -117,14 +117,14 @@
 
 	<nav class="below" aria-label="The list">
 		<button type="button" class="caps" onclick={onImport}>IMPORT</button>
-		<span aria-hidden="true">·</span>
+		<span aria-hidden="true">•</span>
 		<button type="button" class="caps" onclick={onExport}>EXPORT</button>
 	</nav>
 
 	<!-- The only two that take something away, and both stop and ask. -->
 	<nav class="below last" aria-label="Removing things">
 		<button type="button" class="caps" onclick={() => (panel = 'delete')}>DELETE</button>
-		<span aria-hidden="true">·</span>
+		<span aria-hidden="true">•</span>
 		<button
 			type="button"
 			class="caps"

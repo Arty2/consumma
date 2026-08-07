@@ -133,10 +133,25 @@ The daily sweep (`/api/cron/sweep`, one run a day, guarded by a constant-time
 
 ## Licence
 
-One face, everywhere: Patrick Hand, SIL OFL, self-hosted as a latin-subset
-woff2 from M2. Titles and body differ by size and caps, not by typeface.
+One face, everywhere: **Graphe**, drawn by the owner of this project. Titles and
+body differ by size and caps, not by typeface.
 
-To swap it, drop a woff2 into `static/fonts`, point the single `@font-face` in
-`src/app.css` at it and change `--hand`. Nothing else names a font. The licence
-has to permit webfont embedding _and_ redistribution — self-hosting on a public
-site is both, which is what rules out the common "free for personal use" terms.
+Graphe is **not** an open-licence font. It is used here by the person who made
+it, and no licence to redistribute it comes with this repository. A fork that
+publishes anything has to substitute its own face — the licence has to permit
+webfont embedding _and_ redistribution, since self-hosting on a public site is
+both, which is what rules out the common "free for personal use" terms.
+
+Swapping is a two-line change: drop a woff2 into `static/fonts`, point the
+single `@font-face` in `src/app.css` at it, and update the preload in
+`src/app.html`. A stale preload fails the prerender rather than shipping a dead
+link, so the second line cannot be forgotten quietly.
+
+Expect to retune `size-adjust` in that `@font-face` — it exists so a face drawn
+on a different body can be dropped in without rewriting every size in the
+stylesheet, and its current value is calibrated to Graphe.
+
+Known gap: Graphe has no `[`, `]` or `\`. Those fall back to the generic
+cursive stack. They reach the screen only in text a person types — the markdown
+in the IMPORT box flips to a summary as soon as it parses — so the visible case
+is a task titled something like `Deposit [urgent]`.

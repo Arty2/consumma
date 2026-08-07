@@ -3,32 +3,48 @@
  * from stroke weight, dashes, hatching and opacity of black — never a grey
  * fill. No shadows anywhere; scripts/gates.sh fails the build if one appears.
  *
- * The face is SIL OFL, served from our own origin. No Google Fonts request is
- * ever made — that is bandwidth, privacy, and a hole in `connect-src`.
+ * The face is served from our own origin. No Google Fonts request is ever
+ * made — that is bandwidth, privacy, and a hole in `connect-src`.
  */
 
 /*
  * One face, everywhere. Titles and body differ by size and caps, not by
  * typeface — the sheet is one hand's writing, not two.
  *
- * To swap it: drop a latin-subset woff2 into static/fonts, point this one
- * @font-face at it, and change --hand below. Nothing else refers to a font by
- * name. The licence has to permit webfont embedding and redistribution, since
- * self-hosting on a public site is both; see the README.
+ * To swap it: drop a woff2 into static/fonts, point this one @font-face at it,
+ * and change --hand below. The only other place naming the file is the preload
+ * in src/app.html, and prerendering fails on a stale one rather than shipping a
+ * dead link. See the README for what a replacement has to be licensed for.
+ *
+ * The three descriptors below are what make a swap that cheap. Graphe is drawn
+ * on a much larger body than the face this scale was first set against — caps
+ * at 1.105em against 0.661em — so dropped in raw it would render half again too
+ * big and overflow a 320px screen. Correcting that by rewriting every --size-*
+ * would bury the adjustment across the whole stylesheet and leave rem values
+ * that no longer mean anything; size-adjust puts it in one place, on the face
+ * it belongs to, and leaves zoom and minimum-font-size behaving normally.
+ *
+ * ascent/descent-override do the same for the vertical rhythm: Graphe asks for
+ * a 1.80em line box, which would space the sheet out far past what the drawn
+ * rules and 44px touch targets are built around.
  */
 @font-face {
-	font-family: 'Patrick Hand';
+	font-family: 'Graphe';
 	font-style: normal;
 	font-weight: 400;
 	font-display: swap;
-	src: url('/fonts/patrick-hand-latin-400-normal.woff2') format('woff2');
+	src: url('/fonts/graphe-alpha.woff2') format('woff2');
+	size-adjust: 68%;
+	ascent-override: 104%;
+	descent-override: 31%;
+	line-gap-override: 0%;
 }
 
 :root {
 	--ink: #000;
 	--paper: #fff;
 
-	--hand: 'Patrick Hand', ui-rounded, cursive;
+	--hand: 'Graphe', ui-rounded, cursive;
 
 	/* 32 / 22 / 17 / 14. Handwritten faces need more line-height than you think. */
 	--size-display: 2rem;

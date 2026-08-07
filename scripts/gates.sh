@@ -79,7 +79,7 @@ fi
 
 # ── 4. No image files of any kind ────────────────────────────────────────────
 # Every mark in the app is type or an inline SVG path generated in code. The
-# only binaries in the repo are latin-subset woff2 faces; the PWA's raster
+# only binary in the repo is the woff2 face; the PWA's raster
 # icons are drawn and rasterised at build time, never committed.
 assets=$(find src static -type f -not -path 'static/icons/*' \( \
 	-iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.gif' \

@@ -122,7 +122,7 @@
 
 		<div class="give">
 			<button type="button" class="caps" onclick={onShare}>Share</button>
-			<span aria-hidden="true">·</span>
+			<span aria-hidden="true">•</span>
 			<button type="button" class="caps" onclick={onCopy}>
 				{copied ? 'Copied' : 'Copy'}
 			</button>
@@ -158,9 +158,9 @@
 			</p>
 			<div class="choices">
 				<button type="button" class="caps" onclick={() => join(true)}>Take them</button>
-				<span aria-hidden="true">·</span>
+				<span aria-hidden="true">•</span>
 				<button type="button" class="caps" onclick={() => join(false)}>Leave them</button>
-				<span aria-hidden="true">·</span>
+				<span aria-hidden="true">•</span>
 				<button type="button" class="caps" onclick={() => (joining = false)}>Cancel</button>
 			</div>
 		{:else}

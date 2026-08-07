@@ -116,15 +116,42 @@ Numbers in brackets are the section of the build plan a decision came from.
     instead. Caveat and its `@fontsource` package are gone.
 
     That leaves exactly one `@font-face` in `src/app.css` and one variable that
-    names it, which is also what makes the face swappable in a single file.
+    names it, which is also what makes the face swappable cheaply.
     `e2e/design.e2e.ts` asserts `document.fonts` holds one family and that every
     computed `font-family` under `body` resolves to it, so a second face cannot
     creep back in unnoticed.
 
-    Any replacement has to be licensed for webfont embedding and
-    redistribution. Self-hosting on a public site is both, and the usual
-    "free for personal use" terms found on font aggregator sites permit
-    neither — which is why the plan pinned SIL OFL in the first place.
+26. **The face is Graphe**, drawn by the owner, replacing the placeholder the
+    single-face change was built against. It is not open-licensed, so the README
+    says plainly that a fork must substitute its own.
+
+    Three things followed from the file itself, none of them cosmetic.
+
+    **The scale is corrected in the `@font-face`, not across the stylesheet.**
+    Graphe is drawn on a much larger body — caps at 1.105em against the previous
+    face's 0.661em, and glyphs 56% wider — so dropped in raw it overflows a
+    320px screen. `size-adjust: 68%` puts that correction in one place, on the
+    face it belongs to; rewriting every `--size-*` would have scattered it and
+    left rem values that no longer mean anything. `ascent-override` and
+    `descent-override` do the same for the 1.80em line box, which would
+    otherwise space the sheet past what the drawn rules and 44px targets assume.
+
+    68% rather than the 60% that matches cap height exactly: Graphe's x-height
+    is small relative to its caps (0.57, against 0.71), a property of the face
+    that no scaling changes. The app is nearly all caps, but the modals are
+    sentence case, and 68% is where both read — caps slightly larger than
+    before, prose legible.
+
+    **Three printable ASCII glyphs are missing — `[`, `]`, `\`** — and they are
+    allowed to fall back rather than be designed around. Rewriting the markdown
+    tokens to characters Graphe has would have kept one face at the price of an
+    export other apps can no longer read, which is the wrong trade. The exposure
+    is smaller than it first looks: the IMPORT box flips to a summary as soon as
+    the paste parses, so in practice this is only a task titled `[urgent]`.
+
+    **`fsType` was 4** (Preview & Print embedding). Set to 0, Installable, which
+    is what a self-hosted webfont should carry. Browsers ignore the field, but
+    it is the file's own machine-readable statement of intent.
 
 ## Corrections to the build plan
 

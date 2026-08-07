@@ -55,7 +55,7 @@
 		<div class="choices">
 			<!-- Add is the default, and is what pressing IMPORT implies. -->
 			<button type="button" class="caps" onclick={() => onapply(parsed!, 'add')}>Add</button>
-			<span aria-hidden="true">·</span>
+			<span aria-hidden="true">•</span>
 			<button type="button" class="caps" onclick={() => onapply(parsed!, 'replace')}>
 				Replace everything
 			</button>
