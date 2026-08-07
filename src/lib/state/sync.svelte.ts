@@ -6,7 +6,13 @@ import { syncNow, type SyncOutcome } from '$lib/sync/client';
 import { sheet } from './doc.svelte';
 import { KEYS, persist, read, remove, write } from './storage';
 
-/** Solid when synced, hollow when there are unsent edits, dashed when offline. */
+/**
+ * What the corner button draws: nothing when synced, an outbox arrow when
+ * edits are waiting, a crossed circle when the list could not be reached.
+ *
+ * `offline` outranks the other two — there is no point offering to send when
+ * nothing can leave.
+ */
 export type SyncStatus = 'synced' | 'pending' | 'offline';
 
 /** Long enough that a double tap costs one request, not two. */
@@ -33,6 +39,17 @@ export class SyncState {
 
 	#room: Room | null = null;
 	#etag: string | null = null;
+	/*
+	 * Set when an attempt actually failed to reach the list, and cleared only by
+	 * one that succeeded.
+	 *
+	 * `navigator.onLine` is not enough on its own: it says the device has a
+	 * network, not that the list is at the end of it. A dead deployment on good
+	 * wifi is online by that measure, so without this the mark would flip back
+	 * to an outbox on the next edit — or on the next tick of the clock — and
+	 * quietly unsay what the last attempt found out.
+	 */
+	#unreachable = $state(false);
 	/*
 	 * Reactive: `unsent` compares against this, so a sync that changes only the
 	 * snapshot — and not the document — still has to update the mark.
@@ -89,7 +106,9 @@ export class SyncState {
 	 * The clock belongs to whatever is showing the cooldown tick down.
 	 */
 	refresh(): void {
-		if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+		const noNetwork = typeof navigator !== 'undefined' && navigator.onLine === false;
+
+		if (noNetwork || this.#unreachable) {
 			this.status = 'offline';
 			return;
 		}
@@ -170,6 +189,8 @@ export class SyncState {
 		if (outcome.status === 'synced') {
 			sheet.replace(outcome.doc);
 
+			// Reaching it is the only thing that proves it can be reached.
+			this.#unreachable = false;
 			this.#lastSynced = outcome.doc;
 			this.#etag = `"${outcome.v}"`;
 			write(KEYS.version, this.#etag);
@@ -179,7 +200,8 @@ export class SyncState {
 			return;
 		}
 
-		this.status = outcome.status === 'offline' ? 'offline' : 'pending';
+		this.#unreachable = outcome.status === 'offline';
+		this.status = this.#unreachable ? 'offline' : 'pending';
 		this.message = messageFor(outcome);
 	}
 }

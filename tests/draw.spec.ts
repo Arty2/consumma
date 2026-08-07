@@ -7,6 +7,7 @@ import {
 	handPath,
 	handRect,
 	handRefresh,
+	handSlashedCircle,
 	handTear,
 	handVertical
 } from '../src/lib/draw/hand';
@@ -354,5 +355,54 @@ describe('handRefresh', () => {
 	it('is stable for a seed, and is not the arrow', () => {
 		expect(handRefresh(SIZE, { seed: 4 })).toBe(handRefresh(SIZE, { seed: 4 }));
 		expect(handRefresh(SIZE, { seed: 4 })).not.toBe(handArrow(SIZE, { seed: 4 }));
+	});
+});
+
+describe('handSlashedCircle', () => {
+	const SIZE = 22;
+
+	it('closes, unlike the refresh stroke it sits beside', () => {
+		const points = endpoints(handSlashedCircle(SIZE, { seed: 3, wobble: 0 }));
+		const centre = { x: SIZE / 2, y: SIZE / 2 };
+		const ring = points.slice(0, 13);
+
+		const radii = ring.map((p) => Math.hypot(p.x - centre.x, p.y - centre.y));
+		expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(0.01);
+
+		// The whole point of the difference: this one comes back to where it
+		// started, so at 22px it can never be read as the circular arrow.
+		const gap = Math.hypot(ring[0].x - ring.at(-1)!.x, ring[0].y - ring.at(-1)!.y);
+		expect(gap).toBeLessThan(0.01);
+	});
+
+	it('strikes through the middle and past the ring', () => {
+		const points = endpoints(handSlashedCircle(SIZE, { seed: 3, wobble: 0 }));
+		const centre = { x: SIZE / 2, y: SIZE / 2 };
+		const slash = points.slice(13);
+
+		// Three points: past one side, the middle, past the other.
+		expect(slash).toHaveLength(3);
+		expect(Math.hypot(slash[1].x - centre.x, slash[1].y - centre.y)).toBeLessThan(0.01);
+
+		const r = SIZE * 0.34;
+		for (const end of [slash[0], slash[2]]) {
+			expect(Math.hypot(end.x - centre.x, end.y - centre.y)).toBeGreaterThan(r);
+		}
+	});
+
+	it('stays inside its box at any seed', () => {
+		for (const seed of [1, 7, 99, 1234]) {
+			for (const { x, y } of endpoints(handSlashedCircle(SIZE, { seed, wobble: 1 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+			}
+		}
+	});
+
+	it('is stable for a seed, and is not the refresh', () => {
+		expect(handSlashedCircle(SIZE, { seed: 4 })).toBe(handSlashedCircle(SIZE, { seed: 4 }));
+		expect(handSlashedCircle(SIZE, { seed: 4 })).not.toBe(handRefresh(SIZE, { seed: 4 }));
 	});
 });

@@ -53,7 +53,11 @@ export function statusText(status: SyncStatus, unsent: number, refused = false):
 	if (waiting) {
 		return {
 			headline: waiting,
-			detail: 'Nobody else can see them until you sync.'
+			// Agrees with the count above it. One change is an "it".
+			detail:
+				unsent === 1
+					? 'Nobody else can see it until you sync.'
+					: 'Nobody else can see them until you sync.'
 		};
 	}
 

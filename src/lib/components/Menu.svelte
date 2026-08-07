@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
+	import TextRule from './TextRule.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
@@ -180,6 +181,7 @@
 				disabled={sync.busy || sync.cooling}
 				onclick={syncNow}
 			>
+				<HandRect seed="btnsync" wobble={1.4} />
 				{#if sync.busy}
 					Syncing…
 				{:else if sync.cooling}
@@ -193,14 +195,18 @@
 				<p class="error" role="alert">{error}</p>
 			{/if}
 
-			<h2>This list</h2>
+			<h2 class="caps">This list</h2>
+			<TextRule text="This list" seed="thislist" centred />
 
 			<p class="code">{sync.code ? formatCode(sync.code) : ''}</p>
 
 			<div class="pair">
-				<button type="button" class="caps" onclick={onShare}>Share</button>
-				<span aria-hidden="true">•</span>
+				<button type="button" class="caps" onclick={onShare}>
+					<HandRect seed="btnshare" wobble={1.4} />
+					Share
+				</button>
 				<button type="button" class="caps" onclick={onCopy}>
+					<HandRect seed="btncopy" wobble={1.4} />
 					{copied ? 'Copied' : 'Copy'}
 				</button>
 			</div>
@@ -208,9 +214,14 @@
 			<p class="note">Anyone with this code can read and change the list.</p>
 
 			<div class="pair apart">
-				<button type="button" class="caps" onclick={onimport}>Import</button>
-				<span aria-hidden="true">•</span>
-				<button type="button" class="caps" onclick={onexport}>Export</button>
+				<button type="button" class="caps" onclick={onimport}>
+					<HandRect seed="btnimport" wobble={1.4} />
+					Import
+				</button>
+				<button type="button" class="caps" onclick={onexport}>
+					<HandRect seed="btnexport" wobble={1.4} />
+					Export
+				</button>
 			</div>
 
 			<!-- The only two that take something away, and both stop and ask. -->
@@ -222,13 +233,17 @@
 					disabled={sheet.doneCount === 0}
 					onclick={onclear}
 				>
+					<HandRect seed="btnclear" wobble={1.4} />
 					Clear
 				</button>
-				<span aria-hidden="true">•</span>
-				<button type="button" class="caps" onclick={ondelete}>Delete</button>
+				<button type="button" class="caps" onclick={ondelete}>
+					<HandRect seed="btndelete" wobble={1.4} />
+					Delete
+				</button>
 			</div>
 
-			<h2>Join another list</h2>
+			<h2 class="caps">Join another list</h2>
+			<TextRule text="Join another list" seed="joinlist" centred />
 
 			<CodeField bind:value={entered} label="Code" />
 
@@ -240,11 +255,18 @@
 					behind?
 				</p>
 				<div class="pair wrap">
-					<button type="button" class="caps" onclick={() => join(true)}>Take them</button>
-					<span aria-hidden="true">•</span>
-					<button type="button" class="caps" onclick={() => join(false)}>Leave them</button>
-					<span aria-hidden="true">•</span>
-					<button type="button" class="caps" onclick={() => (joining = false)}>Cancel</button>
+					<button type="button" class="caps" onclick={() => join(true)}>
+						<HandRect seed="btntake" wobble={1.4} />
+						Take them
+					</button>
+					<button type="button" class="caps" onclick={() => join(false)}>
+						<HandRect seed="btnleave" wobble={1.4} />
+						Leave them
+					</button>
+					<button type="button" class="caps" onclick={() => (joining = false)}>
+						<HandRect seed="btncancel" wobble={1.4} />
+						Cancel
+					</button>
 				</div>
 			{:else}
 				<button
@@ -253,6 +275,7 @@
 					disabled={!valid || sync.busy}
 					onclick={() => (hasLocal ? (joining = true) : join(false))}
 				>
+					<HandRect seed="btnjoin" wobble={1.4} />
 					Join
 				</button>
 			{/if}
@@ -324,18 +347,26 @@
 		text-align: center;
 	}
 
+	/*
+	 * The same header a group has on the sheet: same face, same size, the caps
+	 * and their spacing from the shared class — which matters, because TextRule
+	 * measures a hidden copy carrying `caps` and a header that spaced its own
+	 * letters would be underlined short.
+	 *
+	 * The bottom margin leaves room for the rule, which pulls itself up under
+	 * the words.
+	 */
 	h2 {
-		margin: 2.5rem 0 0.75rem;
+		margin: 2.5rem 0 0;
 		font-family: var(--hand);
 		font-size: var(--size-title);
 		font-weight: 400;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
 	}
 
 	.headline {
 		margin: 0 0 0.25rem;
-		line-height: 1.6;
+		font-size: var(--size-title);
+		line-height: 1.4;
 	}
 
 	/*
@@ -345,7 +376,8 @@
 	 */
 	.detail {
 		margin: 0 0 0.5rem;
-		line-height: 1.6;
+		font-size: var(--size-title);
+		line-height: 1.4;
 	}
 
 	/* The code is the thing on this panel. It sits in the middle of it. */
@@ -361,7 +393,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 0.75rem;
+		gap: 1rem;
 		margin-bottom: 0.5rem;
 	}
 
@@ -374,16 +406,23 @@
 		margin-top: 1.75rem;
 	}
 
-	.pair button {
+	/*
+	 * A drawn box each, rather than an underline and a dot between them. Every
+	 * seed is its own, so no two boxes are the same shape — eleven copies of one
+	 * rectangle would read as a stamp, which is the thing this app never does.
+	 *
+	 * A CSS border is not available here: it is a ruled straight line, and
+	 * nothing drawn in this app is ruled.
+	 */
+	.pair button,
+	.action {
+		position: relative;
 		min-height: var(--touch);
-		padding: 0.5rem;
-		text-decoration: underline;
-		text-underline-offset: 4px;
+		padding: 0.6rem 1.1rem;
 	}
 
 	.pair button:disabled {
 		cursor: default;
-		text-decoration: none;
 	}
 
 	.nothing {
@@ -392,31 +431,30 @@
 
 	.note {
 		margin: 0.75rem 0 0;
-		line-height: 1.6;
+		font-size: var(--size-title);
+		line-height: 1.4;
 	}
 
 	.action {
-		min-height: var(--touch);
-		padding: 0.5rem 1rem;
-		margin-top: 0.5rem;
-		text-decoration: underline;
-		text-underline-offset: 4px;
+		margin-top: 0.75rem;
 	}
 
+	/* Dims the box with the words, which is what makes it read as one control. */
 	.action:disabled {
 		opacity: 0.4;
 		cursor: default;
-		text-decoration: none;
 	}
 
 	.ask {
 		margin: 1rem 0 0.5rem;
-		line-height: 1.6;
+		font-size: var(--size-title);
+		line-height: 1.4;
 	}
 
 	.error {
 		margin-top: 1rem;
-		line-height: 1.6;
+		font-size: var(--size-title);
+		line-height: 1.4;
 	}
 
 	.credit {
@@ -425,8 +463,8 @@
 
 	.credit p {
 		margin: 0;
-		font-size: var(--size-small);
-		line-height: 1.7;
+		font-size: var(--size-title);
+		line-height: 1.4;
 		overflow-wrap: anywhere;
 	}
 

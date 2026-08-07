@@ -342,3 +342,59 @@ test('the corner sync button says when it could not sync', async ({ page }) => {
 	// And nothing was lost saying so.
 	await expect(page.getByRole('button', { name: 'Add a task' }).first()).toBeVisible();
 });
+
+test('the corner sync button says when it did sync', async ({ page }) => {
+	/*
+	 * The other half of the same problem. A button that only speaks up on
+	 * failure is a button you cannot tell apart from a dead one on the run
+	 * where everything worked.
+	 */
+	await device(page, 'aaaa bbbb cccc');
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: /^Sync —/ }).click();
+	await expect(page.getByRole('status').filter({ hasText: 'Synced.' })).toBeVisible();
+
+	// It went, so the button that was offering to send it has nothing left to do.
+	await expect(page.getByRole('button', { name: /^Sync —/ })).toHaveCount(0);
+});
+
+test('a crossed circle when the list cannot be reached', async ({ page }) => {
+	/*
+	 * Offline had no mark at all. It is not an error — everything is safe on the
+	 * device — but it is not nothing either, and it outranks both the outbox
+	 * arrow and the stale refresh: there is no point offering to send when
+	 * nothing can leave.
+	 */
+	await page.clock.install();
+	await page.route('**/api/room/**', (route) => route.abort());
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await addTask(page, 'Bread');
+
+	// One change to send, and no reason yet to think it will not go.
+	const button = page.getByRole('button', { name: /^Sync —/ });
+	await expect(button).toHaveAttribute('aria-label', /changes waiting to go/);
+	const outbox = await button.locator('path.drawn').getAttribute('d');
+
+	await button.click();
+	await expect(button).toHaveAttribute('aria-label', /no connection last time/);
+
+	// A different mark, and one path: the ring and its stroke are drawn together.
+	await expect(button.locator('path.drawn')).toHaveCount(1);
+	expect(await button.locator('path.drawn').getAttribute('d')).not.toBe(outbox);
+
+	/*
+	 * Still tappable once the cooldown is out. Being unreachable is a condition,
+	 * not a locked door — the ten seconds after any attempt are what disable it,
+	 * and that rule is the same whether the attempt worked or not.
+	 */
+	await expect(button).toBeDisabled();
+	await page.clock.fastForward('00:15');
+	await expect(button).toBeEnabled();
+
+	// And the mark has not quietly reverted while it waited.
+	await expect(button).toHaveAttribute('aria-label', /no connection last time/);
+});

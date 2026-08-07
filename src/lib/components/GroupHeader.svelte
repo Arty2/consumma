@@ -2,8 +2,6 @@
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handChevron } from '$lib/draw/hand';
-	import { seedFrom } from '$lib/draw/rng';
 
 	type Props = {
 		title: string;
@@ -21,7 +19,6 @@
 	let editing = $state(false);
 	let draft = $state('');
 
-	const chevron = $derived(handChevron(20, collapsed, { seed: seedFrom(seed), wobble: 0.8 }));
 	/** What the rule is drawn under: the title, or the title being typed. */
 	const shown = $derived(editing ? draft : title === '' ? '…' : title);
 
@@ -82,9 +79,17 @@
 			{title === '' ? '…' : title}
 		</button>
 		<!--
-			The triangle is a control in its own right. Tapping the title toggles
-			too, but the title is also where renaming starts, so the one thing on
-			the row that does nothing else has to be tappable.
+			A control in its own right. Tapping the title toggles too, but the title
+			is also where renaming starts, so the one thing on the row that does
+			nothing else has to be tappable.
+
+			Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
+			[…], which is the same ellipsis an untitled group and the add row use
+			for "there is more here". The count used to be printed again on a line
+			below; one place is enough.
+
+			Graphe has no brackets and falls back for them, deliberately. Do not
+			swap in characters it does have.
 		-->
 		<button
 			class="icon"
@@ -93,19 +98,13 @@
 			aria-expanded={!collapsed}
 			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
 		>
-			<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
-				<path d={chevron} class="drawn" />
-			</svg>
+			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
 		</button>
 	{/if}
 </div>
 
 <!-- Drawn rather than a border, and only as wide as the title. -->
 <TextRule text={shown} {seed} />
-
-{#if collapsed}
-	<p class="collapsed">[ … {count} ]</p>
-{/if}
 
 <style>
 	.header {
@@ -139,19 +138,13 @@
 	}
 
 	.icon {
-		flex: 0 0 var(--touch);
-		width: var(--touch);
+		flex: 0 0 auto;
+		min-width: var(--touch);
 		height: var(--touch);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		/* Level with the title's capitals, not with their line box. */
-		position: relative;
-		top: calc(-1 * var(--cap-lift));
-	}
-
-	.collapsed {
-		margin: 0.25rem 0 0 var(--touch);
-		opacity: 0.6;
+		font-family: var(--hand);
+		font-size: var(--size-title);
 	}
 </style>

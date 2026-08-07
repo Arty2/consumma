@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { fromMenu, openMenu } from './menu';
 
 /*
@@ -222,16 +222,51 @@ test('the credit names the version, the project and both authors', async ({ page
 	expect(await credit.locator('svg').count()).toBe(0);
 });
 
-test('every underline on the sheet is drawn, not a CSS decoration', async ({ page }) => {
-	const decorated = await page.evaluate(() =>
-		[...document.querySelectorAll('main *')]
-			.filter((el) => getComputedStyle(el).textDecorationLine.includes('underline'))
-			.map((el) => el.textContent?.trim() ?? '')
-	);
+test('every underline in the app is drawn, not a CSS decoration', async ({ page }) => {
+	/*
+	 * The sheet has always been held to this. The menu was not, and quietly kept
+	 * eleven CSS underlines on its buttons — so the rule is checked over the
+	 * whole document now, with the menu open, and covers both.
+	 */
+	const underlined = (page: Page) =>
+		page.evaluate(() =>
+			[...document.querySelectorAll('body *')]
+				.filter((el) => getComputedStyle(el).textDecorationLine.includes('underline'))
+				.map((el) => el.textContent?.trim().slice(0, 40) ?? '')
+		);
 
-	expect(decorated).toStrictEqual([]);
+	expect(await underlined(page)).toStrictEqual([]);
 	// The group title and the new-group row each carry a drawn rule instead.
 	expect(await page.locator('main svg.rule path').count()).toBeGreaterThanOrEqual(2);
+
+	await openMenu(page);
+	expect(await underlined(page)).toStrictEqual([]);
+	// And its two section headers are ruled the way a group title is.
+	expect(await page.locator('[role="dialog"] svg.rule path').count()).toBe(2);
+});
+
+test('every button in the menu is boxed, and no two boxes are alike', async ({ page }) => {
+	await openMenu(page);
+
+	const menu = page.locator('[role="dialog"]');
+	// Every button that does something, which is all of them but the ✕.
+	const labelled = menu.locator('button:not(.close)');
+	const count = await labelled.count();
+	expect(count).toBeGreaterThanOrEqual(6);
+
+	for (let i = 0; i < count; i++) {
+		await expect(labelled.nth(i).locator('svg.rect path')).toHaveCount(1);
+	}
+
+	/*
+	 * Eleven copies of one rectangle would read as a stamp. Each box is seeded
+	 * from its own name, so the strokes differ — that is the whole reason the
+	 * seeds are not an index.
+	 */
+	const shapes = await labelled
+		.locator('svg.rect path')
+		.evaluateAll((paths) => paths.map((p) => p.getAttribute('d')));
+	expect(new Set(shapes).size).toBe(shapes.length);
 });
 
 test('a drawn line does not move when the row around it re-renders', async ({ page }) => {

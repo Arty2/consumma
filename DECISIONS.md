@@ -377,28 +377,88 @@ Numbers in brackets are the section of the build plan a decision came from.
     way to be told nothing had happened. Same shape as the two storage bugs
     before it: a thing that fails and looks idle.
 
+46. **A success is as worth saying as a failure.** The corner button toasted
+    only when a sync failed, which left the run where everything worked
+    indistinguishable from a dead button. It says "Synced." now. Both halves,
+    or neither is trustworthy.
+
+47. **Being unreachable is earned, and it sticks.** `refresh()` set `offline`
+    from `navigator.onLine` and otherwise reset to `pending`. But `onLine` says
+    the device has a network, not that the list is at the end of it — a dead
+    deployment on good wifi is online by that measure. So the mark a failed
+    attempt earned was thrown away by the next edit.
+
+    `#unreachable` is set by an attempt that could not reach the list and
+    cleared only by one that did. Reaching it is the only thing that proves it
+    can be reached.
+
+48. **The crossed circle outranks the arrow.** Three glyphs on one corner
+    button: an outbox arrow when edits are waiting, a circular arrow when
+    nothing is waiting but the list has not been looked at in ten minutes, and
+    a closed ring struck through when it could not be reached. Offline wins,
+    because there is no point offering to send when nothing can leave. It stays
+    tappable — a condition, not a locked door.
+
+    The ring is closed where `handRefresh` is open, so at 22px the two can
+    never be confused.
+
+    The 15-second tick in `SyncButton` recomputes the mark alongside the clock.
+    That is not a poll and not a reconnect trigger: nothing there syncs, and
+    decision 40 stands unchanged.
+
+49. **The collapse control carries the count.** A drawn chevron, plus a
+    `[ … 3 ]` line printed underneath it, said one thing twice. The control now
+    reads `[3]` closed and `[…]` open — what is hidden and how much, in the one
+    place someone is already looking. The line below is gone.
+
+    The brackets fall back, as they do everywhere; the digit is Graphe's own.
+
+50. **The menu's buttons are boxed, each in its own hand.** They were
+    underlined and separated by middle dots, which is a link and a list of
+    links — they are neither. Every one gets a drawn box seeded from its own
+    name, so no two are the same rectangle; eleven copies of one shape would
+    read as a stamp, which is the thing this app never does.
+
+    A CSS border was not available: it is a ruled straight line, and nothing
+    drawn here is ruled. The whole-document underline check in
+    `e2e/design.e2e.ts` is what keeps this from creeping back — it used to scan
+    the sheet only, which is how the menu kept eleven of them.
+
+51. **The panel is set to be read.** Its prose and its credit were at body and
+    small against a face already scaled down by `size-adjust`. Both are at
+    `--size-title` now, the same size as the section headers, which are
+    themselves group titles: same face, same caps, same drawn rule underneath.
+    The panel is where someone goes to find out what is happening, so it is set
+    at the size of something meant to be read rather than referred to.
+
+52. **The ghost checkbox opens its row.** An empty box in a 44px target, beside
+    a row that opens on a tap, that did nothing. It is a button now — out of the
+    tab order and out of the accessibility tree, because the ellipsis beside it
+    is the same action with a real label and two stops for one thing is worse
+    than none.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
 drift.
 
-46. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
+53. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
     still described reads coming straight from the CDN. §5 is right — it is what
     makes `connect-src 'self'` possible — so `PUBLIC_BLOB_BASE` and the
     `/api/room/[roomId]/version` route are both gone.
 
-47. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
+54. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
     persisted beside the client id. Without it, two edits from one device in the
     same millisecond collide on `(t, c)` and merge stops being commutative. The
     comparator also falls back to the value itself, which makes it total for any
     document, including a corrupt one.
 
-48. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
+55. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
     tombstone collection (`gc(doc, now)`) are separate functions applied by the
     sync and write paths. Folding either into merge would destroy the algebra
     the property tests check.
 
-49. **Every write is read back once.** Blob storage has no compare-and-set, so
+56. **Every write is read back once.** Blob storage has no compare-and-set, so
     two writers can both pass the version check and the second one's bytes win.
     The loser cannot tell from the version number — it was told 2, the server
     holds 2, and its next conditional read returns 304 forever. The
@@ -406,18 +466,18 @@ drift.
     `tests/sync.spec.ts` sets the race up deliberately; removing the read-back
     makes it fail.
 
-50. **The ETag is the document's own version**, not the blob's upload time and
+57. **The ETag is the document's own version**, not the blob's upload time and
     size. The latter answers a conditional read without fetching the body, but
     two writes in the same millisecond whose JSON is the same length produce an
     identical token, and the second is reported as unchanged. A saved fetch is
     not worth a lost edit.
 
-51. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
+58. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
 ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     optional, but it cannot be past the first write — a reader cannot tell a
     compressed payload from an uncompressed one.
 
-52. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
+59. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
     SvelteKit's own `#svelte-announcer` has a hardcoded `style` attribute we do
     not author and cannot switch off. `'unsafe-hashes'` permits that exact
     string and nothing else; it is not `'unsafe-inline'`. `trusted-types` names
@@ -425,7 +485,7 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `e2e/csp.e2e.ts` fails on any console error, so an upgrade that changes the
     string breaks CI rather than the policy.
 
-53. **"Loose ends" has an id no document can hold**, and that is deliberate.
+60. **"Loose ends" has an id no document can hold**, and that is deliberate.
     `__loose__` fails the `/^[A-Za-z0-9]{1,24}$/` the validator enforces, which
     is what stops it ever being written to a document and then syncing to
     someone who has no such group. The cost is that anything which can name a

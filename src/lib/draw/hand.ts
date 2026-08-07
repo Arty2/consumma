@@ -305,6 +305,45 @@ export function handArrow(size: number, options: HandOptions): string {
 }
 
 /**
+ * A circle with a stroke through it: the list could not be reached.
+ *
+ * Not a warning triangle and not a crossed-out cloud — being offline is a
+ * condition, not an error, and the same three glyphs have to read as one hand.
+ * Closed, unlike handRefresh, so the two are never confused at 22px: one is a
+ * stroke that came back round, this one is shut.
+ *
+ * The slash is seeded apart from the ring, so it does not inherit the same
+ * wobble and come out looking stamped rather than drawn.
+ */
+export function handSlashedCircle(size: number, options: HandOptions): string {
+	const r = size * 0.34;
+	const c = size / 2;
+
+	const points: Pt[] = [];
+	const steps = 12;
+	for (let i = 0; i <= steps; i++) {
+		const a = (Math.PI * 2 * i) / steps;
+		points.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r });
+	}
+
+	const ring = handPath(points, options);
+
+	// Corner to corner through the middle, running past the ring at both ends
+	// the way a pen does when it strikes something out.
+	const reach = r * 1.24;
+	const slash = handPath(
+		[
+			{ x: c - reach * 0.7, y: c + reach * 0.7 },
+			{ x: c, y: c },
+			{ x: c + reach * 0.7, y: c - reach * 0.7 }
+		],
+		{ ...options, seed: options.seed + 419 }
+	);
+
+	return `${ring} ${slash}`;
+}
+
+/**
  * The side of the sheet: a drawn line down its whole length.
  *
  * The torn edges close the paper top and bottom; without these it has no

@@ -13,6 +13,8 @@ describe('statusText', () => {
 		expect(statusText('pending', 1).headline).toBe('1 change is waiting to go.');
 		expect(statusText('pending', 4).headline).toBe('4 changes are waiting to go.');
 		expect(statusText('pending', 4).detail).toBe('Nobody else can see them until you sync.');
+		// Agrees with the count above it, which sits right beside it in the panel.
+		expect(statusText('pending', 1).detail).toBe('Nobody else can see it until you sync.');
 	});
 
 	it('still counts what is waiting when the list cannot be reached', () => {

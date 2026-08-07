@@ -205,10 +205,11 @@ test('makes a group, collapses it, and remembers that locally', async ({ page })
 
 	await page.getByRole('button', { name: 'Market' }).click();
 	await expect(task(page, 'Bread')).toHaveCount(0);
-	await expect(page.getByText('[ … 1 ]')).toBeVisible();
+	// The count is in the header control, and nowhere else on the row.
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
 
 	await page.reload();
-	await expect(page.getByText('[ … 1 ]')).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
 
 	await page.getByRole('button', { name: 'Market' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
@@ -250,19 +251,43 @@ test('Consummatum appears when the last open task is ticked, and not on an empty
 	await expect(page.getByText('Consummatum')).toBeVisible();
 });
 
-test('the triangle collapses and expands the group', async ({ page }) => {
+test('the header control collapses and expands, and counts what it hides', async ({ page }) => {
 	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
 
-	const triangle = page.getByRole('button', { name: 'Collapse group' });
-	await expect(triangle).toHaveAttribute('aria-expanded', 'true');
+	// Expanded it offers to close, and says nothing about how much is there —
+	// the tasks are on screen to be counted.
+	const collapse = page.getByRole('button', { name: 'Collapse group' });
+	await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+	await expect(collapse).toHaveText('[…]');
 
-	await triangle.click();
+	await collapse.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
 
+	// Closed, the number is the only account of what went away.
 	const expand = page.getByRole('button', { name: 'Expand group' });
 	await expect(expand).toHaveAttribute('aria-expanded', 'false');
+	await expect(expand).toHaveText('[2]');
+
 	await expand.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
+test('the ghost checkbox opens the row it sits on', async ({ page }) => {
+	/*
+	 * It is an empty box in a 44px target beside a row that opens on a tap.
+	 * Leaving it inert made half the control dead, and which half was invisible.
+	 */
+	const ghost = page.locator('button.box').first();
+	await ghost.click();
+
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await expect(input).toBeFocused();
+
+	// And it really is the add row, not just a focused field.
+	await input.fill('Bread');
+	await input.press('Enter');
+	await expect(task(page, 'Bread')).toBeVisible();
 });
 
 test('a done task offers its own way out, and the way back', async ({ page }) => {

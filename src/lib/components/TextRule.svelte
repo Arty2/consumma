@@ -8,9 +8,11 @@
 		text: string;
 		seed: string;
 		faint?: boolean;
+		/** For a centred heading, where left-aligning the rule would strand it. */
+		centred?: boolean;
 	};
 
-	let { text, seed, faint = false }: Props = $props();
+	let { text, seed, faint = false, centred = false }: Props = $props();
 
 	let width = $state(0);
 
@@ -32,7 +34,7 @@
 	same face and size, same caps, and the same language, because Greek drops
 	the tonos in capitals and ΚΑΦΕΣ is not the width of ΚΑΦΈΣ.
 -->
-<div class="ruled">
+<div class="ruled" class:centred>
 	<span class="sizer caps" aria-hidden="true" lang={langOf(text)} bind:clientWidth={width}>
 		{text}
 	</span>
@@ -65,5 +67,19 @@
 		display: block;
 		margin-top: -0.95rem;
 		overflow: visible;
+	}
+
+	/*
+	 * The sheet's titles start at the left margin and the rule follows them
+	 * there. A centred heading has to bring its rule with it, or the mark ends
+	 * up under nothing.
+	 */
+	.centred .sizer {
+		left: 50%;
+		translate: -50% 0;
+	}
+
+	.centred .rule {
+		margin-inline: auto;
 	}
 </style>

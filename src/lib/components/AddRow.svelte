@@ -63,11 +63,19 @@
 </script>
 
 <li class="row">
-	<span class="box" aria-hidden="true">
+	<!--
+		Tappable, because it looks it: an empty box in a 44px target beside a row
+		that opens on a tap is not something to leave inert.
+
+		Out of the accessibility tree and out of the tab order all the same — the
+		ellipsis beside it is the same action with a real label, and two stops for
+		one thing is worse than none.
+	-->
+	<button class="box" type="button" tabindex="-1" aria-hidden="true" {disabled} onclick={start}>
 		<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE}>
 			<path d={box} class="drawn drawn--faint" />
 		</svg>
-	</span>
+	</button>
 
 	{#if open}
 		<!--
@@ -112,6 +120,13 @@
 		/* Level with the capitals beside it, not with their line box. */
 		position: relative;
 		top: calc(-1 * var(--cap-lift));
+		/* It opens a text field, so it offers the same cursor the field does. */
+		cursor: text;
+	}
+
+	.box:disabled {
+		opacity: 0.4;
+		cursor: default;
 	}
 
 	.box svg {
