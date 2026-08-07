@@ -1,4 +1,4 @@
-import { del, head, list, put } from '@vercel/blob';
+import { BlobNotFoundError, del, head, list, put } from '@vercel/blob';
 import type { BlobEntry, Blobs } from './store';
 
 /**
@@ -21,9 +21,19 @@ export const vercelBlobs: Blobs = {
 			// handful a day, and the alternative is caching the store's base URL
 			// in module scope for a saving nobody would notice.
 			({ downloadUrl } = await head(pathname));
-		} catch {
-			// The SDK throws BlobNotFoundError rather than returning null.
-			return null;
+		} catch (error) {
+			// The SDK throws rather than returning null for a blob that is not
+			// there, and that is the only failure that means "no list yet".
+			if (error instanceof BlobNotFoundError) return null;
+
+			/*
+			 * Everything else is a real problem and must not be dressed up as an
+			 * empty list. A store that is not connected, or a token that is missing
+			 * or expired, throws here — and swallowing that answered every read
+			 * with 404, so a misconfigured deployment looked exactly like a list
+			 * nobody had written yet. The only sign was writes failing.
+			 */
+			throw error;
 		}
 
 		const response = await fetch(downloadUrl, { cache: 'no-store' });

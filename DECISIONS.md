@@ -311,6 +311,20 @@ Numbers in brackets are the section of the build plan a decision came from.
     deployed, 500 is a route that cannot reach its store. `offline` still means
     exactly what it says — nothing answered.
 
+39. **Only a missing blob means an empty list.** `vercelBlobs.get()` caught
+    every error and returned null, so a store that was not connected, or a
+    token that was missing or expired, answered every read with "no list here".
+
+    That is worse than failing. A `curl` against the API looked perfectly
+    healthy — 404, `no-store`, the right headers, served by a real function —
+    while the deployment could not read or write a thing. The only symptom was
+    writes failing, which the client then reported as being offline. Two
+    separate disguises over one misconfiguration.
+
+    `BlobNotFoundError` is now the only failure treated as absence; everything
+    else is rethrown and surfaces as a 500 the message names. `tests/blobs.spec.ts`
+    is the first test this file has had, which is not a coincidence.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
