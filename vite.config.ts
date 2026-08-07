@@ -1,8 +1,18 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 import adapter from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 
+/*
+ * The version in the footer is read from package.json rather than written out
+ * a second time, so releasing cannot leave the sheet claiming an old one.
+ */
+const { version } = JSON.parse(readFileSync('./package.json', 'utf8'));
+
 export default defineConfig({
+	define: {
+		__VERSION__: JSON.stringify(version)
+	},
 	build: {
 		// Never inline an asset as a data: URI. `img-src 'self'` refuses them, and
 		// a violation that only appears once an asset drops under the size

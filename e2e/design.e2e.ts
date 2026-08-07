@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 
 /*
@@ -167,6 +168,41 @@ test('Greek loses its tonos in caps, and keeps it everywhere else', async ({ pag
 	const exported = await page.evaluate(() => navigator.clipboard.readText());
 	expect(exported).toContain('Καφές σκέτος');
 	expect(exported).toContain('μαΐστρος');
+});
+
+test('the rule under a title is as wide as the title, not the row', async ({ page }) => {
+	const title = page.getByRole('button', { name: 'My list' });
+	const rule = page.locator('section svg.rule').first();
+
+	const text = await title.evaluate((el) => {
+		// The button fills the row for the tap target; the range measures the ink.
+		const range = document.createRange();
+		range.selectNodeContents(el);
+		return range.getBoundingClientRect().width;
+	});
+	const row = (await title.boundingBox())!.width;
+	const drawn = (await rule.boundingBox())!.width;
+
+	// A pen underlines the word, not the column.
+	expect(drawn).toBeLessThan(row);
+	expect(drawn).toBeCloseTo(text, -1);
+});
+
+test('the credit names the version, the project and both authors', async ({ page }) => {
+	const credit = page.locator('footer');
+
+	// The version is injected from package.json, never typed out a second time.
+	// Reading it here is what makes that binding load-bearing rather than a
+	// comment: bump one and the other has to follow.
+	const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
+	await expect(credit).toContainText(`v${version}`);
+	await expect(credit).toContainText('heracl.es/consumma');
+
+	const dedication = credit.getByText('Dialectic Acheropoieton', { exact: false });
+	await expect(dedication).toHaveCSS('font-style', 'italic');
+
+	// The break above it is drawn, like every other line here.
+	expect(await credit.locator('svg.break path').count()).toBe(1);
 });
 
 test('every underline on the sheet is drawn, not a CSS decoration', async ({ page }) => {

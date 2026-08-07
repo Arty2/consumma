@@ -8,6 +8,9 @@ declare global {
 		// interface PageState {}
 		// interface Platform {}
 	}
+
+	/** Injected from package.json by vite.config.ts, for the footer. */
+	const __VERSION__: string;
 }
 
 export {};

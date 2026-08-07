@@ -2,6 +2,7 @@
 	import AddRow from './AddRow.svelte';
 	import GroupHeader from './GroupHeader.svelte';
 	import TaskRow from './TaskRow.svelte';
+	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import type { State } from '$lib/doc/types';
@@ -17,12 +18,8 @@
 
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
 
-	let newGroupRuleWidth = $state(0);
-	const newGroupRule = $derived(
-		newGroupRuleWidth > 0
-			? handLine(newGroupRuleWidth, { seed: seedFrom('new-group'), wobble: 0.8, y: 2 })
-			: ''
-	);
+	/** The placeholder is a title one step earlier, so its rule follows it. */
+	const newGroupShown = $derived(newGroupOpen ? newGroupDraft : '…');
 	const landing = $derived(
 		landingWidth > 0 ? handLine(landingWidth, { seed: seedFrom('landing'), wobble: 1.2, y: 2 }) : ''
 	);
@@ -192,11 +189,7 @@
 			</button>
 		{/if}
 
-		<svg class="rule" bind:clientWidth={newGroupRuleWidth} aria-hidden="true">
-			{#if newGroupRule}
-				<path d={newGroupRule} class="drawn drawn--faint" />
-			{/if}
-		</svg>
+		<TextRule text={newGroupShown} seed="new-group" faint />
 	</div>
 </div>
 
@@ -242,16 +235,6 @@
 		font-family: var(--hand);
 		font-size: var(--size-title);
 		text-align: left;
-	}
-
-	/* Drawn, like the rule under a real title — not a CSS underline. */
-	.new-group .rule {
-		display: block;
-		width: 45%;
-		min-width: 6rem;
-		height: 5px;
-		margin-top: -0.5rem;
-		overflow: visible;
 	}
 
 	.new-group input {

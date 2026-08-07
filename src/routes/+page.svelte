@@ -6,6 +6,8 @@
 	import SyncModal from '$lib/components/SyncModal.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
+	import { handLine } from '$lib/draw/hand';
+	import { seedFrom } from '$lib/draw/rng';
 	import { copy, paste } from '$lib/clipboard';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
@@ -27,6 +29,12 @@
 	type Panel = 'sync' | 'import' | 'clear' | 'delete' | null;
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
+
+	/* The thematic break above the credit, drawn like every other line here. */
+	let creditWidth = $state(0);
+	const creditRule = $derived(
+		creditWidth > 0 ? handLine(creditWidth, { seed: seedFrom('credit'), wobble: 2.2, y: 2 }) : ''
+	);
 
 	$effect(() => {
 		sheet.load();
@@ -122,7 +130,7 @@
 	</nav>
 
 	<!-- The only two that take something away, and both stop and ask. -->
-	<nav class="below last" aria-label="Removing things">
+	<nav class="below" aria-label="Removing things">
 		<button type="button" class="caps" onclick={() => (panel = 'delete')}>DELETE</button>
 		<span aria-hidden="true">•</span>
 		<button
@@ -135,6 +143,17 @@
 			CLEAR
 		</button>
 	</nav>
+
+	<footer class="credit">
+		<svg class="break" bind:clientWidth={creditWidth} aria-hidden="true">
+			{#if creditRule}
+				<path d={creditRule} class="drawn drawn--faint" />
+			{/if}
+		</svg>
+
+		<p>v{__VERSION__} • heracl.es/consumma</p>
+		<p class="dedication">Dialectic Acheropoieton of Heracles Papatheodorou and Claude</p>
+	</footer>
 </div>
 
 {#if panel === 'sync'}
@@ -206,8 +225,33 @@
 		padding-top: 1.25rem;
 	}
 
-	.last {
-		padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
+	.credit {
+		padding: 2.5rem 0 calc(1.5rem + env(safe-area-inset-bottom));
+		text-align: center;
+	}
+
+	.break {
+		display: block;
+		width: 100%;
+		height: 5px;
+		margin-bottom: 1.5rem;
+		overflow: visible;
+	}
+
+	.credit p {
+		margin: 0;
+		font-size: var(--size-small);
+		line-height: 1.7;
+		overflow-wrap: anywhere;
+	}
+
+	/*
+	 * Graphe has one style, so this is the browser's synthetic oblique. With a
+	 * single face that is the only italic available, and the line wants to sit
+	 * apart from the version above it.
+	 */
+	.dedication {
+		font-style: italic;
 	}
 
 	nav button {

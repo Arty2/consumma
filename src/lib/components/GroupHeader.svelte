@@ -1,7 +1,8 @@
 <script lang="ts">
+	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handChevron, handLine } from '$lib/draw/hand';
+	import { handChevron } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 
 	type Props = {
@@ -19,11 +20,10 @@
 
 	let editing = $state(false);
 	let draft = $state('');
-	let ruleWidth = $state(0);
 
-	const options = $derived({ seed: seedFrom(seed), wobble: 0.8 });
-	const chevron = $derived(handChevron(20, collapsed, options));
-	const rule = $derived(ruleWidth > 0 ? handLine(ruleWidth, { ...options, y: 2 }) : '');
+	const chevron = $derived(handChevron(20, collapsed, { seed: seedFrom(seed), wobble: 0.8 }));
+	/** What the rule is drawn under: the title, or the title being typed. */
+	const shown = $derived(editing ? draft : title === '' ? '…' : title);
 
 	/*
 	 * Nothing is labelled. The title is the whole control: tap collapses,
@@ -89,12 +89,8 @@
 	{/if}
 </div>
 
-<!-- The rule under the title, drawn rather than a border. -->
-<svg class="rule" bind:clientWidth={ruleWidth} aria-hidden="true">
-	{#if rule}
-		<path d={rule} class="drawn" />
-	{/if}
-</svg>
+<!-- Drawn rather than a border, and only as wide as the title. -->
+<TextRule text={shown} {seed} />
 
 {#if collapsed}
 	<p class="collapsed">[ … {count} ]</p>
@@ -138,16 +134,6 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-	}
-
-	/* Close under the title, the way a pen underlines a word. */
-	.rule {
-		display: block;
-		width: 45%;
-		min-width: 6rem;
-		height: 5px;
-		margin-top: -0.5rem;
-		overflow: visible;
 	}
 
 	.collapsed {

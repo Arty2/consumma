@@ -1,4 +1,4 @@
-# Consumma
+# /consumma
 
 A shared checklist that the server cannot read. Two or more people connect to
 the same list with a short code; everything is encrypted in the browser, and
@@ -6,6 +6,10 @@ what reaches the server is ciphertext and a room id derived from the same code.
 
 Black on white, handwritten, no chrome. The sheet is a sheet, and the only
 words on it are the ones someone wrote.
+
+- Project page: [heracl.es/consumma](https://heracl.es/consumma)
+- Demo: [consumma.vercel.app](https://consumma.vercel.app)
+- Source: [github.com/arty2/consumma](https://github.com/arty2/consumma)
 
 ## Where this is
 

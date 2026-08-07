@@ -174,6 +174,30 @@ Numbers in brackets are the section of the build plan a decision came from.
     Greek to a screen reader. Nothing is miscased either way, so the milder
     failure wins.
 
+28. **The rule under a title is as wide as the title.** It was 45% of the row,
+    which is a column rule rather than an underline; a pen underlines the word.
+    `TextRule.svelte` sets the text a second time, hidden and out of flow, and
+    draws to that width — CSS cannot ask for the width of a sibling's text, and
+    the title has to keep filling its row because that row is the hit area for
+    collapsing. The hidden copy carries the same caps and the same `lang`, since
+    ΚΑΦΕΣ is not the width of ΚΑΦΈΣ.
+
+    The new-group `…` gets the same treatment rather than keeping the old
+    width, so the placeholder still reads as the same thing one step earlier —
+    a short stub under three dots that grows as a title is typed.
+
+29. **The app is named `/consumma`**, in the manifest, the tab title and the
+    iOS home-screen name. Nowhere on the sheet: §12.14's no-chrome rule is
+    unchanged, and the name is still absent from the page itself.
+
+    The credit in the footer is the one exception to "the only words on the
+    sheet are the ones someone wrote", and it sits below the torn edge rather
+    than on the paper. The version comes from package.json through a Vite
+    `define`, so a release cannot leave the sheet claiming an old one, and
+    `e2e/design.e2e.ts` reads the same file to keep that binding honest. The
+    dedication is set in italics, which with a single face means the browser's
+    synthetic oblique.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
