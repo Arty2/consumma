@@ -237,7 +237,7 @@
 	.new-group input {
 		display: block;
 		min-height: var(--touch);
-		font-family: var(--display);
+		font-family: var(--hand);
 		font-size: var(--size-title);
 		text-align: left;
 	}

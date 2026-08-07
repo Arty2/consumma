@@ -3,10 +3,19 @@
  * from stroke weight, dashes, hatching and opacity of black — never a grey
  * fill. No shadows anywhere; scripts/gates.sh fails the build if one appears.
  *
- * Both faces are SIL OFL, served from our own origin. No Google Fonts request
- * is ever made — that is bandwidth, privacy, and a hole in `connect-src`.
+ * The face is SIL OFL, served from our own origin. No Google Fonts request is
+ * ever made — that is bandwidth, privacy, and a hole in `connect-src`.
  */
 
+/*
+ * One face, everywhere. Titles and body differ by size and caps, not by
+ * typeface — the sheet is one hand's writing, not two.
+ *
+ * To swap it: drop a latin-subset woff2 into static/fonts, point this one
+ * @font-face at it, and change --hand below. Nothing else refers to a font by
+ * name. The licence has to permit webfont embedding and redistribution, since
+ * self-hosting on a public site is both; see the README.
+ */
 @font-face {
 	font-family: 'Patrick Hand';
 	font-style: normal;
@@ -15,20 +24,11 @@
 	src: url('/fonts/patrick-hand-latin-400-normal.woff2') format('woff2');
 }
 
-@font-face {
-	font-family: 'Caveat';
-	font-style: normal;
-	font-weight: 400;
-	font-display: swap;
-	src: url('/fonts/caveat-latin-400-normal.woff2') format('woff2');
-}
-
 :root {
 	--ink: #000;
 	--paper: #fff;
 
-	--body: 'Patrick Hand', ui-rounded, cursive;
-	--display: 'Caveat', 'Patrick Hand', cursive;
+	--hand: 'Patrick Hand', ui-rounded, cursive;
 
 	/* 32 / 22 / 17 / 14. Handwritten faces need more line-height than you think. */
 	--size-display: 2rem;
@@ -58,7 +58,7 @@ body {
 	margin: 0;
 	background: var(--paper);
 	color: var(--ink);
-	font-family: var(--body);
+	font-family: var(--hand);
 	font-size: var(--size-body);
 	line-height: 1.5;
 }

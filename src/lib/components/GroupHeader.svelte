@@ -108,7 +108,7 @@
 	.title {
 		flex: 1 1 auto;
 		min-width: 0;
-		font-family: var(--display);
+		font-family: var(--hand);
 		font-size: var(--size-title);
 		text-align: left;
 		overflow-wrap: anywhere;

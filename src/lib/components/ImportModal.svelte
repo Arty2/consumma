@@ -70,7 +70,7 @@
 	}
 
 	.summary {
-		font-family: var(--display);
+		font-family: var(--hand);
 		font-size: var(--size-title);
 	}
 
@@ -78,7 +78,7 @@
 		width: 100%;
 		padding: 0.5rem;
 		border: 1px dashed var(--ink);
-		font-family: var(--body);
+		font-family: var(--hand);
 		font-size: var(--size-body);
 		resize: vertical;
 	}

@@ -47,6 +47,7 @@ The build plan is the specification; these were settled after it was written and
 - PWA icons are drawn by scripts/icons.ts at build time into static/icons, which is gitignored. The asset gate exempts that directory only while it stays gitignored.
 - The page is prerendered (`prerender = true` in `src/routes/+layout.ts`). Only `/api/*` is dynamic.
 - `src/lib/server/store.ts` is the only file that imports `@vercel/blob`.
+- One typeface, everywhere — §6's two faces are down to one. There is exactly one `@font-face` in src/app.css and one variable, `--hand`, that names it; titles and body separate by size and caps. Swapping the face is a one-file change, and the replacement must be licensed for webfont embedding and redistribution.
 
 ## Style
 

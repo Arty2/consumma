@@ -193,7 +193,7 @@
 
 	h2 {
 		margin: 2.5rem 0 0.75rem;
-		font-family: var(--display);
+		font-family: var(--hand);
 		font-size: var(--size-title);
 		font-weight: 400;
 		text-transform: uppercase;
@@ -203,7 +203,7 @@
 	/* The code is the thing on this panel. It sits in the middle of it. */
 	.code {
 		margin: 0;
-		font-family: var(--display);
+		font-family: var(--hand);
 		font-size: var(--size-display);
 		letter-spacing: 0.08em;
 		text-align: center;
@@ -241,7 +241,7 @@
 		width: 100%;
 		min-height: var(--touch);
 		padding: 0.25rem 0;
-		font-family: var(--display);
+		font-family: var(--hand);
 		font-size: var(--size-title);
 		letter-spacing: 0.06em;
 		text-align: center;

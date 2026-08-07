@@ -65,13 +65,20 @@ test('the palette is black on white and nothing else', async ({ page }) => {
 	}
 });
 
-test('the sheet is drawn with the handwritten faces, served from our origin', async ({ page }) => {
-	const fonts = await page.evaluate(() =>
-		[...document.fonts].map((f) => ({ family: f.family, status: f.status }))
-	);
+test('one handwritten face, served from our origin, and only one', async ({ page }) => {
+	const families = await page.evaluate(() => [...document.fonts].map((f) => f.family));
 
-	expect(fonts.map((f) => f.family)).toContain('Patrick Hand');
-	expect(fonts.map((f) => f.family)).toContain('Caveat');
+	// Titles and body differ by size and caps, not by typeface.
+	expect(families).toStrictEqual(['Patrick Hand']);
+
+	const used = await page.evaluate(() => [
+		...new Set(
+			[...document.querySelectorAll('body *')].map((el) => getComputedStyle(el).fontFamily)
+		)
+	]);
+	for (const stack of used) {
+		expect(stack, stack).toContain('Patrick Hand');
+	}
 });
 
 test('works at 320px without scrolling sideways', async ({ page }) => {

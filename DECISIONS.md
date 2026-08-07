@@ -110,6 +110,22 @@ Numbers in brackets are the section of the build plan a decision came from.
     paths rather than `text-decoration`. A CSS underline is a straight line in
     a sheet where nothing else is.
 
+25. **One typeface, not two.** §6 had Patrick Hand for body and Caveat for
+    display. The sheet is one hand's writing, so it is set in one hand: titles,
+    code, tasks and labels all use `--hand`, and separate by size and caps
+    instead. Caveat and its `@fontsource` package are gone.
+
+    That leaves exactly one `@font-face` in `src/app.css` and one variable that
+    names it, which is also what makes the face swappable in a single file.
+    `e2e/design.e2e.ts` asserts `document.fonts` holds one family and that every
+    computed `font-family` under `body` resolves to it, so a second face cannot
+    creep back in unnoticed.
+
+    Any replacement has to be licensed for webfont embedding and
+    redistribution. Self-hosting on a public site is both, and the usual
+    "free for personal use" terms found on font aggregator sites permit
+    neither — which is why the plan pinned SIL OFL in the first place.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as

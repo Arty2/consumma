@@ -133,5 +133,10 @@ The daily sweep (`/api/cron/sweep`, one run a day, guarded by a constant-time
 
 ## Licence
 
-Fonts are Patrick Hand and Caveat, both SIL OFL, self-hosted as latin-subset
-woff2 from M2.
+One face, everywhere: Patrick Hand, SIL OFL, self-hosted as a latin-subset
+woff2 from M2. Titles and body differ by size and caps, not by typeface.
+
+To swap it, drop a woff2 into `static/fonts`, point the single `@font-face` in
+`src/app.css` at it and change `--hand`. Nothing else names a font. The licence
+has to permit webfont embedding _and_ redistribution — self-hosting on a public
+site is both, which is what rules out the common "free for personal use" terms.
