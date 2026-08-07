@@ -95,6 +95,43 @@ test('works at 320px without scrolling sideways', async ({ page }) => {
 	}
 });
 
+test('tasks are shown in caps, but stored and exported as typed', async ({ page, context }) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Coffee, the dark one');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const text = page.getByRole('button', { name: 'Coffee, the dark one', exact: true });
+	await expect(text).toHaveCSS('text-transform', 'uppercase');
+	expect(await text.innerText()).toBe('COFFEE, THE DARK ONE');
+
+	/*
+	 * The uppercase is CSS only. What is stored, what a screen reader reads and
+	 * what the markdown export carries all keep the casing that was typed.
+	 */
+	await expect(text).toHaveAttribute('aria-label', 'Coffee, the dark one');
+
+	await page.getByRole('button', { name: 'EXPORT', exact: true }).click();
+	const exported = await page.evaluate(() => navigator.clipboard.readText());
+	expect(exported).toContain('- [ ] Coffee, the dark one');
+	expect(exported).not.toContain('COFFEE');
+});
+
+test('every underline on the sheet is drawn, not a CSS decoration', async ({ page }) => {
+	const decorated = await page.evaluate(() =>
+		[...document.querySelectorAll('main *')]
+			.filter((el) => getComputedStyle(el).textDecorationLine.includes('underline'))
+			.map((el) => el.textContent?.trim() ?? '')
+	);
+
+	expect(decorated).toStrictEqual([]);
+	// The group title and the new-group row each carry a drawn rule instead.
+	expect(await page.locator('main svg.rule path').count()).toBeGreaterThanOrEqual(2);
+});
+
 test('a drawn line does not move when the row around it re-renders', async ({ page }) => {
 	await page.getByRole('button', { name: 'Add a task' }).click();
 	const input = page.getByRole('textbox', { name: 'New task' });

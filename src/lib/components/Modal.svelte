@@ -113,7 +113,9 @@
 		offset = 0;
 	}}
 >
-	<HandRect {seed} wobble={2.2} />
+	<div class="frame" aria-hidden="true">
+		<HandRect {seed} wobble={2.2} />
+	</div>
 
 	<div class="grip" aria-hidden="true">
 		<svg viewBox="0 0 64 5" width="64" height="5">
@@ -138,12 +140,18 @@
 		inset: 0;
 		z-index: 10;
 		background: var(--paper);
-		padding: calc(1.25rem + env(safe-area-inset-top)) 1.25rem
-			calc(1.25rem + env(safe-area-inset-bottom));
+		padding: calc(2rem + env(safe-area-inset-top)) 2rem calc(2rem + env(safe-area-inset-bottom));
 		overflow-y: auto;
 		outline: none;
 		touch-action: pan-y;
 		translate: 0 var(--offset, 0);
+	}
+
+	/* The border is inset from the edges rather than drawn along them. */
+	.frame {
+		position: absolute;
+		inset: 0.75rem;
+		pointer-events: none;
 	}
 
 	.grip {
@@ -154,8 +162,8 @@
 
 	.close {
 		position: absolute;
-		top: calc(0.5rem + env(safe-area-inset-top));
-		right: 0.5rem;
+		top: calc(1.1rem + env(safe-area-inset-top));
+		right: 1.1rem;
 		width: var(--touch);
 		height: var(--touch);
 		display: inline-flex;

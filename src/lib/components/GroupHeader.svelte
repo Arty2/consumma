@@ -137,11 +137,13 @@
 		justify-content: center;
 	}
 
+	/* Close under the title, the way a pen underlines a word. */
 	.rule {
 		display: block;
 		width: 45%;
 		min-width: 6rem;
 		height: 5px;
+		margin-top: -0.5rem;
 		overflow: visible;
 	}
 

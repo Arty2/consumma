@@ -15,6 +15,13 @@
 	let landingWidth = $state(0);
 
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
+
+	let newGroupRuleWidth = $state(0);
+	const newGroupRule = $derived(
+		newGroupRuleWidth > 0
+			? handLine(newGroupRuleWidth, { seed: seedFrom('new-group'), wobble: 0.8, y: 2 })
+			: ''
+	);
 	const landing = $derived(
 		landingWidth > 0 ? handLine(landingWidth, { seed: seedFrom('landing'), wobble: 1.2, y: 2 }) : ''
 	);
@@ -182,6 +189,12 @@
 				…
 			</button>
 		{/if}
+
+		<svg class="rule" bind:clientWidth={newGroupRuleWidth} aria-hidden="true">
+			{#if newGroupRule}
+				<path d={newGroupRule} class="drawn drawn--faint" />
+			{/if}
+		</svg>
 	</div>
 </div>
 
@@ -222,11 +235,21 @@
 	/* Flush with the real group titles: it is the same thing, one step earlier. */
 	.new-group button,
 	.new-group input {
+		display: block;
+		min-height: var(--touch);
 		font-family: var(--display);
 		font-size: var(--size-title);
 		text-align: left;
-		text-decoration: underline;
-		text-underline-offset: 4px;
+	}
+
+	/* Drawn, like the rule under a real title — not a CSS underline. */
+	.new-group .rule {
+		display: block;
+		width: 45%;
+		min-width: 6rem;
+		height: 5px;
+		margin-top: -0.5rem;
+		overflow: visible;
 	}
 
 	.new-group input {

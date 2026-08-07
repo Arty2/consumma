@@ -83,7 +83,7 @@
 
 	{#if editing}
 		<input
-			class="text"
+			class="text caps"
 			type="text"
 			bind:value={draft}
 			maxlength={LIMITS.taskText}
@@ -95,9 +95,15 @@
 		{/if}
 	{:else}
 		<!-- Everything right of the checkbox is drag territory. -->
+		<!--
+			The label is set explicitly because Chrome folds text-transform into
+			the accessible name, and a screen reader should read what was written
+			rather than shouting it.
+		-->
 		<button
-			class="text"
+			class="text caps"
 			type="button"
+			aria-label={task.text}
 			onclick={startEditing}
 			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}
 		>

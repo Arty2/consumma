@@ -95,6 +95,21 @@ Numbers in brackets are the section of the build plan a decision came from.
     never a query parameter or a fragment, and never reaches history, a link
     preview, or whatever service renders the message.
 
+23. **Task text is set in caps too**, not only the labels and titles. §6 had
+    tasks staying as typed; on the sheet they read better matching everything
+    else.
+
+    The rule that matters is unchanged and now has a test: the uppercase is CSS
+    only. What is stored, what the markdown export carries, and what a screen
+    reader announces all keep the casing that was typed — the last of those
+    needs an explicit `aria-label`, because Chrome folds `text-transform` into
+    the accessible name and would otherwise shout.
+
+24. **Every underline is drawn.** The rule under a group title, the one under
+    the new-group `…`, and the one under the join field are all `handLine`
+    paths rather than `text-decoration`. A CSS underline is a straight line in
+    a sheet where nothing else is.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
