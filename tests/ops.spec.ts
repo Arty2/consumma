@@ -19,7 +19,8 @@ import {
 } from '../src/lib/doc/ops';
 import { createClock, type Ctx } from '../src/lib/doc/stamp';
 import { emptyDoc, type Doc } from '../src/lib/doc/types';
-import { LOOSE_ENDS_TITLE, allDone, view } from '../src/lib/doc/view';
+import { LOOSE_ENDS_ID, LOOSE_ENDS_TITLE, allDone, view } from '../src/lib/doc/view';
+import { validateDoc } from '../src/lib/doc/validate';
 
 let ctx: Ctx;
 let doc: Doc;
@@ -125,6 +126,27 @@ describe('deleting', () => {
 
 		expect(doc.tasks.t1.stamps.order).toBe(untouched);
 		expect(liveTasks(doc, 'g1').map((t) => t.id)).toStrictEqual(['t3', 't1', 't2']);
+	});
+
+	it('refuses to move a task into a group id the document could not hold', () => {
+		/*
+		 * "Loose ends" is assembled on read and its id is not a real one, so a
+		 * task moved into it produces a document that fails validation — and the
+		 * next load then discards the whole list rather than one task. The drag
+		 * can reach it, so the op has to refuse it.
+		 */
+		const before = doc;
+		doc = moveTask(doc, ctx, 't1', { groupId: LOOSE_ENDS_ID, order: 'a5' });
+
+		expect(doc).toBe(before);
+		expect(validateDoc(doc)).not.toBeNull();
+	});
+
+	it('keeps a document valid after any move it does allow', () => {
+		doc = addGroup(doc, ctx, { id: 'g2', title: 'House' });
+		doc = moveTask(doc, ctx, 't1', { groupId: 'g2', order: 'a5' });
+
+		expect(validateDoc(doc)).not.toBeNull();
 	});
 
 	it('stamps groupId and order together when a task crosses groups', () => {

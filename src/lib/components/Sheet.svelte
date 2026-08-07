@@ -36,6 +36,9 @@
 
 	/** Where a drag let go. The neighbours are never restamped. */
 	function drop(taskId: string, target: DropTarget) {
+		// Loose ends is assembled on read and cannot hold a task.
+		if (sheet.groups.find((g) => g.id === target.groupId)?.synthetic) return;
+
 		sheet.moveTask(taskId, target.groupId, sheet.orderAt(target.groupId, target.index, taskId));
 	}
 

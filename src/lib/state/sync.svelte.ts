@@ -24,20 +24,29 @@ export class SyncState {
 
 	#room: Room | null = null;
 	#etag: string | null = null;
-	#lastSynced: Doc | null = null;
+	/*
+	 * Reactive: `unsent` compares against this, so a sync that changes only the
+	 * snapshot — and not the document — still has to update the mark.
+	 */
+	#lastSynced = $state<Doc | null>(null);
 
 	/**
 	 * The count the SYNC panel shows. It is the honest version of the status
 	 * mark: not "something changed" but "this many things have not left this
 	 * device".
 	 */
-	unsent: number = $derived(countUnsent(sheet.doc, this.#syncedDoc));
+	unsent: number = $derived(countUnsent(sheet.doc, this.#lastSynced));
 
+	/**
+	 * Long enough that a double tap costs one request rather than two. `now` is
+	 * ticked by whatever is showing the cooldown, so it clears on its own.
+	 */
 	cooling: boolean = $derived(this.now - this.lastSyncAt < COOLDOWN_MS);
 
-	get #syncedDoc(): Doc | null {
-		return this.#lastSynced;
-	}
+	/** Seconds left, for the panel to show rather than leaving a dead button. */
+	coolingFor: number = $derived(
+		Math.max(0, Math.ceil((COOLDOWN_MS - (this.now - this.lastSyncAt)) / 1000))
+	);
 
 	load(): void {
 		const stored = read(KEYS.code);

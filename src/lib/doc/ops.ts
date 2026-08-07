@@ -1,4 +1,5 @@
 import { clean } from './clean';
+import { isId } from './id';
 import { LIMITS } from './limits';
 import { byOrder, last } from './order';
 import { stamp, type Ctx } from './stamp';
@@ -148,7 +149,15 @@ export function setTaskState(doc: Doc, ctx: Ctx, id: string, state: State): Doc 
 	return { ...doc, tasks: { ...doc.tasks, [id]: next } };
 }
 
-/** Moving across a group boundary sets groupId and order together (§6). */
+/**
+ * Moving across a group boundary sets groupId and order together (§6).
+ *
+ * The target must be an id a document can actually hold. "Loose ends" is
+ * assembled on read and its id is not a real one, but a drag can land on it —
+ * and a task pointed at it makes the whole document fail validation, so the
+ * next load discards the entire list rather than one task. Refused here rather
+ * than only in the UI, because the data layer is what has to hold.
+ */
 export function moveTask(
 	doc: Doc,
 	ctx: Ctx,
@@ -156,7 +165,7 @@ export function moveTask(
 	args: { groupId: string; order: string }
 ): Doc {
 	const task = doc.tasks[id];
-	if (!task) return doc;
+	if (!task || !isId(args.groupId)) return doc;
 
 	const stamps = { ...task.stamps, order: stamp(ctx) };
 	if (args.groupId !== task.groupId) stamps.groupId = stamp(ctx);

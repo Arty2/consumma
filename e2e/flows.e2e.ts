@@ -198,6 +198,28 @@ test('joining with tasks already here asks rather than deciding', async ({ page 
 	await expect(page.getByRole('dialog', { name: 'Sync' })).toContainText('1 task here');
 });
 
+test('a second sync tap inside the cooldown costs nothing', async ({ page }) => {
+	let requests = 0;
+	await page.route('**/api/room/**', (route) => {
+		requests++;
+		return route.abort();
+	});
+
+	await addTask(page, 'Bread');
+	await page.getByRole('button', { name: 'SYNC', exact: true }).click();
+
+	const button = page.getByRole('button', { name: /^Sync now/ });
+	await button.click();
+
+	// The cooldown is the whole reason a double tap is free.
+	await expect(button).toBeDisabled();
+	await expect(button).toContainText(/Sync now \(\d+\)/);
+
+	const after = requests;
+	await page.waitForTimeout(500);
+	expect(requests).toBe(after);
+});
+
 test('a modal closes on Escape and returns focus to what opened it', async ({ page }) => {
 	const sync = page.getByRole('button', { name: 'SYNC', exact: true });
 	await sync.click();

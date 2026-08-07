@@ -26,11 +26,24 @@
 					: `${sync.unsent} changes have not been sent.`
 	);
 
+	/*
+	 * Not forced: the cooldown is the whole reason a second tap costs nothing.
+	 * Joining forces, because that is a different request the person has just
+	 * asked for.
+	 */
 	async function syncNow() {
 		error = null;
-		const outcome = await sync.sync({ force: true });
+		const outcome = await sync.sync();
 		if (outcome && outcome.status !== 'synced') error = sync.message;
 	}
+
+	// Nothing else advances the clock, so the cooldown would never clear while
+	// the panel is open and looking at it.
+	$effect(() => {
+		sync.now = Date.now();
+		const tick = setInterval(() => (sync.now = Date.now()), 500);
+		return () => clearInterval(tick);
+	});
 
 	async function join(keep: boolean) {
 		error = null;
@@ -54,8 +67,14 @@
 <Modal title="Sync" seed="sync" {onclose}>
 	<p class="status">{status}</p>
 
-	<button type="button" class="caps action" disabled={sync.busy} onclick={syncNow}>
-		{sync.busy ? 'Syncing…' : 'Sync now'}
+	<button type="button" class="caps action" disabled={sync.busy || sync.cooling} onclick={syncNow}>
+		{#if sync.busy}
+			Syncing…
+		{:else if sync.cooling}
+			Sync now ({sync.coolingFor})
+		{:else}
+			Sync now
+		{/if}
 	</button>
 
 	<h2>This device</h2>
