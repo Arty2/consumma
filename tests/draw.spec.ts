@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	handArrow,
+	handBracket,
 	handBurger,
 	handCheck,
 	handLine,
@@ -445,5 +446,53 @@ describe('handSlashedCircle', () => {
 	it('is stable for a seed, and is not the refresh', () => {
 		expect(handSlashedCircle(SIZE, { seed: 4 })).toBe(handSlashedCircle(SIZE, { seed: 4 }));
 		expect(handSlashedCircle(SIZE, { seed: 4 })).not.toBe(handRefresh(SIZE, { seed: 4 }));
+	});
+});
+
+describe('handBracket', () => {
+	const W = 20;
+	const H = 60;
+
+	it('turns its serifs the way the bracket faces', () => {
+		const left = endpoints(handBracket(W, H, 'left', { seed: 3, wobble: 0 }));
+		const right = endpoints(handBracket(W, H, 'right', { seed: 3, wobble: 0 }));
+
+		// A `[` keeps its stem on the left and reaches right at top and bottom.
+		expect(left[0]).toStrictEqual({ x: W, y: 0 });
+		expect(left[1].x).toBe(0);
+		expect(left.at(-1)).toStrictEqual({ x: W, y: H });
+
+		// A `]` is the same stroke mirrored.
+		expect(right[0]).toStrictEqual({ x: 0, y: 0 });
+		expect(right[1].x).toBe(W);
+		expect(right.at(-1)).toStrictEqual({ x: 0, y: H });
+	});
+
+	it('runs the full height, so a pair frames what sits between them', () => {
+		for (const side of ['left', 'right'] as const) {
+			const points = endpoints(handBracket(W, H, side, { seed: 5, wobble: 0 }));
+			const ys = points.map((p) => p.y);
+
+			expect(Math.min(...ys)).toBe(0);
+			expect(Math.max(...ys)).toBe(H);
+		}
+	});
+
+	it('stays inside its box at any seed', () => {
+		for (const seed of [1, 7, 99, 1234]) {
+			for (const { x, y } of endpoints(handBracket(W, H, 'left', { seed, wobble: 1 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(W);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(H);
+			}
+		}
+	});
+
+	it('is stable for a seed, and the two sides differ', () => {
+		expect(handBracket(W, H, 'left', { seed: 4 })).toBe(handBracket(W, H, 'left', { seed: 4 }));
+		expect(handBracket(W, H, 'left', { seed: 4 })).not.toBe(
+			handBracket(W, H, 'right', { seed: 4 })
+		);
 	});
 });

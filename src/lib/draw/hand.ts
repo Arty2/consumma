@@ -415,6 +415,35 @@ export function handSlashedCircle(size: number, options: HandOptions): string {
 }
 
 /**
+ * One square bracket: a stem with a serif at each end, drawn in a single
+ * stroke the way a hand makes one.
+ *
+ * `side` is which bracket it is — the left one turns its serifs to the right,
+ * and the right one mirrors that. Graphe has no brackets of its own, so where
+ * one has to be drawn rather than typed, this is it.
+ */
+export function handBracket(
+	width: number,
+	height: number,
+	side: 'left' | 'right',
+	options: HandOptions
+): string {
+	const stem = side === 'left' ? 0 : width;
+	const serif = side === 'left' ? width : 0;
+
+	return handPath(
+		[
+			{ x: serif, y: 0 },
+			{ x: stem, y: 0 },
+			{ x: stem, y: height / 2 },
+			{ x: stem, y: height },
+			{ x: serif, y: height }
+		],
+		options
+	);
+}
+
+/**
  * The side of the sheet: a drawn line down its whole length.
  *
  * The torn edges close the paper top and bottom; without these it has no

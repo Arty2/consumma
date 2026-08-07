@@ -53,13 +53,14 @@
 	 * useless. Built ahead of the click so the share sheet can be opened
 	 * synchronously inside the handler.
 	 *
+	 * Two lines and nothing else: no title, no sentence explaining what this
+	 * is. The prose put the code at the end of a line that began "Code: ", so
+	 * getting at it meant selecting into the middle of a sentence. On its own
+	 * line it is one thing to grab.
+	 *
 	 * The link is bare. The code is never a query parameter or a fragment.
 	 */
-	const invitation = $derived(
-		sync.code
-			? `Consumma — a shared checklist.\n${location.origin}\nCode: ${formatCode(sync.code)}`
-			: ''
-	);
+	const invitation = $derived(sync.code ? `${location.origin}\n${formatCode(sync.code)}` : '');
 
 	// Nothing else advances the clock, so the cooldown would never clear while
 	// the menu is open and looking at it.

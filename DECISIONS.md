@@ -95,6 +95,12 @@ Numbers in brackets are the section of the build plan a decision came from.
     never a query parameter or a fragment, and never reaches history, a link
     preview, or whatever service renders the message.
 
+    Two lines, and no title or sentence introducing the app. The code used to
+    end a line beginning "Code: ", which meant selecting into the middle of a
+    sentence to get at it; on a line of its own it is one thing to grab.
+    Whoever receives this is already being told what it is by the person
+    sending it.
+
 23. **Task text is set in caps too**, not only the labels and titles. §6 had
     tasks staying as typed; on the sheet they read better matching everything
     else.

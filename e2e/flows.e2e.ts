@@ -122,6 +122,17 @@ test('the invitation carries the link and the code together, with no query strin
 	expect(link).not.toContain('?');
 	expect(link).not.toContain('#');
 	expect(link).not.toContain(code);
+
+	/*
+	 * Two lines and nothing else. The code used to end a line that began
+	 * "Code: ", so getting at it meant selecting into the middle of a sentence;
+	 * on a line of its own it is one thing to grab. Nothing here introduces the
+	 * app either — whoever is being sent this is already being told.
+	 */
+	const lines = invitation.split('\n').filter((l) => l.trim() !== '');
+	expect(lines).toHaveLength(2);
+	expect(lines[0]).toBe(origin);
+	expect(lines[1].replace(/\s/g, '')).toBe(code);
 });
 
 test('EXPORT copies the whole list and says how many', async ({ page, context }) => {
