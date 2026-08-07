@@ -207,20 +207,30 @@
 			<h2 class="caps">This list</h2>
 			<TextRule text="This list" seed="thislist" centred />
 
-			<p class="code">{sync.code ? formatCode(sync.code) : ''}</p>
+			{#if sync.code}
+				<p class="code">{formatCode(sync.code)}</p>
 
-			<div class="pair">
-				<button type="button" class="caps boxed" onclick={onShare}>
-					<HandRect seed="btnshare" wobble={1.4} radius={3} />
-					Share
-				</button>
-				<button type="button" class="caps boxed" onclick={onCopy}>
-					<HandRect seed="btncopy" wobble={1.4} radius={3} />
-					{copied ? 'Copied' : 'Copy'}
-				</button>
-			</div>
+				<div class="pair">
+					<button type="button" class="caps boxed" onclick={onShare}>
+						<HandRect seed="btnshare" wobble={1.4} radius={3} />
+						Share
+					</button>
+					<button type="button" class="caps boxed" onclick={onCopy}>
+						<HandRect seed="btncopy" wobble={1.4} radius={3} />
+						{copied ? 'Copied' : 'Copy'}
+					</button>
+				</div>
 
-			<p class="note">Anyone with this code can read and change the list.</p>
+				<p class="note">Anyone with this code can read and change the list.</p>
+			{:else}
+				<!--
+					A code is the address of something on the server, and until a sync
+					there is nothing at it. Handing one over early would send someone to
+					an empty sheet and leave both of them wondering which of the two had
+					got it wrong.
+				-->
+				<p class="note">Only on this device. Sync it to get a code you can share.</p>
+			{/if}
 
 			<div class="pair apart">
 				<button type="button" class="caps boxed" onclick={onimport}>

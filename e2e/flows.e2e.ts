@@ -25,21 +25,82 @@ function task(page: Page, text: string) {
 	return page.getByRole('checkbox', { name: text });
 }
 
+/**
+ * A device that has synced at least once, so it has a code to show.
+ *
+ * There is no store behind the preview, so the state a sync would leave is
+ * planted instead. Where the code comes from in the first place is covered in
+ * sync.e2e.ts, against the real server module.
+ */
+async function withCode(page: Page, code = 'ed43a06678e0') {
+	await page.evaluate((value) => localStorage.setItem('consumma:code', value), code);
+	await page.reload();
+	return code;
+}
+
 test.beforeEach(async ({ page }) => {
 	await page.goto('/');
 	await page.evaluate(() => localStorage.clear());
 	await page.reload();
 });
 
-test('a code exists from the first run, and is never in the URL', async ({ page }) => {
+test('no code until the list has been somewhere, and never in the URL', async ({ page }) => {
 	await openMenu(page);
 
-	const code = await page.locator('.code').first().innerText();
-	// Twelve hex characters, shown in groups of four for reading aloud.
-	expect(code.replace(/\s/g, '')).toMatch(/^[0-9a-f]{12}$/);
+	/*
+	 * A code is the address of something on the server, and nothing has been
+	 * sent. Handing one over now would send someone to an empty sheet.
+	 */
+	await expect(page.locator('.code')).toHaveCount(0);
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toContainText('Only on this device');
+	await expect(page.getByRole('button', { name: 'Share', exact: true })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(0);
 
-	expect(page.url()).not.toContain(code.replace(/\s/g, ''));
+	await page.getByRole('button', { name: 'Close' }).click();
+	const code = await withCode(page);
+	await openMenu(page);
+
+	// Twelve hex characters, shown in groups of four for reading aloud.
+	const shown = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
+	expect(shown).toMatch(/^[0-9a-f]{12}$/);
+
+	expect(page.url()).not.toContain(code);
 	expect(page.url()).toBe(new URL(page.url()).origin + '/');
+});
+
+test('arriving and leaving writes nothing to the device', async ({ page }) => {
+	/*
+	 * Opening the page used to make a code, write it down, write the opening
+	 * group, the client id and the clock, and ask for persistent storage —
+	 * before a single tap. Someone who looks and leaves should be
+	 * indistinguishable from someone who never came.
+	 */
+	const keys = () => page.evaluate(() => Object.keys(localStorage).sort());
+	expect(await keys()).toStrictEqual([]);
+
+	await openMenu(page);
+	await page.getByRole('button', { name: 'Close' }).click();
+	expect(await keys()).toStrictEqual([]);
+
+	/*
+	 * And nothing is waiting to go, because nothing has been written. The sheet
+	 * arrives with one group on it, but that is its empty shape rather than
+	 * anyone's change — counting it announced a change to someone who had just
+	 * walked in.
+	 */
+	await expect(page.getByRole('button', { name: /^Sync —/ })).toHaveCount(0);
+	await openMenu(page);
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toContainText('Nothing is waiting');
+	await page.getByRole('button', { name: 'Close' }).click();
+
+	// The first thing written on the sheet is the first thing written down.
+	await addTask(page, 'Bread');
+	expect(await keys()).toStrictEqual(['consumma:clientId', 'consumma:doc', 'consumma:lastT']);
+
+	// And still no code: nothing has been anywhere yet.
+	await page.reload();
+	await expect(task(page, 'Bread')).toBeVisible();
+	expect(await keys()).not.toContain('consumma:code');
 });
 
 test('the page carries a burger, and a sync button only when there is a reason', async ({
@@ -59,12 +120,15 @@ test('the page carries a burger, and a sync button only when there is a reason',
 		return Number(label?.match(/(\d+) change/)?.[1] ?? 0);
 	};
 
-	// A fresh sheet already has its first group waiting to go.
-	const before = await waiting();
-	expect(before).toBeGreaterThan(0);
+	/*
+	 * A fresh sheet has nothing waiting: the group it arrives with is its empty
+	 * shape, not a change. So there is no button at all until something is
+	 * written — and then it counts that, and the group it went into.
+	 */
+	await expect(syncButton).toHaveCount(0);
 
 	await addTask(page, 'Bread');
-	expect(await waiting()).toBe(before + 1);
+	expect(await waiting()).toBe(2);
 
 	// It sits to the left of the burger, not in place of it.
 	const sync = (await syncButton.boundingBox())!;
@@ -73,7 +137,7 @@ test('the page carries a burger, and a sync button only when there is a reason',
 
 	// And what it counts is what the menu says.
 	await openMenu(page);
-	await expect(page.getByText(`${before + 1} changes are waiting to go.`)).toBeVisible();
+	await expect(page.getByText('2 changes are waiting to go.')).toBeVisible();
 });
 
 test('the sync copy separates what is waiting from why it matters', async ({ page, context }) => {
@@ -101,6 +165,7 @@ test('the sync copy separates what is waiting from why it matters', async ({ pag
 test('COPY hands over the code and nothing else', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
+	await withCode(page);
 	await openMenu(page);
 
 	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
@@ -131,7 +196,7 @@ test('the invitation carries the link and the code together, with no query strin
 			}
 		});
 	});
-	await page.reload();
+	await withCode(page);
 
 	await openMenu(page);
 	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
@@ -264,6 +329,7 @@ test('CLEAR asks first, then clears, and the undo still works', async ({ page })
 });
 
 test('DELETE shows the code one last time, then wipes only this device', async ({ page }) => {
+	await withCode(page);
 	await addTask(page, 'Bread');
 
 	await openMenu(page);
@@ -286,10 +352,12 @@ test('DELETE shows the code one last time, then wipes only this device', async (
 
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 
-	// A new code, because this device is no longer on the old list.
+	// No code at all: this device is back to never having synced, and the next
+	// one is made when there is a list to put under it.
 	await openMenu(page);
-	const fresh = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
-	expect(fresh).not.toBe(code);
+	await expect(page.locator('.code')).toHaveCount(0);
+	expect(await page.evaluate(() => localStorage.getItem('consumma:code'))).toBeNull();
+	expect(code).toMatch(/^[0-9a-f]{12}$/);
 });
 
 test('joining with tasks already here asks rather than deciding', async ({ page }) => {

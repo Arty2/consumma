@@ -176,11 +176,20 @@
 		onconfirm={onDelete}
 		oncancel={() => (panel = null)}
 	>
-		This removes the list from this phone. Everyone else keeps it. To come back you'll need the code
-		— {sync.code ? formatCode(sync.code) : ''}. This is the last screen it exists on.
-		{#if sync.unsent > 0}
-			You have {sync.unsent}
-			{sync.unsent === 1 ? 'change' : 'changes'} that never reached anyone else; those go too.
+		{#if sync.code}
+			This removes the list from this phone. Everyone else keeps it. To come back you'll need the
+			code — {formatCode(sync.code)}. This is the last screen it exists on.
+			{#if sync.unsent > 0}
+				You have {sync.unsent}
+				{sync.unsent === 1 ? 'change' : 'changes'} that never reached anyone else; those go too.
+			{/if}
+		{:else}
+			<!--
+				Never synced, so there is no code to write down and nobody else holding
+				a copy. Offering one last look at a code would be offering nothing.
+			-->
+			This list has never been synced, so it is nowhere but here. Removing it removes all of it, and there
+			is no code to come back with.
 		{/if}
 	</ConfirmModal>
 {/if}

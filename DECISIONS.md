@@ -454,28 +454,59 @@ Numbers in brackets are the section of the build plan a decision came from.
     is the same action with a real label and two stops for one thing is worse
     than none.
 
+53. **Arriving leaves no trace.** Opening the page used to write four keys and
+    ask for persistent storage before a single tap: a client id, a clock, the
+    opening group, and a freshly made code — which the menu then showed. Someone
+    who looks and leaves should be indistinguishable from someone who never came.
+
+    Nothing is written until something is written on the sheet. The opening
+    group is added quietly, because it is the shape of an empty sheet rather
+    than anyone's change; it is not counted as unsent either, which had the app
+    announcing "1 change is waiting to go" to a visitor who had done nothing.
+
+54. **A code comes from the first sync.** It is the address of a list on the
+    server, and before a sync there is nothing there to address — handing one
+    over early would send someone to an empty sheet and leave both of them
+    wondering which had got it wrong. So the menu shows no code and no SHARE or
+    COPY until a sync has happened, and the DELETE confirm says plainly that
+    there is no code to come back with.
+
+    It is written down before the request rather than after it. A PUT that
+    lands while the confirming read fails leaves a list on the server, and
+    forgetting the code it is filed under would strand it there — the next sync
+    would make a second one, and so on.
+
+    DELETE returns the device to exactly this state: no code, and no trace.
+
+55. **Staleness needs somewhere to have been.** `lastSyncAt` starts at zero and
+    is not persisted, so a device that has never synced has been not-syncing
+    since the epoch and reads as stale the moment it loads. That is right for a
+    returning list — it may well be old — and wrong for a sheet with nothing on
+    it and nowhere to fetch from. The corner button is hidden outright while
+    there is neither a written sheet nor a code.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
 drift.
 
-53. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
+56. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
     still described reads coming straight from the CDN. §5 is right — it is what
     makes `connect-src 'self'` possible — so `PUBLIC_BLOB_BASE` and the
     `/api/room/[roomId]/version` route are both gone.
 
-54. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
+57. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
     persisted beside the client id. Without it, two edits from one device in the
     same millisecond collide on `(t, c)` and merge stops being commutative. The
     comparator also falls back to the value itself, which makes it total for any
     document, including a corrupt one.
 
-55. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
+58. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
     tombstone collection (`gc(doc, now)`) are separate functions applied by the
     sync and write paths. Folding either into merge would destroy the algebra
     the property tests check.
 
-56. **Every write is read back once.** Blob storage has no compare-and-set, so
+59. **Every write is read back once.** Blob storage has no compare-and-set, so
     two writers can both pass the version check and the second one's bytes win.
     The loser cannot tell from the version number — it was told 2, the server
     holds 2, and its next conditional read returns 304 forever. The
@@ -483,18 +514,18 @@ drift.
     `tests/sync.spec.ts` sets the race up deliberately; removing the read-back
     makes it fail.
 
-57. **The ETag is the document's own version**, not the blob's upload time and
+60. **The ETag is the document's own version**, not the blob's upload time and
     size. The latter answers a conditional read without fetching the body, but
     two writes in the same millisecond whose JSON is the same length produce an
     identical token, and the second is reported as unchanged. A saved fetch is
     not worth a lost edit.
 
-58. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
+61. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
 ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     optional, but it cannot be past the first write — a reader cannot tell a
     compressed payload from an uncompressed one.
 
-59. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
+62. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
     SvelteKit's own `#svelte-announcer` has a hardcoded `style` attribute we do
     not author and cannot switch off. `'unsafe-hashes'` permits that exact
     string and nothing else; it is not `'unsafe-inline'`. `trusted-types` names
@@ -502,7 +533,7 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `e2e/csp.e2e.ts` fails on any console error, so an upgrade that changes the
     string breaks CI rather than the policy.
 
-60. **"Loose ends" has an id no document can hold**, and that is deliberate.
+63. **"Loose ends" has an id no document can hold**, and that is deliberate.
     `__loose__` fails the `/^[A-Za-z0-9]{1,24}$/` the validator enforces, which
     is what stops it ever being written to a document and then syncing to
     someone who has no such group. The cost is that anything which can name a

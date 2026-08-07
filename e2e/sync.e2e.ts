@@ -261,7 +261,11 @@ test('joining a list finishes, and says so by closing', async ({ page }) => {
 test('the code is typed into twelve places, one underline each', async ({ page }) => {
 	await page.route('**/api/room/**', api);
 	await page.goto('/');
-	await page.evaluate(() => localStorage.clear());
+	await page.evaluate(() => {
+		localStorage.clear();
+		// A device that has synced, so there is a code to compare the field against.
+		localStorage.setItem('consumma:code', '123456789abc');
+	});
 	await page.reload();
 	await openMenu(page);
 
@@ -334,6 +338,9 @@ test('the corner sync button says when it could not sync', async ({ page }) => {
 	await page.evaluate(() => localStorage.clear());
 	await page.reload();
 
+	// Something to send, or there is no button: an untouched sheet has nothing
+	// waiting and nowhere to fetch from.
+	await addTask(page, 'Bread');
 	await page.getByRole('button', { name: /^Sync —/ }).click();
 
 	const toast = page.getByRole('status').filter({ hasText: /reach/i });
@@ -454,4 +461,39 @@ test('pasting a link on its own leaves the join field alone', async ({ page }) =
 	// There is no code in a bare link, so nothing replaces what was typed.
 	const places = await page.locator('.field .glyph').allInnerTexts();
 	expect(places.join('')).toBe('ed43a066');
+});
+
+test('the code is made by the first sync, not by arriving', async ({ page }) => {
+	/*
+	 * Where a code comes from. Nothing is written to the device until there is
+	 * something on the sheet, and no code exists until that has been somewhere:
+	 * a code is the address of a list on the server, and before a sync there is
+	 * no list there to address.
+	 */
+	await page.route('**/api/room/**', api);
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	const stored = () => page.evaluate(() => localStorage.getItem('consumma:code'));
+	expect(await stored()).toBeNull();
+
+	await addTask(page, 'Bread');
+	expect(await stored()).toBeNull();
+
+	await openMenu(page);
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toContainText('Only on this device');
+
+	await page.getByRole('button', { name: /^Sync now/ }).click();
+	await expect(page.getByText('Everything is synced.')).toBeVisible();
+
+	// Now there is a list at the other end, so there is an address for it.
+	const code = await stored();
+	expect(code).toMatch(/^[0-9a-f]{12}$/);
+	await expect(page.locator('.code')).toHaveText(code!.replace(/(.{4})/g, '$1 ').trim());
+	await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeVisible();
+
+	// And it survives a reload, because it is what the list is filed under now.
+	await page.reload();
+	expect(await stored()).toBe(code);
 });

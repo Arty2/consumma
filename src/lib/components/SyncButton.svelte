@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { handArrow, handRefresh, handSlashedCircle } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -29,10 +30,18 @@
 	const offline = $derived(sync.status === 'offline');
 
 	/*
+	 * Nothing written and no code: there is nothing to send and nothing to fetch,
+	 * so there is nothing to offer. Staleness alone would otherwise put the
+	 * button on the page for someone who has just arrived, because a device that
+	 * has never synced has been not-syncing since the epoch.
+	 */
+	const nothingYet = $derived(!sheet.written && !sync.code);
+
+	/*
 	 * Being unreachable is worth showing on its own. Everything is safe on the
 	 * device either way, but "it did not go" is not something to find out later.
 	 */
-	const shown = $derived(offline || waiting || sync.stale);
+	const shown = $derived(!nothingYet && (offline || waiting || sync.stale));
 
 	const label = $derived(
 		offline

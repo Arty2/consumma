@@ -60,8 +60,12 @@ export class SyncState {
 	 * The count the SYNC panel shows. It is the honest version of the status
 	 * mark: not "something changed" but "this many things have not left this
 	 * device".
+	 *
+	 * A sheet nobody has written on has nothing waiting, whatever is drawn on
+	 * it. The opening group is the shape of an empty sheet, and counting it told
+	 * someone who had just arrived that a change of theirs was waiting to go.
 	 */
-	unsent: number = $derived(countUnsent(sheet.doc, this.#lastSynced));
+	unsent: number = $derived(sheet.written ? countUnsent(sheet.doc, this.#lastSynced) : 0);
 
 	/**
 	 * Long enough that a double tap costs one request rather than two. `now` is
@@ -77,16 +81,17 @@ export class SyncState {
 		Math.max(0, Math.ceil((COOLDOWN_MS - (this.now - this.lastSyncAt)) / 1000))
 	);
 
+	/**
+	 * Reads what is already here. It does not make a code.
+	 *
+	 * A list that has never been synced has no code, because a code is the
+	 * address of something on the server and there is nothing there. Making one
+	 * on arrival meant opening the page wrote a secret to the device and showed
+	 * it, for someone who had not yet written a word.
+	 */
 	load(): void {
 		const stored = read(KEYS.code);
 		this.code = stored ? normaliseCode(stored) : null;
-
-		// First run: this device makes up a code and is the only one that knows it.
-		if (!this.code) {
-			this.code = newCode();
-			write(KEYS.code, this.code);
-			void persist();
-		}
 
 		this.#etag = read(KEYS.version);
 		this.#lastSynced = parseDoc(read(KEYS.synced) ?? '');
@@ -141,7 +146,18 @@ export class SyncState {
 	async sync(options: { force?: boolean } = {}): Promise<SyncOutcome | null> {
 		if (this.busy) return null;
 		if (!options.force && this.cooling) return null;
-		if (!this.code) return null;
+
+		/*
+		 * The first sync is where a code comes from. Written down before the
+		 * request rather than after it: a PUT that lands while the confirming
+		 * read fails leaves a list on the server, and forgetting the code it is
+		 * under would strand it there with no way back to it.
+		 */
+		if (!this.code) {
+			this.code = newCode();
+			write(KEYS.code, this.code);
+			void persist();
+		}
 
 		this.busy = true;
 		this.message = null;
@@ -177,8 +193,10 @@ export class SyncState {
 		this.#room = null;
 		this.#etag = null;
 		this.#lastSynced = null;
-		this.code = newCode();
-		write(KEYS.code, this.code);
+		this.#unreachable = false;
+		// Back to a device that has never synced: no code until there is a list
+		// and a sync to put it under.
+		this.code = null;
 
 		sheet.forget();
 		sheet.load();

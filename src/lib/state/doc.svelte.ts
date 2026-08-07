@@ -5,7 +5,7 @@ import { createClock, type Ctx } from '$lib/doc/stamp';
 import { emptyDoc, type Doc, type State } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
 import { allDone, openCount, view, type ViewGroup } from '$lib/doc/view';
-import { KEYS, read, write } from './storage';
+import { KEYS, persist, read, write } from './storage';
 
 /** What the first group is called until someone renames it. */
 export const FIRST_GROUP = 'My list';
@@ -20,8 +20,25 @@ export const FIRST_GROUP = 'My list';
 export class Sheet {
 	doc = $state<Doc>(emptyDoc());
 	loaded = $state(false);
+	/**
+	 * Whether anything has ever been written on this sheet.
+	 *
+	 * A sheet arrives with one group on it, and that group is scaffolding — it
+	 * is not something anyone put there, and counting it made the app tell a
+	 * visitor who had done nothing that one change was waiting to go.
+	 */
+	written = $state(false);
 
 	#ctx: Ctx | null = null;
+	/*
+	 * Set while the opening group is being put in place. A sheet arrives with
+	 * one group already on it, and that is scaffolding rather than something
+	 * anyone wrote — writing it to storage would mean opening the page left a
+	 * trace on the device without a single tap.
+	 */
+	#quiet = false;
+	/** Asked for once, the first time there is anything worth keeping. */
+	#asked = false;
 
 	groups: ViewGroup[] = $derived(view(this.doc));
 	taskCount: number = $derived(ops.countTasks(this.doc));
@@ -41,7 +58,9 @@ export class Sheet {
 			clock: createClock(Number(read(KEYS.lastT) ?? 0))
 		};
 
-		this.doc = parseDoc(read(KEYS.doc) ?? '') ?? emptyDoc();
+		const stored = read(KEYS.doc);
+		this.doc = parseDoc(stored ?? '') ?? emptyDoc();
+		this.written = stored !== null;
 		this.loaded = true;
 
 		/*
@@ -52,8 +71,16 @@ export class Sheet {
 		 * Stored in sentence case and displayed in caps, like every other title:
 		 * the uppercase is CSS only, so the markdown export reads "## My list"
 		 * rather than shouting.
+		 *
+		 * Quietly: it is the shape of an empty sheet, not something anyone put
+		 * there. It reaches storage on the first real edit, along with everything
+		 * else.
 		 */
-		if (ops.liveGroups(this.doc).length === 0) this.addGroup(FIRST_GROUP);
+		if (ops.liveGroups(this.doc).length === 0) {
+			this.#quiet = true;
+			this.addGroup(FIRST_GROUP);
+			this.#quiet = false;
+		}
 	}
 
 	/** Replaces the whole document — used by sync and by import's replace path. */
@@ -129,6 +156,7 @@ export class Sheet {
 	forget(): void {
 		this.doc = emptyDoc();
 		this.loaded = false;
+		this.written = false;
 		this.#ctx = null;
 	}
 
@@ -173,18 +201,35 @@ export class Sheet {
 		return true;
 	}
 
+	/**
+	 * The one place this device writes anything down.
+	 *
+	 * Nothing here runs until something has actually been written on the sheet:
+	 * arriving at the page and leaving again has to be indistinguishable from
+	 * never having come. The client id goes down with the first save rather
+	 * than when it is made, for the same reason.
+	 */
 	#save(): void {
+		if (this.#quiet) return;
+		this.written = true;
+
+		if (this.#ctx) {
+			write(KEYS.clientId, this.#ctx.clientId);
+			write(KEYS.lastT, String(this.#ctx.clock.last()));
+		}
 		write(KEYS.doc, JSON.stringify(this.doc));
-		if (this.#ctx) write(KEYS.lastT, String(this.#ctx.clock.last()));
+
+		// There is a list now, so it is worth asking not to be evicted.
+		if (!this.#asked) {
+			this.#asked = true;
+			void persist();
+		}
 	}
 
+	/** Not written down here — `#save` does that once there is a reason to. */
 	#clientId(): string {
 		const existing = read(KEYS.clientId);
-		if (existing && isId(existing)) return existing;
-
-		const id = newId();
-		write(KEYS.clientId, id);
-		return id;
+		return existing && isId(existing) ? existing : newId();
 	}
 }
 
