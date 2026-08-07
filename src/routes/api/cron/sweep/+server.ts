@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import type { RequestHandler } from '@sveltejs/kit';
 import { vercelBlobs } from '$lib/server/blobs';
+import { blobPrefix } from '$lib/server/env';
 import { bearerMatches } from '$lib/server/secret';
 import { RoomStore } from '$lib/server/store';
 
@@ -15,7 +16,7 @@ import { RoomStore } from '$lib/server/store';
 
 export const prerender = false;
 
-const store = new RoomStore(vercelBlobs);
+const store = new RoomStore(vercelBlobs, { prefix: blobPrefix() });
 
 export const GET: RequestHandler = async ({ request }) => {
 	// Guarded so it cannot be triggered from outside, and compared in constant

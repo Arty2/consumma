@@ -89,9 +89,16 @@ when M4 needs it. What it needs:
    Framework preset SvelteKit; the build command and output directory are
    detected. Production deploys from `main`, previews from pull requests.
 2. **Create a Blob store** and connect it to the project. This injects
-   `BLOB_READ_WRITE_TOKEN`. Give preview and production **separate stores**, or
-   failing that a `preview/` path prefix — never a shared namespace. Keep the
-   store private; nothing but the function needs to read it.
+   `BLOB_READ_WRITE_TOKEN`. Keep the store private; nothing but the function
+   needs to read it.
+
+   Preview and production should ideally get **separate stores**. If they share
+   one, they are still isolated: `src/lib/server/env.ts` reads Vercel's own
+   `VERCEL_ENV` and prefixes blob paths with `preview/` or `dev/`, leaving
+   production unprefixed. Nothing to configure. Note that Vercel runs crons in
+   production only, so preview blobs are never swept and accumulate — which is
+   the argument for separate stores rather than against the prefix.
+
 3. **Add `CRON_SECRET`** as a private environment variable, and only that one.
    Generate it with `openssl rand -hex 32` and add it under Project Settings →
    Environment Variables with exactly that name — Vercel looks for it by name

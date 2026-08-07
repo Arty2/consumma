@@ -1,5 +1,6 @@
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { vercelBlobs } from '$lib/server/blobs';
+import { blobPrefix } from '$lib/server/env';
 import { RoomStore, isRoomId, parsePutBody, MAX_BLOB_BYTES } from '$lib/server/store';
 
 /*
@@ -13,7 +14,7 @@ import { RoomStore, isRoomId, parsePutBody, MAX_BLOB_BYTES } from '$lib/server/s
 
 export const prerender = false;
 
-const store = new RoomStore(vercelBlobs);
+const store = new RoomStore(vercelBlobs, { prefix: blobPrefix() });
 
 /** Every response, so nothing about a list is ever cached anywhere. */
 const NO_STORE = { 'Cache-Control': 'no-store' };

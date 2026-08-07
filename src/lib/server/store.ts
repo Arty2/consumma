@@ -56,8 +56,16 @@ export type ReadResult =
 export type WriteResult =
 	{ status: 'ok'; v: number } | { status: 'conflict'; room: StoredRoom } | { status: 'too-large' };
 
-export function roomPath(roomId: string): string {
-	return `rooms/${roomId}.json`;
+/**
+ * Where a room lives, optionally under an environment prefix.
+ *
+ * Production's prefix is empty, deliberately: adding one there would change
+ * every existing path and orphan every list that already exists, exactly as
+ * changing the salt would. Only the non-production environments are namespaced
+ * away from it.
+ */
+export function roomPath(roomId: string, prefix = ''): string {
+	return `${prefix}rooms/${roomId}.json`;
 }
 
 export function isRoomId(value: string | undefined): value is string {
@@ -108,15 +116,20 @@ export class RoomStore {
 	#cache = new Map<string, { at: number; room: StoredRoom | null }>();
 	#ttl: number;
 	#now: () => number;
+	#prefix: string;
 
-	constructor(blobs: Blobs, options: { cacheMs?: number; now?: () => number } = {}) {
+	constructor(
+		blobs: Blobs,
+		options: { cacheMs?: number; now?: () => number; prefix?: string } = {}
+	) {
 		this.#blobs = blobs;
 		this.#ttl = options.cacheMs ?? 2000;
 		this.#now = options.now ?? Date.now;
+		this.#prefix = options.prefix ?? '';
 	}
 
 	async read(roomId: string, ifNoneMatch: string | null): Promise<ReadResult> {
-		const room = await this.#load(roomPath(roomId));
+		const room = await this.#load(roomPath(roomId, this.#prefix));
 
 		// A stored object we cannot parse is reported as missing rather than as
 		// an error: never build an oracle that tells the difference.
@@ -140,7 +153,7 @@ export class RoomStore {
 	async write(roomId: string, body: PutBody): Promise<WriteResult> {
 		if (byteLength(body.blob) > MAX_BLOB_BYTES) return { status: 'too-large' };
 
-		const path = roomPath(roomId);
+		const path = roomPath(roomId, this.#prefix);
 		const existing = parseStored((await this.#blobs.get(path)) ?? '');
 		const current = existing?.v ?? 0;
 
@@ -158,7 +171,9 @@ export class RoomStore {
 	/** The whole cleanup story: no TTL, no touch-on-read, no per-request logic. */
 	async sweep(now = this.#now(), maxAge = EXPIRY_MS): Promise<number> {
 		const cutoff = now - maxAge;
-		const entries = await this.#blobs.list('rooms/');
+		// Scoped to this environment's prefix, so a production sweep can never
+		// reach a preview's blobs — and vice versa.
+		const entries = await this.#blobs.list(`${this.#prefix}rooms/`);
 
 		let deleted = 0;
 		for (const entry of entries) {

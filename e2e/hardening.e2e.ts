@@ -55,14 +55,32 @@ test('the modals have no accessibility violations either', async ({ page, contex
 	}
 });
 
-test('everything is reachable with a keyboard alone', async ({ page }) => {
-	// The controls come first in the DOM, so tabbing to them scrolls them into
-	// view — hidden is not the same as unreachable.
-	await page.keyboard.press('Tab');
-	await expect(page.getByRole('button', { name: 'SYNC', exact: true })).toBeFocused();
+test('the controls come first in the tab order, hidden but not unreachable', async ({ page }) => {
+	/*
+	 * SYNC and SHARE are scrolled off the top on open. They stay first in the
+	 * DOM so tabbing reaches them and scrolls them into view.
+	 *
+	 * Asserted on document order plus one real Tab, rather than by pressing Tab
+	 * from wherever focus happens to start — that depends on whether the page
+	 * has focus at all, which is not what this test is about.
+	 */
+	const order = await page.evaluate(() =>
+		[...document.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')]
+			.filter((el) => !(el as HTMLButtonElement).disabled)
+			.map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim())
+	);
+
+	expect(order.slice(0, 2)).toStrictEqual(['SYNC', 'SHARE']);
+
+	const sync = page.getByRole('button', { name: 'SYNC', exact: true });
+	await sync.focus();
+	await expect(sync).toBeFocused();
 
 	await page.keyboard.press('Tab');
 	await expect(page.getByRole('button', { name: 'SHARE', exact: true })).toBeFocused();
+
+	// And it is genuinely on screen once focused, not merely focusable.
+	await expect(sync).toBeInViewport();
 });
 
 test('focus is visible, and drawn rather than coloured', async ({ page }) => {

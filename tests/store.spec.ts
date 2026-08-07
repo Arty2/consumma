@@ -252,6 +252,56 @@ describe('the sweep', () => {
 	});
 });
 
+describe('environment prefixes', () => {
+	const OTHER = 'b'.repeat(32);
+
+	it('leaves production unprefixed, so existing lists keep their paths', () => {
+		// A prefix on production would orphan every list that already exists.
+		expect(roomPath(ROOM)).toBe(`rooms/${ROOM}.json`);
+		expect(roomPath(ROOM, '')).toBe(`rooms/${ROOM}.json`);
+	});
+
+	it('puts other environments somewhere else entirely', () => {
+		expect(roomPath(ROOM, 'preview/')).toBe(`preview/rooms/${ROOM}.json`);
+		expect(roomPath(ROOM, 'dev/')).toBe(`dev/rooms/${ROOM}.json`);
+	});
+
+	it("cannot read or overwrite another environment's list", async () => {
+		const preview = new RoomStore(blobs, { cacheMs: 0, now: () => clock, prefix: 'preview/' });
+
+		await store.write(ROOM, { baseV: 0, blob: 'AQID' });
+
+		// The same room id in preview is a different list, starting from nothing.
+		expect(await preview.read(ROOM, null)).toStrictEqual({ status: 'missing' });
+
+		await preview.write(ROOM, { baseV: 0, blob: 'BAUG' });
+
+		const live = await store.read(ROOM, null);
+		expect(live.status).toBe('ok');
+		if (live.status === 'ok') expect(live.room.blob).toBe('AQID');
+	});
+
+	it('sweeps only its own environment', async () => {
+		/*
+		 * The one that would actually hurt: a production cron reaching into a
+		 * preview namespace, or the reverse, and deleting real lists.
+		 */
+		const preview = new RoomStore(blobs, { cacheMs: 0, now: () => clock, prefix: 'preview/' });
+
+		await store.write(ROOM, { baseV: 0, blob: 'AQID' });
+		await preview.write(OTHER, { baseV: 0, blob: 'BAUG' });
+
+		blobs.backdate(roomPath(ROOM), clock - EXPIRY_MS - 1000);
+		blobs.backdate(roomPath(OTHER, 'preview/'), clock - EXPIRY_MS - 1000);
+
+		expect(await preview.sweep(clock)).toBe(1);
+
+		// Production's blob is old too, and untouched by preview's sweep.
+		expect(blobs.files.has(roomPath(ROOM))).toBe(true);
+		expect(blobs.files.has(roomPath(OTHER, 'preview/'))).toBe(false);
+	});
+});
+
 describe('the cron guard', () => {
 	it('matches only the exact secret', () => {
 		expect(bearerMatches('Bearer hunter2', 'hunter2')).toBe(true);
