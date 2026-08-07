@@ -103,6 +103,23 @@ when M4 needs it. What it needs:
    production only, so preview blobs are never swept and accumulate — which is
    the argument for separate stores rather than against the prefix.
 
+   **Check it before trusting it.** A deployment with no store connected fails
+   in a way that reads as healthy from the outside — the app says it cannot
+   reach the list, which sounds like a network problem, and a `GET` answers a
+   perfectly ordinary 404. The write path is the one that tells the truth:
+
+   ```
+   ROOM=$(openssl rand -hex 16)
+   curl -i https://<your-deployment>/api/room/$ROOM
+   curl -i -X PUT https://<your-deployment>/api/room/$ROOM \
+     -H 'Content-Type: application/json' -d '{"baseV":0,"blob":"AA=="}'
+   ```
+
+   Healthy is `404` then `200 {"v":1}`, both carrying `Cache-Control: no-store`.
+   `404` then `500` means the store is not connected. A `404` without the
+   `no-store` header is Vercel's own not-found, not ours — the route did not
+   deploy.
+
 3. **Add `CRON_SECRET`** as a private environment variable, and only that one.
    Generate it with `openssl rand -hex 32` and add it under Project Settings →
    Environment Variables with exactly that name — Vercel looks for it by name
