@@ -64,9 +64,19 @@ export class SyncState {
 		this.refresh();
 	}
 
-	/** Recomputes the mark. Cheap, and called after every edit. */
+	/**
+	 * Recomputes the mark. Cheap, and called after every edit.
+	 *
+	 * It must not touch `now`. This runs inside an effect that depends on the
+	 * document, and a `$state` setter reads the old value to compare — so
+	 * writing the clock here made the effect both read and write `now`, and
+	 * since `Date.now()` differs every time it never settled. Svelte tore the
+	 * whole tree's reactivity down with effect_update_depth_exceeded, which is
+	 * why a completed join left the menu sitting open, doing nothing.
+	 *
+	 * The clock belongs to whatever is showing the cooldown tick down.
+	 */
 	refresh(): void {
-		this.now = Date.now();
 		if (typeof navigator !== 'undefined' && navigator.onLine === false) {
 			this.status = 'offline';
 			return;

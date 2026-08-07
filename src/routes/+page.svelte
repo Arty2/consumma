@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
 	import Menu from '$lib/components/Menu.svelte';
@@ -29,16 +30,30 @@
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
 
+	/*
+	 * Once, on mount, and never again.
+	 *
+	 * These loaders write the very state they read — sync.load() parses the last
+	 * synced snapshot into #lastSynced, and refresh() reads it straight back
+	 * through `unsent`. Tracked, that is an effect reading and writing one piece
+	 * of state, and since each load parses a fresh object it never settles:
+	 * Svelte gives up with effect_update_depth_exceeded and tears the tree's
+	 * reactivity down. The visible symptom was a completed join leaving the menu
+	 * open and unresponsive.
+	 */
 	$effect(() => {
-		sheet.load();
-		ui.load();
-		sync.load();
+		untrack(() => {
+			sheet.load();
+			ui.load();
+			sync.load();
+		});
 	});
 
 	// The mark has to change when the document does.
 	$effect(() => {
 		void sheet.doc;
-		sync.refresh();
+		// The document is the dependency; what refresh() touches is not.
+		untrack(() => sync.refresh());
 	});
 
 	async function onExport() {
@@ -189,7 +204,7 @@
 	main {
 		display: block;
 		position: relative;
-		padding: 0 0.6rem;
+		padding: 0 1.25rem;
 	}
 
 	/*

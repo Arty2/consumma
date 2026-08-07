@@ -273,6 +273,33 @@ Numbers in brackets are the section of the build plan a decision came from.
     `@vercel/blob` calls — and no deployment exists yet, so nothing has run
     against a real store. That is the honest remaining gap.
 
+36. **State that loads is untracked.** `+page.svelte` calls `sheet.load()`,
+    `ui.load()` and `sync.load()` from an effect. `sync.load()` parses the last
+    synced snapshot into `#lastSynced`, and `refresh()` reads it straight back
+    through `unsent` — so tracked, the effect read and wrote one piece of state,
+    and because each load parses a fresh object it never settled. Svelte gave up
+    with `effect_update_depth_exceeded` and tore the tree's reactivity down.
+
+    The symptom was remote: a completed join left the menu open with the code
+    still typed, no error, and no sign anything had happened — while the sync
+    itself had worked and the status read "Everything is synced". Nothing in the
+    suite completed a join, so nothing caught it. `e2e/sync.e2e.ts` does now.
+
+    Both effects are `untrack`ed around what they call. `refresh()` also no
+    longer advances the clock: a `$state` setter reads the old value to compare,
+    so writing `Date.now()` from inside an effect makes that effect depend on
+    the very thing it writes. The clock belongs to whatever shows the cooldown.
+
+37. **Two browsers, one code, in a real browser.** `e2e/sync.e2e.ts` is M5's
+    acceptance and the one part of sync a unit test cannot reach: the real
+    client doing its own crypto with a key it derived itself, over its own
+    fetch. Requests are answered by the real `RoomStore`; the blob backend is
+    the only thing faked, the same boundary `tests/route.spec.ts` draws.
+
+    Setting up a device plants the code in storage rather than typing it into
+    JOIN, because JOIN forces a sync and the ten-second cooldown then dominates
+    the run. The join path has its own test.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as

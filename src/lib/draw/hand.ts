@@ -312,11 +312,14 @@ export function handArrow(size: number, options: HandOptions): string {
  * the height it is shown at, like the tear — see TornEdge.svelte — so the
  * weight matches and nothing is stretched.
  */
-export function handVertical(height: number, options: HandOptions & { x?: number }): string {
+export function handVertical(
+	height: number,
+	options: HandOptions & { x?: number; every?: number }
+): string {
 	const x = options.x ?? 1;
-	// The same spacing handRect subdivides at, so every long stroke in the app
-	// wobbles at the same rate.
-	const steps = Math.max(2, Math.round(height / 90));
+	// Defaults to the spacing handRect subdivides at, so long strokes wobble at
+	// the same rate unless a caller wants a busier hand.
+	const steps = Math.max(2, Math.round(height / (options.every ?? 90)));
 
 	const points: Pt[] = [];
 	for (let i = 0; i <= steps; i++) points.push({ x, y: (height * i) / steps });

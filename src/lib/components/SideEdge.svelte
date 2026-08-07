@@ -18,12 +18,14 @@
 
 	let { seed, side }: Props = $props();
 
-	const WIDTH = 5;
+	const WIDTH = 9;
 
 	let height = $state(0);
 
 	const d = $derived(
-		height > 0 ? handVertical(height, { seed: seedFrom(seed), wobble: 1.1, x: WIDTH / 2 }) : ''
+		height > 0
+			? handVertical(height, { seed: seedFrom(seed), wobble: 2.2, every: 55, x: WIDTH / 2 })
+			: ''
 	);
 </script>
 
@@ -37,7 +39,7 @@
 	.edge {
 		position: absolute;
 		top: 0;
-		width: 5px;
+		width: 9px;
 		/*
 		 * Explicit, not from top/bottom: an svg is a replaced element, so `height:
 		 * auto` resolves to its intrinsic 150px and the offsets are ignored. The
