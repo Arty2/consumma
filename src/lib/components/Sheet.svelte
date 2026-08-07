@@ -29,6 +29,18 @@
 		ui.celebrate(sheet.finished);
 	}
 
+	/*
+	 * Only offered once every task in the group is done, so nothing anyone is
+	 * still waiting on goes with it — but the tasks do go, so it says how many.
+	 */
+	function removeGroup(id: string, title: string) {
+		const group = sheet.groups.find((g) => g.id === id);
+		const count = group?.tasks.length ?? 0;
+
+		sheet.deleteGroup(id);
+		ui.say(count === 0 ? `Removed ${label(title)}.` : `Removed ${label(title)} and ${count} done.`);
+	}
+
 	function remove(id: string) {
 		const entry = sheet.deleteTask(id);
 		if (!entry) return;
@@ -103,6 +115,14 @@
 
 <div class="sheet">
 	{#each sheet.groups as group, groupIndex (group.id)}
+		{#if drag.isGroupLanding(groupIndex)}
+			<div class="landing" aria-hidden="true">
+				<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
+					<path d={landing} class="drawn drawn--dashed" />
+				</svg>
+			</div>
+		{/if}
+
 		<section class="group" data-group={group.id}>
 			<!-- Every group gets a header, so one with no title is still nameable. -->
 			<GroupHeader
@@ -110,9 +130,12 @@
 				seed={group.id}
 				collapsed={ui.isCollapsed(group.id)}
 				count={group.tasks.length}
+				finished={group.tasks.every((task) => task.state === 'done')}
 				editable={!group.synthetic}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
 				onrename={(title) => sheet.renameGroup(group.id, title)}
+				ondelete={() => removeGroup(group.id, group.title)}
+				onreorder={(index) => sheet.moveGroup(group.id, sheet.groupOrderAt(index, group.id))}
 			/>
 
 			{#if !ui.isCollapsed(group.id)}
@@ -157,6 +180,14 @@
 			{/if}
 		</section>
 	{/each}
+
+	{#if drag.isGroupLanding(sheet.groups.length)}
+		<div class="landing" aria-hidden="true">
+			<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
+				<path d={landing} class="drawn drawn--dashed" />
+			</svg>
+		</div>
+	{/if}
 
 	{#if overLimit}
 		<p class="over">{sheet.taskCount} of {LIMITS.tasks} — clear some</p>
@@ -206,8 +237,13 @@
 		padding: 0 0 2rem;
 	}
 
+	/*
+	 * No gap between groups. Every group ends with the add row, and the empty
+	 * line it holds is already the space before the next title — a margin on top
+	 * of it left a hole big enough to read as a missing group.
+	 */
 	.group {
-		margin-bottom: 1.75rem;
+		margin-bottom: 0;
 	}
 
 	/*

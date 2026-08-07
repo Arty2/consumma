@@ -507,3 +507,46 @@ describe('handBracket', () => {
 		);
 	});
 });
+
+describe('handLine', () => {
+	it('starts and ends where it is asked to', () => {
+		const points = endpoints(handLine(200, { seed: 3, wobble: 0, y: 2 }));
+
+		expect(points[0]).toStrictEqual({ x: 0, y: 2 });
+		expect(points.at(-1)).toStrictEqual({ x: 200, y: 2 });
+	});
+
+	it('bends more often the longer it is', () => {
+		/*
+		 * handPath bends each segment once, so a fixed number of points meant a
+		 * long rule bent the same three times a short one did — and three gentle
+		 * bows across 300px is a ruled line with extra steps.
+		 */
+		const short = endpoints(handLine(40, { seed: 3, wobble: 0 })).length;
+		const long = endpoints(handLine(400, { seed: 3, wobble: 0 })).length;
+
+		expect(long).toBeGreaterThan(short * 3);
+	});
+
+	it('keeps a short rule to the few bends it always had', () => {
+		// A 14px cell under a code has no room to wander.
+		expect(endpoints(handLine(14, { seed: 3, wobble: 0 }))).toHaveLength(4);
+	});
+
+	it('never doubles back on itself', () => {
+		for (const width of [14, 64, 200, 400, 900]) {
+			for (const seed of [1, 7, 99]) {
+				const xs = endpoints(handLine(width, { seed, wobble: 1 })).map((p) => p.x);
+
+				for (let i = 1; i < xs.length; i++) {
+					expect(xs[i], `width ${width} seed ${seed}`).toBeGreaterThan(xs[i - 1]);
+				}
+			}
+		}
+	});
+
+	it('is stable for a seed, and differs between them', () => {
+		expect(handLine(200, { seed: 4 })).toBe(handLine(200, { seed: 4 }));
+		expect(handLine(200, { seed: 4 })).not.toBe(handLine(200, { seed: 5 }));
+	});
+});

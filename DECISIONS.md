@@ -485,28 +485,52 @@ Numbers in brackets are the section of the build plan a decision came from.
     it and nowhere to fetch from. The corner button is hidden outright while
     there is neither a written sheet nor a code.
 
+56. **The group header is three controls, not one overloaded one.** The title
+    used to collapse on a tap and rename on a double tap, so every rename began
+    by collapsing the group and every collapse was one slip from an edit box.
+    The title renames. The icon collapses. Neither does the other.
+
+57. **A group goes only when nothing in it is left to do.** Removing one takes
+    its tasks with it, so it is offered in the icon's place while the name is
+    being edited, and it is disabled — drawn `--faint` — until every task in the
+    group is done. An empty group counts as finished: there is nothing to lose.
+
+58. **A task offers its ✕ only when it is done.** It used to appear on focus or
+    hover too, which put a live delete button beside every row a finger passed
+    over and left it sitting there after an un-tick, because the pointer had not
+    moved away. The cost is that removing an unfinished task now means ticking
+    it first; that is the right order for a sheet where CLEAR sweeps what is
+    done.
+
+59. **The click after a drop is swallowed.** A release still fires a click on
+    whatever was held, and everything draggable here is a button — so dropping a
+    task opened its editor. It was true before groups could be dragged; adding
+    the group drag is what made it visible. `pressDrag` arms a capturing click
+    handler on release and disarms it 400ms later, in case a touch produces no
+    click at all.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
 drift.
 
-56. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
+60. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
     still described reads coming straight from the CDN. §5 is right — it is what
     makes `connect-src 'self'` possible — so `PUBLIC_BLOB_BASE` and the
     `/api/room/[roomId]/version` route are both gone.
 
-57. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
+61. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
     persisted beside the client id. Without it, two edits from one device in the
     same millisecond collide on `(t, c)` and merge stops being commutative. The
     comparator also falls back to the value itself, which makes it total for any
     document, including a corrupt one.
 
-58. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
+62. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
     tombstone collection (`gc(doc, now)`) are separate functions applied by the
     sync and write paths. Folding either into merge would destroy the algebra
     the property tests check.
 
-59. **Every write is read back once.** Blob storage has no compare-and-set, so
+63. **Every write is read back once.** Blob storage has no compare-and-set, so
     two writers can both pass the version check and the second one's bytes win.
     The loser cannot tell from the version number — it was told 2, the server
     holds 2, and its next conditional read returns 304 forever. The
@@ -514,18 +538,18 @@ drift.
     `tests/sync.spec.ts` sets the race up deliberately; removing the read-back
     makes it fail.
 
-60. **The ETag is the document's own version**, not the blob's upload time and
+64. **The ETag is the document's own version**, not the blob's upload time and
     size. The latter answers a conditional read without fetching the body, but
     two writes in the same millisecond whose JSON is the same length produce an
     identical token, and the second is reported as unchanged. A saved fetch is
     not worth a lost edit.
 
-61. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
+65. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
 ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     optional, but it cannot be past the first write — a reader cannot tell a
     compressed payload from an uncompressed one.
 
-62. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
+66. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
     SvelteKit's own `#svelte-announcer` has a hardcoded `style` attribute we do
     not author and cannot switch off. `'unsafe-hashes'` permits that exact
     string and nothing else; it is not `'unsafe-inline'`. `trusted-types` names
@@ -533,7 +557,7 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `e2e/csp.e2e.ts` fails on any console error, so an upgrade that changes the
     string breaks CI rather than the policy.
 
-63. **"Loose ends" has an id no document can hold**, and that is deliberate.
+67. **"Loose ends" has an id no document can hold**, and that is deliberate.
     `__loose__` fails the `/^[A-Za-z0-9]{1,24}$/` the validator enforces, which
     is what stops it ever being written to a document and then syncing to
     someone who has no such group. The cost is that anything which can name a

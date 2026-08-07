@@ -243,7 +243,8 @@ test('the toast is a bar, inset from the paper on both sides', async ({ page }) 
 	await input.press('Enter');
 	await page.keyboard.press('Escape');
 
-	await page.getByRole('checkbox', { name: 'Bread' }).hover();
+	// Only a done task offers a way out.
+	await page.getByRole('checkbox', { name: 'Bread' }).click();
 	await page.getByRole('button', { name: 'Delete task' }).first().click();
 	await expect(page.locator('.toast')).toBeVisible();
 

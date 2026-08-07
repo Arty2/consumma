@@ -73,7 +73,7 @@
 	-->
 	<button class="box" type="button" tabindex="-1" aria-hidden="true" {disabled} onclick={start}>
 		<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE}>
-			<path d={box} class="drawn drawn--faint" />
+			<path d={box} class="drawn ghost" />
 		</svg>
 	</button>
 
@@ -132,6 +132,18 @@
 
 	.box svg {
 		overflow: visible;
+	}
+
+	/*
+	 * Drawn but not shown. The row is still 44px of tappable box beside the
+	 * ellipsis — an empty square at the end of a list read as one more thing to
+	 * do rather than as room for one.
+	 *
+	 * Its own rule rather than a change to --faint: everything else that is
+	 * faint is meant to be seen.
+	 */
+	.ghost {
+		opacity: 0;
 	}
 
 	.text {

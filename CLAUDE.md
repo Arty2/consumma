@@ -20,7 +20,9 @@ linter cannot. CI runs it first, before anything else.
 - Merge logic in src/lib/doc/merge.ts is pure and must stay commutative, associative, idempotent. It takes no clock — skew clamping and tombstone GC are separate functions applied by the sync and write paths.
 - Collapsed state is local, never synced.
 - CLEAR sweeps done tasks only. DELETE is local-only and never calls the server. Undo re-stamps forward, never rewinds.
-- Two long-presses, separated by hit area: on the checkbox it sets half, on the row text it starts a drag. Never merge them.
+- Three long-presses, separated by hit area: on the checkbox it sets half, on the row text it lifts the task, on the group title it lifts the whole group. Never merge them. The click that follows a drop is swallowed, or the button under the finger opens.
+- The group header is three controls and each does one thing: the title renames, the icon collapses, and while renaming the icon's place is taken by a delete that is only enabled once every task in the group is done. Tapping a title must never collapse it.
+- A task offers its ✕ only when it is done. Not on hover, not on focus — a live delete beside every row a finger passes over, left behind after an un-tick.
 - UI labels are uppercased in CSS only. Stored titles and markdown exports keep the casing the user typed.
 - Anything drawn that sits beside capitals lifts by `--cap-lift`. Graphe's caps ride high in their own line box, so a centred checkbox reads low against them. The value is measured in a browser, not derived — retune it with the face.
 - Anything showing user text in caps sets `lang={langOf(text)}` (src/lib/doc/lang.ts). Greek drops the tonos in capitals and browsers only apply that with the language declared — without it Chrome renders μαΐστρος as ΜΑΪ́ΣΤΡΟΣ. Never uppercase in JS to work around it; that would break the CSS-only rule above.

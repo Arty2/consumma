@@ -1,6 +1,6 @@
 {
-	"name": "/consumma",
-	"short_name": "/consumma",
+	"name": "consumma",
+	"short_name": "consumma",
 	"start_url": "/",
 	"scope": "/",
 	"display": "standalone",

@@ -20,12 +20,20 @@ export class DragState {
 	taskId = $state<string | null>(null);
 	target = $state<DropTarget | null>(null);
 
+	/** The group currently lifted, if any. Never both at once. */
+	groupId = $state<string | null>(null);
+	groupTarget = $state<number | null>(null);
+
 	get dragging(): boolean {
-		return this.taskId !== null;
+		return this.taskId !== null || this.groupId !== null;
 	}
 
 	isLifted(taskId: string): boolean {
 		return this.taskId === taskId;
+	}
+
+	isLiftedGroup(groupId: string): boolean {
+		return this.groupId === groupId;
 	}
 
 	/** True where the dashed landing rule should be drawn. */
@@ -33,9 +41,16 @@ export class DragState {
 		return this.target?.groupId === groupId && this.target.index === index;
 	}
 
+	/** The same, for a group being moved among its siblings. */
+	isGroupLanding(index: number): boolean {
+		return this.groupTarget === index;
+	}
+
 	reset(): void {
 		this.taskId = null;
 		this.target = null;
+		this.groupId = null;
+		this.groupTarget = null;
 	}
 }
 
@@ -87,14 +102,35 @@ function targetAt(x: number, y: number, movingId: string): DropTarget | null {
 	return null;
 }
 
-export const dragRow: Action<HTMLElement, DragOptions> = (node, initial) => {
-	let options = initial;
+/**
+ * The long press, the lift, the edge scroll and the tidying up — everything a
+ * drag does that is not about what is being dragged.
+ *
+ * A task and a group are picked up the same way and differ only in where they
+ * can land, so the gesture is written once and told what to do at each step.
+ */
+type Hooks = {
+	/** False refuses the gesture outright: Loose ends cannot be moved. */
+	enabled: () => boolean;
+	lift: (x: number, y: number) => void;
+	move: (x: number, y: number) => void;
+	drop: () => void;
+};
+
+function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let start: { x: number; y: number } | null = null;
 	let lifted = false;
 	let pointerId: number | null = null;
 	let scrolling: number | null = null;
 	let edge = 0;
+	/*
+	 * A release after a drag still fires a click on whatever was held, and what
+	 * was held is a button — so dropping a task opened its editor, and dropping
+	 * a group opened its name. The click after a drop is swallowed.
+	 */
+	let dropped = false;
+	let settle: ReturnType<typeof setTimeout> | null = null;
 
 	function autoScroll() {
 		if (edge === 0) {
@@ -130,8 +166,19 @@ export const dragRow: Action<HTMLElement, DragOptions> = (node, initial) => {
 		lifted = false;
 	}
 
+	function onclick(event: MouseEvent) {
+		if (!dropped) return;
+
+		dropped = false;
+		event.preventDefault();
+		event.stopPropagation();
+	}
+
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0) return;
+		if (!hooks().enabled()) return;
+
+		dropped = false;
 
 		start = { x: event.clientX, y: event.clientY };
 		pointerId = event.pointerId;
@@ -142,8 +189,7 @@ export const dragRow: Action<HTMLElement, DragOptions> = (node, initial) => {
 			buzz();
 
 			if (pointerId !== null) node.setPointerCapture(pointerId);
-			drag.taskId = options.taskId;
-			drag.target = targetAt(event.clientX, event.clientY, options.taskId);
+			hooks().lift(event.clientX, event.clientY);
 		}, LONG_PRESS_MS);
 	}
 
@@ -156,11 +202,7 @@ export const dragRow: Action<HTMLElement, DragOptions> = (node, initial) => {
 			return;
 		}
 
-		const next = targetAt(event.clientX, event.clientY, options.taskId);
-		if (next) {
-			if (next.groupId !== options.groupId) options.onEnterGroup?.(next.groupId);
-			drag.target = next;
-		}
+		hooks().move(event.clientX, event.clientY);
 
 		edge =
 			event.clientY < EDGE
@@ -173,38 +215,122 @@ export const dragRow: Action<HTMLElement, DragOptions> = (node, initial) => {
 	}
 
 	function onpointerup() {
-		const target = drag.target;
-		const dropped = lifted;
-
+		const moved = lifted;
 		stop();
+
+		if (moved) hooks().drop();
 		drag.reset();
 
-		if (dropped && target) options.onDrop(target);
+		/*
+		 * Armed for the click that is about to arrive, and disarmed shortly after
+		 * in case none does — a touch that produces no click must not leave the
+		 * next real tap to be swallowed.
+		 */
+		dropped = moved;
+		if (settle) clearTimeout(settle);
+		settle = moved ? setTimeout(() => (dropped = false), 400) : null;
 	}
 
-	/** A scroll won the race, or the gesture was interrupted. Restore the row. */
+	/** A scroll won the race, or the gesture was interrupted. Put it back. */
 	function oncancel() {
 		stop();
 		drag.reset();
 	}
 
+	node.addEventListener('click', onclick, { capture: true });
 	node.addEventListener('pointerdown', onpointerdown);
 	node.addEventListener('pointermove', onpointermove);
 	node.addEventListener('pointerup', onpointerup);
 	node.addEventListener('pointercancel', oncancel);
 	node.addEventListener('touchmove', ontouchmove, { passive: false });
 
+	return () => {
+		stop();
+		if (settle) clearTimeout(settle);
+		node.removeEventListener('click', onclick, { capture: true });
+		node.removeEventListener('pointerdown', onpointerdown);
+		node.removeEventListener('pointermove', onpointermove);
+		node.removeEventListener('pointerup', onpointerup);
+		node.removeEventListener('pointercancel', oncancel);
+		node.removeEventListener('touchmove', ontouchmove);
+	};
+}
+
+export const dragRow: Action<HTMLElement, DragOptions> = (node, initial) => {
+	let options = initial;
+
+	const destroy = pressDrag(node, () => ({
+		enabled: () => true,
+		lift(x, y) {
+			drag.taskId = options.taskId;
+			drag.target = targetAt(x, y, options.taskId);
+		},
+		move(x, y) {
+			const next = targetAt(x, y, options.taskId);
+			if (!next) return;
+
+			if (next.groupId !== options.groupId) options.onEnterGroup?.(next.groupId);
+			drag.target = next;
+		},
+		drop() {
+			if (drag.target) options.onDrop(drag.target);
+		}
+	}));
+
 	return {
 		update(next: DragOptions) {
 			options = next;
 		},
-		destroy() {
-			stop();
-			node.removeEventListener('pointerdown', onpointerdown);
-			node.removeEventListener('pointermove', onpointermove);
-			node.removeEventListener('pointerup', onpointerup);
-			node.removeEventListener('pointercancel', oncancel);
-			node.removeEventListener('touchmove', ontouchmove);
+		destroy
+	};
+};
+
+export type GroupDragOptions = {
+	groupId: string;
+	/** Loose ends is assembled on read and cannot be moved. */
+	enabled: boolean;
+	onDrop: (index: number) => void;
+};
+
+/**
+ * Where a group would land: its index among the others, by the same top-half /
+ * bottom-half rule the rows use, read off the DOM rather than tracked.
+ */
+function groupTargetAt(y: number, movingId: string): number {
+	const sections = [...document.querySelectorAll<HTMLElement>('[data-group]')].filter(
+		(el) => el.dataset.group !== movingId
+	);
+
+	for (let i = 0; i < sections.length; i++) {
+		const box = sections[i].getBoundingClientRect();
+		if (y < box.top + box.height / 2) return i;
+	}
+
+	return sections.length;
+}
+
+/** The same long press that lifts a row, lifting the whole group instead. */
+export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) => {
+	let options = initial;
+
+	const destroy = pressDrag(node, () => ({
+		enabled: () => options.enabled,
+		lift(_x, y) {
+			drag.groupId = options.groupId;
+			drag.groupTarget = groupTargetAt(y, options.groupId);
+		},
+		move(_x, y) {
+			drag.groupTarget = groupTargetAt(y, options.groupId);
+		},
+		drop() {
+			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);
 		}
+	}));
+
+	return {
+		update(next: GroupDragOptions) {
+			options = next;
+		},
+		destroy
 	};
 };

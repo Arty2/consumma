@@ -192,19 +192,38 @@ export function handRect(
 	);
 }
 
-/** The rule under a group title. */
-export function handLine(width: number, options: HandOptions & { y?: number }): string {
+/**
+ * The rule under a group title.
+ *
+ * handPath bends each segment once, so a fixed number of points means a long
+ * rule bends the same three times a short one does — and a 300px rule with
+ * three gentle bows in it is a ruled line. The number of bends grows with the
+ * width instead, and where they fall is seeded rather than even, because a
+ * hand does not stop at regular intervals.
+ */
+export function handLine(
+	width: number,
+	options: HandOptions & { y?: number; every?: number }
+): string {
 	const y = options.y ?? 1;
+	// Finer than the 90 handRect subdivides at: this is a stroke under a word,
+	// not the side of a panel.
+	const every = options.every ?? 34;
+	const steps = Math.max(3, Math.round(width / every));
+	const random = rng(options.seed ^ 0x7f4a7c15);
 
-	return handPath(
-		[
-			{ x: 0, y },
-			{ x: width * 0.4, y },
-			{ x: width * 0.75, y },
-			{ x: width, y }
-		],
-		options
-	);
+	const points: Pt[] = [{ x: 0, y }];
+
+	for (let i = 1; i < steps; i++) {
+		// Never enough to overtake its neighbour: a third of a step either way
+		// leaves every point ahead of the one before it.
+		const at = (i + (random() * 2 - 1) * 0.35) / steps;
+		points.push({ x: width * at, y });
+	}
+
+	points.push({ x: width, y });
+
+	return handPath(points, options);
 }
 
 /**

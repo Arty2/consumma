@@ -159,7 +159,8 @@ test('deletes a task and offers it back', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
 
-	await page.getByRole('button', { name: 'Bread', exact: true }).hover();
+	// Only a done task offers a way out, so finish it before removing it.
+	await task(page, 'Bread').click();
 	await page.getByRole('button', { name: 'Delete task' }).first().click();
 
 	await expect(task(page, 'Bread')).toHaveCount(0);
@@ -203,7 +204,8 @@ test('makes a group, collapses it, and remembers that locally', async ({ page })
 	await addTask(page, 'Bread', 1);
 	await expect(task(page, 'Bread')).toBeVisible();
 
-	await page.getByRole('button', { name: 'Market' }).click();
+	// The icon collapses; the title is for renaming and does not toggle.
+	await page.getByRole('button', { name: 'Collapse group' }).nth(1).click();
 	await expect(task(page, 'Bread')).toHaveCount(0);
 	// The count is in the header control, and nowhere else on the row.
 	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
@@ -211,7 +213,7 @@ test('makes a group, collapses it, and remembers that locally', async ({ page })
 	await page.reload();
 	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
 
-	await page.getByRole('button', { name: 'Market' }).click();
+	await page.getByRole('button', { name: 'Expand group' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
@@ -317,4 +319,124 @@ test('a done task offers its own way out, and the way back', async ({ page }) =>
 
 	await toast.getByRole('button', { name: 'Undo?' }).click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
+test('the title renames, the icon collapses, and neither does the other', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	/*
+	 * They used to share the title: a tap collapsed and a double tap renamed, so
+	 * every rename began by collapsing the group and every collapse was one slip
+	 * away from an edit box.
+	 */
+	await page.getByRole('button', { name: 'My list' }).click();
+	const field = page.getByRole('textbox', { name: 'Group title' });
+	await expect(field).toBeFocused();
+
+	// Editing did not collapse anything.
+	await expect(task(page, 'Bread')).toBeVisible();
+
+	await field.fill('Market');
+	await field.press('Enter');
+	await expect(page.getByRole('button', { name: 'Market' })).toBeVisible();
+
+	// And the icon collapses without opening the name.
+	await page.getByRole('button', { name: 'Collapse group' }).click();
+	await expect(task(page, 'Bread')).toHaveCount(0);
+	await expect(page.getByRole('textbox', { name: 'Group title' })).toHaveCount(0);
+});
+
+test('a group can be removed only once nothing in it is left to do', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
+
+	// Editing the name is where the way out lives, in the icon's place.
+	await page.getByRole('button', { name: 'My list' }).click();
+	const remove = page.getByRole('button', { name: /^Delete group/ });
+
+	// Two tasks open, so it is drawn but not offered.
+	await expect(remove).toBeDisabled();
+	await expect(remove).toHaveAttribute('aria-label', /finish its tasks first/i);
+	await page.keyboard.press('Escape');
+
+	await task(page, 'Bread').click();
+	await page.getByRole('button', { name: 'My list' }).click();
+	// One still open: still refused.
+	await expect(page.getByRole('button', { name: /^Delete group/ })).toBeDisabled();
+	await page.keyboard.press('Escape');
+
+	await task(page, 'Milk').click();
+	await page.getByRole('button', { name: 'My list' }).click();
+
+	const ready = page.getByRole('button', { name: 'Delete group' });
+	await expect(ready).toBeEnabled();
+	await ready.click();
+
+	// The group and everything in it, and a toast that says how much went.
+	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);
+	await expect(page.getByRole('status').filter({ hasText: /Removed/ })).toBeVisible();
+});
+
+test('a long press on a group title picks the whole group up', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const name = page.getByRole('textbox', { name: 'New group' });
+	await name.fill('Market');
+	await name.press('Enter');
+	await addTask(page, 'Milk', 1);
+
+	const order = () =>
+		page
+			.locator('section[data-group] .title')
+			.evaluateAll((titles) => titles.map((t) => t.textContent!.trim()));
+
+	expect(await order()).toStrictEqual(['My list', 'Market']);
+
+	// Held, not tapped: a tap would open the name for editing.
+	const title = page.getByRole('button', { name: 'Market' });
+	const from = (await title.boundingBox())!;
+	const to = (await page.getByRole('button', { name: 'My list' }).boundingBox())!;
+
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+
+	// The lift is a dashed outline and a tilt, as it is for a task.
+	await expect(page.locator('section[data-group] .header svg.rect path')).toHaveCount(1);
+
+	await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 12 });
+	await page.mouse.up();
+
+	expect(await order()).toStrictEqual(['Market', 'My list']);
+	await page.reload();
+	expect(await order()).toStrictEqual(['Market', 'My list']);
+});
+
+test('dropping a task does not open it for editing', async ({ page }) => {
+	/*
+	 * The release after a drag still fires a click, and the thing being held is
+	 * a button — so every drop landed the row in an edit box. It was there
+	 * before groups could be dragged; the group drag is what made it obvious.
+	 */
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+
+	const row = page.getByRole('button', { name: 'Coffee', exact: true });
+	const from = (await row.boundingBox())!;
+	const to = (await page.getByRole('button', { name: 'Bread', exact: true }).boundingBox())!;
+
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 12 });
+	await page.mouse.up();
+
+	await expect(page.getByRole('textbox')).toHaveCount(0);
+
+	const order = () =>
+		page
+			.getByRole('checkbox')
+			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+	expect(await order()).toStrictEqual(['Coffee', 'Bread']);
 });

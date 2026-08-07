@@ -108,6 +108,14 @@ export class Sheet {
 		this.#apply((doc, ctx) => ops.moveGroup(doc, ctx, id, order));
 	}
 
+	/**
+	 * Removes a group. The header only offers it once every task in the group is
+	 * done, so nothing anyone is still waiting on goes with it.
+	 */
+	deleteGroup(id: string): void {
+		this.#apply((doc, ctx) => ops.deleteGroup(doc, ctx, id));
+	}
+
 	// ── tasks ───────────────────────────────────────────────────────────────
 
 	addTask(groupId: string, text: string): string | null {

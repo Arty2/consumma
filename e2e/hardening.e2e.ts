@@ -92,7 +92,8 @@ test('it is installable: a manifest, a theme colour, and drawn icons', async ({ 
 	expect(manifest.ok()).toBe(true);
 
 	const parsed = await manifest.json();
-	expect(parsed.name).toBe('/consumma');
+	// No slash: that belongs to the address, not to the app on a home screen.
+	expect(parsed.name).toBe('consumma');
 	expect(parsed.display).toBe('standalone');
 	// White, so the toolbar tint does not break the sheet-of-paper illusion.
 	expect(parsed.theme_color).toBe('#ffffff');

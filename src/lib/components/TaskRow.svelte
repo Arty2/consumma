@@ -24,7 +24,6 @@
 
 	let editing = $state(false);
 	let draft = $state('');
-	let focused = $state(false);
 
 	const lifted = $derived(drag.isLifted(task.id));
 	const remaining = $derived(LIMITS.taskText - length(draft));
@@ -65,16 +64,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<li
-	class="row"
-	class:lifted
-	data-task={task.id}
-	onfocusin={() => (focused = true)}
-	onfocusout={() => (focused = false)}
-	onmouseenter={() => (focused = true)}
-	onmouseleave={() => (focused = false)}
-	onkeydown={onrowkeydown}
->
+<li class="row" class:lifted data-task={task.id} onkeydown={onrowkeydown}>
 	{#if lifted}
 		<!-- No shadow is available, so the lift is a dashed outline and a tilt. -->
 		<HandRect seed={`lift${task.id}`} dashed wobble={1.2} />
@@ -115,12 +105,14 @@
 	{/if}
 
 	<!--
-		A done task offers its own way out. Ticking something is usually the last
-		thing you do to it, so the ✕ is there the moment it is done rather than
-		waiting for a hover nobody has on a phone. It still appears on focus for
-		anything else, which is what keeps a keyboard able to reach it.
+		A done task offers its own way out, and only a done task.
+		
+		It used to appear on focus or hover as well, which put a live delete
+		button beside every row a finger passed over — and left it sitting there
+		after a task was un-ticked, because the pointer had not moved away yet.
+		Removing something is for things that are finished with.
 	-->
-	{#if (focused || task.state === 'done') && !editing && !drag.dragging}
+	{#if task.state === 'done' && !editing && !drag.dragging}
 		<button class="remove" type="button" onclick={ondelete} aria-label="Delete task">
 			<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
 				<path d={cross} class="drawn" />
