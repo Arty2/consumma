@@ -164,7 +164,7 @@ test('deletes a task and offers it back', async ({ page }) => {
 
 	await expect(task(page, 'Bread')).toHaveCount(0);
 
-	await page.getByRole('button', { name: 'UNDO' }).click();
+	await page.getByRole('button', { name: 'UNDO?' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 
 	await page.reload();
@@ -188,7 +188,7 @@ test('CLEAR sweeps done tasks only, and half-done stays', async ({ page }) => {
 	await expect(task(page, 'Coffee')).toBeVisible();
 	await expect(task(page, 'Milk')).toBeVisible();
 
-	await page.getByRole('button', { name: 'UNDO' }).click();
+	await page.getByRole('button', { name: 'UNDO?' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
@@ -315,6 +315,6 @@ test('a done task offers its own way out, and the way back', async ({ page }) =>
 	// Everything the sheet says is set in capitals.
 	await expect(toast.locator('span').first()).toHaveCSS('text-transform', 'uppercase');
 
-	await toast.getByRole('button', { name: 'Undo' }).click();
+	await toast.getByRole('button', { name: 'Undo?' }).click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
 });

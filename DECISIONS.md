@@ -85,9 +85,14 @@ Numbers in brackets are the section of the build plan a decision came from.
     guarantee something to scroll.
 
 22. **One invitation, carrying the link and the code together.** Either half
-    alone is useless: the link without the code opens an empty sheet, the code
-    without the link is a string nobody can place. SHARE and COPY hand over the
-    same payload.
+    alone is useless to someone who has neither: the link without the code
+    opens an empty sheet, the code without the link is a string nobody can
+    place. SHARE hands over both.
+
+    COPY does not. It sits directly under the code, and what a button under a
+    code copies is the code — into a message already being written, or into the
+    other phone's JOIN field. Handing over the whole invitation is what SHARE
+    is for, and the two buttons are next to each other.
 
     It all travels in `navigator.share`'s `text`, with no `url` field —
     splitting it lets a share target keep one and drop the other. The link

@@ -89,8 +89,16 @@
 		});
 	}
 
+	/*
+	 * The code alone, not the invitation.
+	 *
+	 * SHARE is the way to hand someone the whole thing; this button sits under
+	 * the code, and what a button under a code copies is the code. Pasting it
+	 * into a message already being written, or into the other phone's JOIN
+	 * field, is the whole of what it is for.
+	 */
 	async function onCopy() {
-		copied = await copy(invitation);
+		copied = sync.code ? await copy(formatCode(sync.code)) : false;
 	}
 
 	async function join(keep: boolean) {
@@ -178,7 +186,7 @@
 
 			<button
 				type="button"
-				class="caps action"
+				class="caps boxed action"
 				disabled={sync.busy || sync.cooling}
 				onclick={syncNow}
 			>
@@ -202,11 +210,11 @@
 			<p class="code">{sync.code ? formatCode(sync.code) : ''}</p>
 
 			<div class="pair">
-				<button type="button" class="caps" onclick={onShare}>
+				<button type="button" class="caps boxed" onclick={onShare}>
 					<HandRect seed="btnshare" wobble={1.4} radius={3} />
 					Share
 				</button>
-				<button type="button" class="caps" onclick={onCopy}>
+				<button type="button" class="caps boxed" onclick={onCopy}>
 					<HandRect seed="btncopy" wobble={1.4} radius={3} />
 					{copied ? 'Copied' : 'Copy'}
 				</button>
@@ -215,11 +223,11 @@
 			<p class="note">Anyone with this code can read and change the list.</p>
 
 			<div class="pair apart">
-				<button type="button" class="caps" onclick={onimport}>
+				<button type="button" class="caps boxed" onclick={onimport}>
 					<HandRect seed="btnimport" wobble={1.4} radius={3} />
 					Import
 				</button>
-				<button type="button" class="caps" onclick={onexport}>
+				<button type="button" class="caps boxed" onclick={onexport}>
 					<HandRect seed="btnexport" wobble={1.4} radius={3} />
 					Export
 				</button>
@@ -229,7 +237,7 @@
 			<div class="pair">
 				<button
 					type="button"
-					class="caps"
+					class="caps boxed"
 					class:nothing={sheet.doneCount === 0}
 					disabled={sheet.doneCount === 0}
 					onclick={onclear}
@@ -237,14 +245,14 @@
 					<HandRect seed="btnclear" wobble={1.4} radius={3} />
 					Clear
 				</button>
-				<button type="button" class="caps" onclick={ondelete}>
+				<button type="button" class="caps boxed" onclick={ondelete}>
 					<HandRect seed="btndelete" wobble={1.4} radius={3} />
 					Delete
 				</button>
 			</div>
 
-			<h2 class="caps">Join another list</h2>
-			<TextRule text="Join another list" seed="joinlist" centred />
+			<h2 class="caps">Join list</h2>
+			<TextRule text="Join list" seed="joinlist" centred />
 
 			<CodeField bind:value={entered} label="Code" />
 
@@ -256,15 +264,15 @@
 					behind?
 				</p>
 				<div class="pair wrap">
-					<button type="button" class="caps" onclick={() => join(true)}>
+					<button type="button" class="caps boxed" onclick={() => join(true)}>
 						<HandRect seed="btntake" wobble={1.4} radius={3} />
 						Take them
 					</button>
-					<button type="button" class="caps" onclick={() => join(false)}>
+					<button type="button" class="caps boxed" onclick={() => join(false)}>
 						<HandRect seed="btnleave" wobble={1.4} radius={3} />
 						Leave them
 					</button>
-					<button type="button" class="caps" onclick={() => (joining = false)}>
+					<button type="button" class="caps boxed" onclick={() => (joining = false)}>
 						<HandRect seed="btncancel" wobble={1.4} radius={3} />
 						Cancel
 					</button>
@@ -272,7 +280,7 @@
 			{:else}
 				<button
 					type="button"
-					class="caps action"
+					class="caps boxed action"
 					disabled={!valid || sync.busy}
 					onclick={() => (hasLocal ? (joining = true) : join(false))}
 				>
@@ -426,19 +434,6 @@
 		position: relative;
 		min-height: var(--touch);
 		padding: 0.3rem 0.75rem;
-	}
-
-	/*
-	 * The box lifts onto the word, the same way a checkbox lifts beside one.
-	 * Centred on the button it sits low, because the capitals inside it ride
-	 * high in their own line box.
-	 *
-	 * The button keeps its 44px where it is — the tap area is not what moved,
-	 * only the mark drawn over it.
-	 */
-	.pair button :global(svg.rect),
-	.action :global(svg.rect) {
-		translate: 0 calc(-1 * var(--cap-lift));
 	}
 
 	.pair button:disabled {

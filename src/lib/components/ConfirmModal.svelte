@@ -1,4 +1,5 @@
 <script lang="ts">
+	import HandRect from './HandRect.svelte';
 	import Modal from './Modal.svelte';
 	import type { Snippet } from 'svelte';
 
@@ -25,27 +26,36 @@
 	<p class="sentence">{@render children()}</p>
 
 	<div class="choices">
-		<button type="button" class="caps" onclick={onconfirm}>{confirmLabel}</button>
-		<span aria-hidden="true">•</span>
-		<button type="button" class="caps" onclick={oncancel}>Cancel</button>
+		<button type="button" class="caps boxed" onclick={onconfirm}>
+			<HandRect seed="{seed}confirm" wobble={1.4} radius={3} />
+			{confirmLabel}
+		</button>
+		<button type="button" class="caps boxed" onclick={oncancel}>
+			<HandRect seed="{seed}cancel" wobble={1.4} radius={3} />
+			Cancel
+		</button>
 	</div>
 </Modal>
 
 <style>
+	/*
+	 * The sentence is the warning — there is no red and no triangle to carry it
+	 * — so it is set at the size the menu sets its own prose, not a footnote
+	 * under a pair of buttons.
+	 */
 	.sentence {
 		margin: 0 0 2rem;
-		font-size: var(--size-body);
-		line-height: 1.6;
+		font-size: var(--size-title);
+		line-height: 1.4;
+		text-align: center;
 	}
 
+	/* Centred, and boxed by `.boxed`, the same as every other pair of actions. */
 	.choices {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-	}
-
-	.choices button {
-		padding: 0.5rem 0;
-		min-height: var(--touch);
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 1rem;
 	}
 </style>

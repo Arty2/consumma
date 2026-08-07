@@ -8,7 +8,7 @@
 		<HandRect seed="toast" wobble={2} />
 		<span class="caps">{ui.toast.text}</span>
 		{#if ui.toast.undo}
-			<button type="button" class="caps" onclick={ui.toast.undo}>UNDO</button>
+			<button type="button" class="caps" onclick={ui.toast.undo}>UNDO?</button>
 		{/if}
 	</div>
 {/if}
@@ -29,11 +29,10 @@
 		justify-content: space-between;
 		gap: 1rem;
 		/*
-		 * The paper's own width, not a width of its own: .page caps at 34rem and
-		 * pads 1rem, so the sheet spans this exactly. A toast narrower than the
-		 * thing it reports on reads as belonging to something else.
+		 * A bar rather than a label, but inset from the paper on both sides so it
+		 * reads as sitting in front of the sheet rather than as part of it.
 		 */
-		width: min(32rem, calc(100vw - 2rem));
+		width: min(24rem, calc(100vw - 4rem));
 		padding: 0.5rem 1rem;
 		background: var(--paper);
 	}

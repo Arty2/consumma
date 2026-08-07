@@ -98,10 +98,7 @@ test('the sync copy separates what is waiting from why it matters', async ({ pag
 	await context.setOffline(false);
 });
 
-test('the invitation carries the link and the code together, with no query string', async ({
-	page,
-	context
-}) => {
+test('COPY hands over the code and nothing else', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 	await openMenu(page);
@@ -109,30 +106,57 @@ test('the invitation carries the link and the code together, with no query strin
 	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
 	await page.getByRole('button', { name: 'Copy', exact: true }).click();
 
-	const invitation = await page.evaluate(() => navigator.clipboard.readText());
+	/*
+	 * The button sits under the code, and what a button under a code copies is
+	 * the code. SHARE is the way to hand over the whole invitation; this is for
+	 * pasting into a message already being written, or into the other phone.
+	 */
+	const copied = await page.evaluate(() => navigator.clipboard.readText());
+	expect(copied.replace(/\s/g, '')).toBe(code);
+	expect(copied).not.toContain(new URL(page.url()).origin);
+});
+
+test('the invitation carries the link and the code together, with no query string', async ({
+	page
+}) => {
+	// The native sheet cannot be driven from a test, so it is stood in for and
+	// the payload read back off it.
+	await page.addInitScript(() => {
+		(window as unknown as { shared: unknown[] }).shared = [];
+		Object.defineProperty(navigator, 'share', {
+			configurable: true,
+			value: (data: unknown) => {
+				(window as unknown as { shared: unknown[] }).shared.push(data);
+				return Promise.resolve();
+			}
+		});
+	});
+	await page.reload();
+
+	await openMenu(page);
+	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
+	await page.getByRole('button', { name: 'Share', exact: true }).click();
+
+	const shared = await page.evaluate(
+		() => (window as unknown as { shared: { text: string; url?: string }[] }).shared
+	);
+	expect(shared).toHaveLength(1);
+
+	// No `url` field: splitting it lets a target keep one half and drop the other.
+	expect(shared[0].url).toBeUndefined();
+
 	const origin = new URL(page.url()).origin;
 
 	// Either half alone is useless, so one payload carries both.
-	expect(invitation).toContain(origin);
-	expect(invitation.replace(/\s/g, '')).toContain(code);
-
-	// And the link stays bare — no query, no fragment.
-	const link = invitation.match(/https?:\/\/\S+/)![0];
-	expect(link).toBe(origin);
-	expect(link).not.toContain('?');
-	expect(link).not.toContain('#');
-	expect(link).not.toContain(code);
-
-	/*
-	 * Two lines and nothing else. The code used to end a line that began
-	 * "Code: ", so getting at it meant selecting into the middle of a sentence;
-	 * on a line of its own it is one thing to grab. Nothing here introduces the
-	 * app either — whoever is being sent this is already being told.
-	 */
-	const lines = invitation.split('\n').filter((l) => l.trim() !== '');
+	const lines = shared[0].text.split('\n').filter((l) => l.trim() !== '');
 	expect(lines).toHaveLength(2);
 	expect(lines[0]).toBe(origin);
 	expect(lines[1].replace(/\s/g, '')).toBe(code);
+
+	// And the link stays bare — no query, no fragment.
+	expect(lines[0]).not.toContain('?');
+	expect(lines[0]).not.toContain('#');
+	expect(lines[0]).not.toContain(code);
 });
 
 test('EXPORT copies the whole list and says how many', async ({ page, context }) => {
@@ -235,7 +259,7 @@ test('CLEAR asks first, then clears, and the undo still works', async ({ page })
 	await expect(task(page, 'Bread')).toHaveCount(0);
 
 	// The confirm stops the accident; the undo covers the change of mind.
-	await page.getByRole('button', { name: 'UNDO' }).click();
+	await page.getByRole('button', { name: 'UNDO?' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 

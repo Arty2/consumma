@@ -119,6 +119,25 @@ body {
 	letter-spacing: 0.06em;
 }
 
+/*
+ * A button with a drawn box around it: the menu's actions and the confirms.
+ *
+ * The box is a HandRect child positioned over the whole button, so the button
+ * has to be a containing block. It lifts by --cap-lift to sit on the word
+ * rather than under it — the capitals inside ride high in their own line box,
+ * so a box centred on the button reads low. The tap area does not move; only
+ * the mark drawn over it does.
+ */
+.boxed {
+	position: relative;
+	min-height: var(--touch);
+	padding: 0.3rem 0.75rem;
+}
+
+.boxed svg.rect {
+	translate: 0 calc(-1 * var(--cap-lift));
+}
+
 button,
 input,
 textarea {

@@ -236,7 +236,7 @@ test('the menu\u2019s headers are ruled as wide as they are, at any width', asyn
 	}
 });
 
-test('the toast is the width of the paper, not of its own words', async ({ page }) => {
+test('the toast is a bar, inset from the paper on both sides', async ({ page }) => {
 	await page.getByRole('button', { name: 'Add a task' }).click();
 	const input = page.getByRole('textbox', { name: 'New task' });
 	await input.fill('Bread');
@@ -256,10 +256,17 @@ test('the toast is the width of the paper, not of its own words', async ({ page 
 			return { tl: toast.left, tr: toast.right, pl: paper.left, pr: paper.right };
 		});
 
-		// Flush with the sheet at both edges: it reports on the paper, so it is
-		// inset by the same rem the paper is.
-		expect(edges.tl, `left at ${width}`).toBeCloseTo(edges.pl, 1);
-		expect(edges.tr, `right at ${width}`).toBeCloseTo(edges.pr, 1);
+		// Inside the paper's edges, so it reads as sitting in front of the sheet
+		// rather than as another part of it — and centred on the same middle.
+		expect(edges.tl, `left at ${width}`).toBeGreaterThan(edges.pl);
+		expect(edges.tr, `right at ${width}`).toBeLessThan(edges.pr);
+		expect((edges.tl + edges.tr) / 2, `centre at ${width}`).toBeCloseTo(
+			(edges.pl + edges.pr) / 2,
+			1
+		);
+
+		// Still a bar rather than a label shrunk to its words.
+		expect(edges.tr - edges.tl, `width at ${width}`).toBeGreaterThan(200);
 	}
 });
 
