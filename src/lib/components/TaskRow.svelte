@@ -2,6 +2,7 @@
 	import HandRect from './HandRect.svelte';
 	import TriCheckbox from './TriCheckbox.svelte';
 	import { length } from '$lib/doc/clean';
+	import { langOf } from '$lib/doc/lang';
 	import { COUNTER_APPEARS_AT, LIMITS } from '$lib/doc/limits';
 	import type { State, Task } from '$lib/doc/types';
 	import { handCross } from '$lib/draw/hand';
@@ -85,6 +86,7 @@
 		<input
 			class="text caps"
 			type="text"
+			lang={langOf(draft)}
 			bind:value={draft}
 			maxlength={LIMITS.taskText}
 			onblur={commit}
@@ -103,6 +105,7 @@
 		<button
 			class="text caps"
 			type="button"
+			lang={langOf(task.text)}
 			aria-label={task.text}
 			onclick={startEditing}
 			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}

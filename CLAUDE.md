@@ -22,6 +22,7 @@ linter cannot. CI runs it first, before anything else.
 - CLEAR sweeps done tasks only. DELETE is local-only and never calls the server. Undo re-stamps forward, never rewinds.
 - Two long-presses, separated by hit area: on the checkbox it sets half, on the row text it starts a drag. Never merge them.
 - UI labels are uppercased in CSS only. Stored titles and markdown exports keep the casing the user typed.
+- Anything showing user text in caps sets `lang={langOf(text)}` (src/lib/doc/lang.ts). Greek drops the tonos in capitals and browsers only apply that with the language declared — without it Chrome renders μαΐστρος as ΜΑΪ́ΣΤΡΟΣ. Never uppercase in JS to work around it; that would break the CSS-only rule above.
 - Limits: 100 chars/task, 100 tasks, 50 chars/group title, 20 groups, 128 KB blob. Enforce at input; merge never discards to fit.
 - Never {@html}, never innerHTML, never eval. `pnpm gates` fails on them.
 - All user text is sanitised at the input boundary (src/lib/doc/clean.ts): NFC, no control or bidi characters, capped length in code points.

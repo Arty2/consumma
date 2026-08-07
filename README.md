@@ -151,7 +151,21 @@ Expect to retune `size-adjust` in that `@font-face` — it exists so a face draw
 on a different body can be dropped in without rewriting every size in the
 stylesheet, and its current value is calibrated to Graphe.
 
-Known gap: Graphe has no `[`, `]` or `\`. Those fall back to the generic
-cursive stack. They reach the screen only in text a person types — the markdown
-in the IMPORT box flips to a summary as soon as it parses — so the visible case
-is a task titled something like `Deposit [urgent]`.
+Known gap: Graphe has no `[`, `]`, `\` or `Ϋ`. Those fall back to the generic
+cursive stack. The first three reach the screen only in text a person types —
+the markdown in the IMPORT box flips to a summary as soon as it parses — so the
+visible case is a task titled something like `Deposit [urgent]`. `Ϋ` is the
+capital of `ΰ`, so it appears only when a word containing that letter is shown
+in caps.
+
+## Greek
+
+The sheet is set in caps in CSS, and uppercasing Greek is language-dependent:
+Greek drops the tonos in capitals — ΚΑΦΕΣ, not ΚΑΦΈΣ. Browsers apply that rule
+only when told the text is Greek, so `src/lib/doc/lang.ts` marks any text
+containing a Greek letter `lang="el"`.
+
+Without it the result is not just unidiomatic but broken — Chrome renders
+μαΐστρος as ΜΑΪ́ΣΤΡΟΣ, dialytika plus a stranded combining acute. The accents
+themselves are untouched: what is stored, exported and read aloud keeps exactly
+what was typed, as with the uppercase itself.

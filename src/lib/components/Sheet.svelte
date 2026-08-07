@@ -2,6 +2,7 @@
 	import AddRow from './AddRow.svelte';
 	import GroupHeader from './GroupHeader.svelte';
 	import TaskRow from './TaskRow.svelte';
+	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import type { State } from '$lib/doc/types';
 	import { handLine } from '$lib/draw/hand';
@@ -171,6 +172,7 @@
 			<input
 				class="caps"
 				type="text"
+				lang={langOf(newGroupDraft)}
 				maxlength={LIMITS.groupTitle}
 				aria-label="New group"
 				autofocus

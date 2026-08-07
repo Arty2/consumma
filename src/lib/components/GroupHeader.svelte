@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import { handChevron, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
@@ -58,6 +59,7 @@
 		<input
 			class="title caps"
 			type="text"
+			lang={langOf(draft)}
 			bind:value={draft}
 			maxlength={LIMITS.groupTitle}
 			aria-label="Group title"
@@ -71,6 +73,7 @@
 			class="title caps"
 			class:untitled={title === ''}
 			type="button"
+			lang={langOf(title)}
 			aria-label={title === '' ? 'Untitled group' : title}
 			onclick={ontoggle}
 			ondblclick={startEditing}

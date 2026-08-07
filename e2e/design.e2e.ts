@@ -127,6 +127,48 @@ test('tasks are shown in caps, but stored and exported as typed', async ({ page,
 	expect(exported).not.toContain('COFFEE');
 });
 
+test('Greek loses its tonos in caps, and keeps it everywhere else', async ({ page, context }) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Καφές σκέτος');
+	await input.press('Enter');
+	// A word that goes visibly wrong without the language: ΜΑΪ́ΣΤΡΟΣ, with a
+	// stranded combining acute, rather than ΜΑΪΣΤΡΟΣ.
+	await input.fill('μαΐστρος');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const greek = page.getByRole('button', { name: 'Καφές σκέτος', exact: true });
+	await expect(greek).toHaveAttribute('lang', 'el');
+	expect(await greek.innerText()).toBe('ΚΑΦΕΣ ΣΚΕΤΟΣ');
+
+	const dialytika = page.getByRole('button', { name: 'μαΐστρος', exact: true });
+	// The dialytika stays; only the tonos goes.
+	expect(await dialytika.innerText()).toBe('ΜΑΪΣΤΡΟΣ');
+
+	// English is untouched and inherits the page language.
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('button', { name: 'Bread', exact: true })).not.toHaveAttribute(
+		'lang'
+	);
+
+	/*
+	 * As with the uppercase, this is presentation only: the accents survive in
+	 * what is stored, read aloud and exported.
+	 */
+	await expect(greek).toHaveAttribute('aria-label', 'Καφές σκέτος');
+
+	await page.getByRole('button', { name: 'EXPORT', exact: true }).click();
+	const exported = await page.evaluate(() => navigator.clipboard.readText());
+	expect(exported).toContain('Καφές σκέτος');
+	expect(exported).toContain('μαΐστρος');
+});
+
 test('every underline on the sheet is drawn, not a CSS decoration', async ({ page }) => {
 	const decorated = await page.evaluate(() =>
 		[...document.querySelectorAll('main *')]

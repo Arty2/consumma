@@ -153,6 +153,27 @@ Numbers in brackets are the section of the build plan a decision came from.
     is what a self-hosted webfont should carry. Browsers ignore the field, but
     it is the file's own machine-readable statement of intent.
 
+27. **Greek text declares its language, so capitals lose the tonos.** Greek
+    drops the accent in capitals — ΚΑΦΕΣ, not ΚΑΦΈΣ — and a browser applies that
+    rule only when told the text is Greek. `src/lib/doc/lang.ts` marks any text
+    containing a Greek letter `lang="el"`, on the task rows, the group titles
+    and the inputs behind them.
+
+    This is a correctness fix, not a nicety. Left as English, Chrome renders
+    μαΐστρος as ΜΑΪ́ΣΤΡΟΣ — dialytika plus a stranded combining acute.
+
+    Transforming the text ourselves was never an option: decision 7 puts the
+    uppercase in CSS precisely so that what is stored, exported and announced
+    keeps the casing typed. Declaring the language is what lets that rule and
+    correct Greek hold at once.
+
+    One Greek letter marks the whole string, rather than a proportion of them.
+    The casing rule only touches Greek letters, so "Bread ψωμί" as Greek fixes
+    the Greek word and leaves the English one alone, where a majority test
+    would leave it visibly miscased. The cost is that "Calculate π area" is
+    Greek to a screen reader. Nothing is miscased either way, so the milder
+    failure wins.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
