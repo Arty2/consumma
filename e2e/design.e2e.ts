@@ -236,6 +236,103 @@ test('the menu\u2019s headers are ruled as wide as they are, at any width', asyn
 	}
 });
 
+test('the toast is the width of the paper, not of its own words', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	await page.getByRole('checkbox', { name: 'Bread' }).hover();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	await expect(page.locator('.toast')).toBeVisible();
+
+	for (const width of [320, 390]) {
+		await page.setViewportSize({ width, height: 760 });
+
+		const edges = await page.evaluate(() => {
+			const toast = document.querySelector('.toast')!.getBoundingClientRect();
+			const paper = document.querySelector('main')!.getBoundingClientRect();
+			return { tl: toast.left, tr: toast.right, pl: paper.left, pr: paper.right };
+		});
+
+		// Flush with the sheet at both edges: it reports on the paper, so it is
+		// inset by the same rem the paper is.
+		expect(edges.tl, `left at ${width}`).toBeCloseTo(edges.pl, 1);
+		expect(edges.tr, `right at ${width}`).toBeCloseTo(edges.pr, 1);
+	}
+});
+
+test('one ellipsis, set one way, wherever it stands for something not there yet', async ({
+	page
+}) => {
+	/*
+	 * The add-task row and the new-group row say the same thing with the same
+	 * glyph. They were set at different sizes, and the new-group one was full
+	 * black over a rule drawn faint — one mark in two minds.
+	 */
+	const style = (selector: string) =>
+		page.locator(selector).evaluate((el) => {
+			const s = getComputedStyle(el);
+			return { size: s.fontSize, opacity: s.opacity };
+		});
+
+	const addTask = await style('.tasks li button.text');
+	const newGroup = await style('.new-group button');
+
+	expect(addTask).toStrictEqual(newGroup);
+
+	// And as faint as the rule that belongs to it.
+	const rule = await page
+		.locator('.new-group svg.rule path')
+		.evaluate((el) => getComputedStyle(el).opacity);
+	expect(newGroup.opacity).toBe(rule);
+});
+
+test('a group title has the air under it that the tasks have between them', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	for (const text of ['Bread', 'Coffee', 'Milk']) {
+		await input.fill(text);
+		await input.press('Enter');
+	}
+	await page.keyboard.press('Escape');
+
+	const gaps = await page.evaluate(() => {
+		const ctx = document.createElement('canvas').getContext('2d')!;
+
+		// Where the capitals actually start and stop, not where their line box does.
+		const ink = (el: Element) => {
+			const s = getComputedStyle(el);
+			const range = document.createRange();
+			range.selectNodeContents(el);
+			const line = range.getBoundingClientRect();
+			ctx.font = `${s.fontSize} ${s.fontFamily}`;
+			const m = ctx.measureText(el.textContent!.trim().toUpperCase());
+			const fh = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
+			const base = line.top + (line.height - fh) / 2 + m.fontBoundingBoxAscent;
+			return { top: base - m.actualBoundingBoxAscent, bottom: base + m.actualBoundingBoxDescent };
+		};
+
+		const tasks = [...document.querySelectorAll('.tasks li button.text')].filter(
+			(t) => t.textContent!.trim() !== '…'
+		);
+		const between = [];
+		for (let i = 1; i < tasks.length; i++) {
+			between.push(ink(tasks[i]).top - ink(tasks[i - 1]).bottom);
+		}
+
+		const rule = document.querySelector('section svg.rule')!.getBoundingClientRect();
+		return { between, underTitle: ink(tasks[0]).top - rule.bottom };
+	});
+
+	expect(gaps.between.length).toBeGreaterThan(0);
+	const rhythm = gaps.between.reduce((a, b) => a + b, 0) / gaps.between.length;
+
+	// Within a couple of pixels: which capitals are on the row moves it a little.
+	expect(Math.abs(gaps.underTitle - rhythm)).toBeLessThan(3);
+});
+
 test('the credit names the version, the project and both authors', async ({ page }) => {
 	// It sits at the foot of the menu now, not on the sheet.
 	await expect(page.locator('footer')).toHaveCount(0);

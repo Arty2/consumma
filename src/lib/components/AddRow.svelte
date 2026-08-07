@@ -145,8 +145,15 @@
 		cursor: default;
 	}
 
+	/*
+	 * The same glyph as the new-group row below, so it is set the same way: the
+	 * title's size, and as faint as the rule and the box that go with it. It is
+	 * one thing meaning "there could be more here", and it should not change
+	 * size depending on which kind of more.
+	 */
 	button.text {
-		opacity: 0.55;
+		font-size: var(--size-title);
+		opacity: var(--faint);
 	}
 
 	input.text {

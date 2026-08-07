@@ -382,11 +382,17 @@
 
 	/* The code is the thing on this panel. It sits in the middle of it. */
 	.code {
-		margin: 0;
+		/* Room either side: it is read off the screen a character at a time. */
+		margin: 1.25rem 0;
 		font-family: var(--hand);
 		font-size: var(--size-display);
 		letter-spacing: 0.08em;
 		overflow-wrap: anywhere;
+	}
+
+	/* The same room the code above it gets, for the same reason. */
+	.body :global(.field) {
+		margin-block: 1.25rem;
 	}
 
 	.pair {

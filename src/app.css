@@ -56,6 +56,16 @@
 	--touch: 44px;
 
 	/*
+	 * How faint a thing that is not there yet is drawn.
+	 *
+	 * The placeholder ellipsis and the rule under it are one mark in two media
+	 * — a word and the line beneath it — so they cannot be set separately. The
+	 * new-group row had a full-black ellipsis over a faint rule, which read as
+	 * two different states of the same row.
+	 */
+	--faint: 0.45;
+
+	/*
 	 * How far a line of capitals sits above the middle of its own line box.
 	 *
 	 * Graphe's capitals reach 15px on a 17px body while the face declares an
@@ -149,7 +159,7 @@ button {
 }
 
 .drawn--faint {
-	opacity: 0.45;
+	opacity: var(--faint);
 }
 
 .sr-only {

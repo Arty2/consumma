@@ -210,8 +210,17 @@
 		margin-bottom: 1.75rem;
 	}
 
+	/*
+	 * The title needs the same air under it that the tasks have between them,
+	 * or it sits on the first one.
+	 *
+	 * Measured rather than picked: a 44px row around ~13px of capitals leaves
+	 * 31.5px of white between one task's ink and the next, and the drawn rule
+	 * ended 10.3px above the first. This is the difference. Retune it if the
+	 * row height or the face changes — both feed the number.
+	 */
 	.tasks {
-		margin: 0;
+		margin: 1.3rem 0 0;
 		padding: 0;
 	}
 
@@ -235,6 +244,11 @@
 		font-family: var(--hand);
 		font-size: var(--size-title);
 		text-align: left;
+	}
+
+	/* As faint as the rule under it: the two are one mark. */
+	.new-group button {
+		opacity: var(--faint);
 	}
 
 	.new-group input {
