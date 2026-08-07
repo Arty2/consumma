@@ -121,6 +121,15 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `e2e/csp.e2e.ts` fails on any console error, so an upgrade that changes the
     string breaks CI rather than the policy.
 
+28. **"Loose ends" has an id no document can hold**, and that is deliberate.
+    `__loose__` fails the `/^[A-Za-z0-9]{1,24}$/` the validator enforces, which
+    is what stops it ever being written to a document and then syncing to
+    someone who has no such group. The cost is that anything which can name a
+    group — a drag, a keyboard move — has to refuse it, and `moveTask` does, in
+    the data layer rather than only in the UI. Do not widen the id pattern to
+    accommodate it: a task pointed at `__loose__` makes the whole document fail
+    validation, and the next load then discards the entire list.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT
