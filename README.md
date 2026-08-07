@@ -93,9 +93,20 @@ when M4 needs it. What it needs:
    failing that a `preview/` path prefix — never a shared namespace. Keep the
    store private; nothing but the function needs to read it.
 3. **Add `CRON_SECRET`** as a private environment variable, and only that one.
+   Generate it with `openssl rand -hex 32` and add it under Project Settings →
+   Environment Variables with exactly that name — Vercel looks for it by name
+   and sends `Authorization: Bearer <value>` on every cron invocation. Until it
+   is set, `/api/cron/sweep` returns 401 and the daily sweep deletes nothing.
+
+   `BLOB_READ_WRITE_TOKEN` is not set by hand: connecting the Blob store in
+   step 2 injects it. If you find yourself typing it in, the store is not
+   connected.
+
    There are no `PUBLIC_` variables in this project, by design — the browser
-   never learns the blob host. Server secrets are read through
-   `$env/static/private`.
+   never learns the blob host, and `pnpm gates` fails the build if a
+   secret-shaped one appears. See `.env.example`; for local development,
+   `vercel link` then `vercel env pull .env.local`.
+
 4. **Confirm the free-tier numbers** at `vercel.com/docs/limits` before relying
    on them. Hobby is personal, non-commercial use only; if this ever earns
    money it moves to Pro. Exceeding a Blob limit pauses Blob for about 30 days
