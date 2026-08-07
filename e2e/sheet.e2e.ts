@@ -146,7 +146,8 @@ test('CLEAR sweeps done tasks only, and half-done stays', async ({ page }) => {
 	await task(page, 'Coffee').focus();
 	await page.keyboard.press('Shift+ ');
 
-	await page.getByRole('button', { name: 'CLEAR' }).click();
+	await page.getByRole('button', { name: 'CLEAR', exact: true }).click();
+	await page.getByRole('button', { name: 'Clear', exact: true }).click();
 
 	await expect(task(page, 'Bread')).toHaveCount(0);
 	await expect(task(page, 'Coffee')).toBeVisible();

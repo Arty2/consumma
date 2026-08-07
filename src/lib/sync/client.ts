@@ -1,0 +1,175 @@
+import { open, seal } from '$lib/crypto/box';
+import { canonical } from '$lib/doc/canonical';
+import { clampStamps } from '$lib/doc/clamp';
+import { gc } from '$lib/doc/gc';
+import { merge } from '$lib/doc/merge';
+import type { Doc } from '$lib/doc/types';
+import { validateDoc } from '$lib/doc/validate';
+import { getRoom, putRoom, type RoomSnapshot } from './api';
+
+/**
+ * One sync, start to finish, on the SYNC tap and nowhere else.
+ *
+ * There is no poll interval, no push debounce, and no queue that flushes on
+ * reconnect. Pulling was the expensive part — every eight seconds, forever, per
+ * open tab — and pushing without being asked is what turns a shared list into
+ * something that happens to you. So both directions run here, together, when
+ * someone asks for them.
+ *
+ * The cost is stated plainly rather than designed around: an edit nobody syncs
+ * reaches nobody, and dies with the device.
+ */
+
+export type SyncOutcome =
+	/** Everything matches: nothing to send, nothing to fetch. */
+	| { status: 'synced'; doc: Doc; v: number }
+	/** The list could not be reached. The local document is untouched. */
+	| { status: 'offline' }
+	/** Decryption failed — almost always the wrong code. */
+	| { status: 'wrong-code' }
+	/** It decrypted but is not a document we can trust. */
+	| { status: 'damaged' }
+	/** Over the 128 KB cap. Nothing was written. */
+	| { status: 'too-large' }
+	/** Kept losing a race with another writer. */
+	| { status: 'busy' };
+
+export type SyncInput = {
+	roomId: string;
+	key: CryptoKey;
+	local: Doc;
+	/** Version token from the last successful read, for a conditional fetch. */
+	etag: string | null;
+	/** What the remote held at that version, so a 304 has something to merge. */
+	lastSynced: Doc | null;
+	now?: () => number;
+	/** Overridable so tests do not sit through the backoff. */
+	wait?: (ms: number) => Promise<void>;
+};
+
+const ATTEMPTS = 5;
+
+export async function syncNow(input: SyncInput): Promise<SyncOutcome> {
+	const now = input.now ?? Date.now;
+	const wait = input.wait ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+
+	const pulled = await pull(input);
+	if (pulled.status !== 'ok') return pulled.outcome;
+
+	let remote = pulled.remote;
+	let remoteV = pulled.v;
+
+	for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+		// Clamp before merging, never inside it: one device with a wrong clock
+		// must not win every field forever, and merge has to stay pure.
+		const incoming = remote ? clampStamps(remote, now()) : null;
+		const merged = gc(incoming ? merge(input.local, incoming) : input.local, now());
+
+		// Nothing to say: the remote already holds everything we have.
+		if (incoming && canonical(merged) === canonical(incoming)) {
+			return { status: 'synced', doc: merged, v: remoteV };
+		}
+
+		const blob = await seal(input.key, merged);
+		const result = await putRoom(input.roomId, { baseV: remoteV, blob });
+
+		if (result.status === 'offline') return { status: 'offline' };
+		if (result.status === 'too-large') return { status: 'too-large' };
+
+		if (result.status === 'conflict') {
+			const opened = await decrypt(input.key, result.room);
+			if (opened.status !== 'ok') return opened.outcome;
+
+			remote = opened.doc;
+			remoteV = result.room.v;
+
+			// Jittered, so two phones that conflicted do not retry in lockstep.
+			await wait(40 * 2 ** attempt + Math.random() * 60);
+			continue;
+		}
+
+		/*
+		 * The write landed — but Vercel Blob has no compare-and-set, so a
+		 * simultaneous writer could have overwritten us between the read and the
+		 * write. Read back once and check our own edits actually survived. This
+		 * is what makes a lost write self-healing rather than merely survivable
+		 * in principle.
+		 */
+		const check = await verify(input, merged);
+		if (check.status === 'ok') return { status: 'synced', doc: merged, v: result.v };
+		if (check.status !== 'retry') return check.outcome;
+
+		remote = check.remote;
+		remoteV = check.v;
+		await wait(40 * 2 ** attempt + Math.random() * 60);
+	}
+
+	return { status: 'busy' };
+}
+
+type Pulled =
+	{ status: 'ok'; remote: Doc | null; v: number } | { status: 'stop'; outcome: SyncOutcome };
+
+async function pull(input: SyncInput): Promise<Pulled> {
+	const result = await getRoom(input.roomId, input.etag);
+
+	if (result.status === 'offline') return { status: 'stop', outcome: { status: 'offline' } };
+
+	// Nobody has written this list yet. Ours becomes the first version.
+	if (result.status === 'missing') return { status: 'ok', remote: null, v: 0 };
+
+	if (result.status === 'unchanged') {
+		// The server has exactly what we last saw, so what we last saw is what
+		// we merge against — no need to fetch it again.
+		return { status: 'ok', remote: input.lastSynced, v: versionFrom(input.etag) };
+	}
+
+	const opened = await decrypt(input.key, result.room);
+	if (opened.status !== 'ok') return { status: 'stop', outcome: opened.outcome };
+
+	return { status: 'ok', remote: opened.doc, v: result.room.v };
+}
+
+type Opened = { status: 'ok'; doc: Doc } | { status: 'stop'; outcome: SyncOutcome };
+
+async function decrypt(key: CryptoKey, room: RoomSnapshot): Promise<Opened> {
+	if (room.blob === '') return { status: 'ok', doc: { v: 1, groups: {}, tasks: {} } };
+
+	const plain = await open(key, room.blob);
+	// A failed decrypt is the expected shape of a wrong code, not an error.
+	if (plain === null) return { status: 'stop', outcome: { status: 'wrong-code' } };
+
+	const doc = validateDoc(plain);
+	if (!doc) return { status: 'stop', outcome: { status: 'damaged' } };
+
+	return { status: 'ok', doc };
+}
+
+type Verified =
+	| { status: 'ok' }
+	| { status: 'retry'; remote: Doc; v: number }
+	| { status: 'stop'; outcome: SyncOutcome };
+
+async function verify(input: SyncInput, pushed: Doc): Promise<Verified> {
+	const result = await getRoom(input.roomId, null);
+
+	// If the read-back cannot happen, the write still went out; treat it as
+	// done rather than pushing again blindly.
+	if (result.status !== 'ok') return { status: 'ok' };
+
+	const opened = await decrypt(input.key, result.room);
+	if (opened.status !== 'ok') return { status: 'stop', outcome: opened.outcome };
+
+	// Merging ours into what came back should change nothing — if it does, some
+	// of what we pushed is missing and another writer won.
+	const remote = opened.doc;
+	if (canonical(merge(remote, pushed)) === canonical(remote)) return { status: 'ok' };
+
+	return { status: 'retry', remote, v: result.room.v };
+}
+
+/** The ETag is the document version in quotes, set by the server. */
+function versionFrom(etag: string | null): number {
+	const value = Number(etag?.replace(/^W\//, '').replaceAll('"', ''));
+	return Number.isInteger(value) && value >= 0 ? value : 0;
+}

@@ -194,7 +194,7 @@
 	.sheet {
 		/* Tall enough that the page can always scroll the torn edge to the top. */
 		min-height: 100dvh;
-		padding: 1rem 0 2rem;
+		padding: 0 0 2rem;
 	}
 
 	.group {
