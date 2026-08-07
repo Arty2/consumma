@@ -131,12 +131,12 @@ export function handTear(
 		 * on one side of the line the way torn paper does. And the baseline
 		 * drifts, so the whole thing does not sit on a ruler.
 		 */
-		const shallow = random() < 0.34;
-		const depth = (shallow ? 0.12 + random() * 0.3 : 0.6 + random() * 0.4) * mid;
-		const drift = (random() * 2 - 1) * mid * 0.22;
+		const shallow = random() < 0.25;
+		const depth = (shallow ? 0.3 + random() * 0.28 : 0.78 + random() * 0.22) * mid;
+		const drift = (random() * 2 - 1) * mid * 0.12;
 
 		points.push({ x: Math.min(x, width), y: mid + drift + (up ? -depth : depth) });
-		if (random() > 0.18) up = !up;
+		if (random() > 0.12) up = !up;
 	}
 
 	points.push({ x: width, y: mid });

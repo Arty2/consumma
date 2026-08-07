@@ -130,6 +130,19 @@ describe('hand', () => {
 		expect(Math.max(...depths) - Math.min(...depths)).toBeGreaterThan(3);
 	});
 
+	it('tears deeply enough to read as torn paper', () => {
+		/*
+		 * §6 asks for roughly 12–16px of peak-to-trough variation. Making the
+		 * teeth irregular is easy to overdo — the first attempt at the rule above
+		 * flattened this to about 4px, which reads as a wavy line rather than a
+		 * tear, and nothing failed.
+		 */
+		for (const seed of [1, 7, 11, 23, 99]) {
+			const ys = endpoints(handTear(1000, 16, { seed })).map((p) => p.y);
+			expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(11);
+		}
+	});
+
 	it('overshoots the corner of a box, the way a pen does', () => {
 		// The stroke starts past the corner and ends above the top edge, so the
 		// corner closes with a crossing rather than a join.

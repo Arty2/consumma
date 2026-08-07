@@ -46,15 +46,23 @@ fi
 # ── 2. Server code never touches key material ────────────────────────────────
 # All encryption and decryption happens in the browser. The server sees
 # ciphertext and a room id, and must not be able to see anything else.
-if [ -d src/routes/api ]; then
-	leak=$(grep -rn 'lib/crypto' src/routes/api 2>/dev/null)
+server_paths=""
+[ -d src/routes/api ] && server_paths="src/routes/api"
+[ -d src/lib/server ] && server_paths="$server_paths src/lib/server"
+
+if [ -n "$server_paths" ]; then
+	# An import, not a mention: the modules below discuss why they must not
+	# depend on the crypto module, and prose is not a dependency.
+	# shellcheck disable=SC2086
+	leak=$(grep -rnE "(from|import|require)[[:space:]]*\(?[[:space:]]*['\"][^'\"]*lib/crypto" \
+		$server_paths 2>/dev/null)
 	if [ -n "$leak" ]; then
-		fail "src/routes/api imports from src/lib/crypto" "$leak"
+		fail "server code imports from src/lib/crypto" "$leak"
 	else
-		pass "src/routes/api does not import src/lib/crypto"
+		pass "server code does not import src/lib/crypto"
 	fi
 else
-	pass "no api routes yet"
+	pass "no server code yet"
 fi
 
 # ── 3. No secret-shaped name is exposed to the browser ───────────────────────

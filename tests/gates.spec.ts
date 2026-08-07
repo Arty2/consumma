@@ -79,8 +79,28 @@ describe('gates', () => {
 		expect(output).toContain('imports from src/lib/crypto');
 	});
 
-	it('allows the crypto module everywhere that is not an api route', () => {
+	it('rejects a server module reaching into the crypto module', () => {
+		file('src/lib/server/store.ts', "import { derive } from '$lib/crypto/derive';\n");
+
+		const { status, output } = runGates();
+
+		expect(status).toBe(1);
+		expect(output).toContain('imports from src/lib/crypto');
+	});
+
+	it('allows the crypto module everywhere that is not server code', () => {
 		file('src/lib/sync/client.ts', "import { derive } from '$lib/crypto/derive';\n");
+
+		expect(runGates().status).toBe(0);
+	});
+
+	it('does not mistake prose about the crypto module for a dependency', () => {
+		// Both server modules explain why they must not import it. A gate that
+		// fires on the explanation is a gate people learn to route around.
+		file(
+			'src/lib/server/store.ts',
+			'// Nothing here imports from src/lib/crypto, and it never could usefully.\n'
+		);
 
 		expect(runGates().status).toBe(0);
 	});
