@@ -287,6 +287,20 @@ test('one ellipsis, set one way, wherever it stands for something not there yet'
 		.locator('.new-group svg.rule path')
 		.evaluate((el) => getComputedStyle(el).opacity);
 	expect(newGroup.opacity).toBe(rule);
+
+	/*
+	 * The third one: a group whose name has been taken away. A title cannot be
+	 * created empty, so this is the only route to it — and it is the same
+	 * absence as the other two, not a different kind.
+	 */
+	const title = page.getByRole('button', { name: 'My list' });
+	await title.dblclick();
+	const field = page.getByRole('textbox', { name: 'Group title' });
+	await field.fill('');
+	await field.press('Enter');
+
+	await expect(page.getByRole('button', { name: 'Untitled group' })).toHaveText('…');
+	expect(await style('.title.untitled')).toStrictEqual(addTask);
 });
 
 test('a group title has the air under it that the tasks have between them', async ({ page }) => {

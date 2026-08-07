@@ -133,8 +133,13 @@
 		cursor: text;
 	}
 
+	/*
+	 * The same ellipsis the add row and the new-group row show, so it is drawn
+	 * as faint as they are. A group with no name is not a different kind of
+	 * absence from a task not yet typed.
+	 */
 	.untitled {
-		opacity: 0.55;
+		opacity: var(--faint);
 	}
 
 	.icon {
