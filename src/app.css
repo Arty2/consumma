@@ -63,6 +63,12 @@
 	 * riding high — and the sheet is set entirely in capitals. Anything that has
 	 * to sit level with them, a checkbox or a chevron, lifts by this much.
 	 *
+	 * A box drawn *around* capitals is the same fact seen from inside, and it
+	 * measures the same: the menu's buttons leave 11.25px above the letters and
+	 * 19.75px below, half of which is 0.25em against their 17px — a quarter of
+	 * a pixel off this value. So they borrow it rather than carrying a second
+	 * number that would have to be retuned in step with this one.
+	 *
 	 * Measured in the browser rather than derived: the overrides below resolve
 	 * against the size-adjusted em, which is not what the arithmetic assumes.
 	 * Retune it with the face.

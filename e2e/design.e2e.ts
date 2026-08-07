@@ -199,6 +199,43 @@ test('the rule under a title is as wide as the title, not the row', async ({ pag
 	expect(drawn).toBeCloseTo(text, -1);
 });
 
+test('the menu\u2019s headers are ruled as wide as they are, at any width', async ({ page }) => {
+	/*
+	 * The hidden copy TextRule measures needs the whole row to lay itself out
+	 * in. Centring it on `left: 50%` left it half of one, so "Join another
+	 * list" wrapped where the visible header did not and its rule came out
+	 * 132px under 224px of words. Only the rule is centred now.
+	 */
+	for (const width of [320, 390]) {
+		await page.setViewportSize({ width, height: 900 });
+		await openMenu(page);
+
+		const rows = await page.evaluate(() =>
+			[...document.querySelectorAll('[role="dialog"] h2')].map((h) => {
+				const range = document.createRange();
+				range.selectNodeContents(h);
+				const text = range.getBoundingClientRect();
+				const rule = h.nextElementSibling!.querySelector('svg.rule')!.getBoundingClientRect();
+				return {
+					label: h.textContent!.trim(),
+					text: text.width,
+					rule: rule.width,
+					offset: (rule.left + rule.right) / 2 - (text.left + text.right) / 2
+				};
+			})
+		);
+
+		expect(rows).toHaveLength(2);
+		for (const row of rows) {
+			expect(row.rule, `${row.label} at ${width}`).toBeCloseTo(row.text, -1);
+			// And it sits under the words rather than off to one side.
+			expect(Math.abs(row.offset), `${row.label} at ${width}`).toBeLessThan(2);
+		}
+
+		await page.keyboard.press('Escape');
+	}
+});
+
 test('the credit names the version, the project and both authors', async ({ page }) => {
 	// It sits at the foot of the menu now, not on the sheet.
 	await expect(page.locator('footer')).toHaveCount(0);

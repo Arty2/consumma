@@ -5,7 +5,16 @@ import { rng } from './rng.ts';
  * fonts, and no CSS borders on anything drawn — a CSS border cannot wobble.
  */
 
-export type Pt = { x: number; y: number };
+export type Pt = {
+	x: number;
+	y: number;
+	/**
+	 * Bend the segment arriving here through this point instead of through a
+	 * nudged midpoint. A corner being rounded is the only thing that sets it:
+	 * curving towards the vertex is what makes an arc rather than a chamfer.
+	 */
+	via?: Pt;
+};
 
 export type HandOptions = {
 	seed: number;
@@ -34,6 +43,12 @@ export function handPath(points: readonly Pt[], options: HandOptions): string {
 	for (let i = 1; i < points.length; i++) {
 		const from = points[i - 1];
 		const to = points[i];
+
+		// A corner names the point to bend through; a straight run works one out.
+		if (to.via) {
+			d += ` Q ${round(to.via.x)} ${round(to.via.y)} ${round(to.x)} ${round(to.y)}`;
+			continue;
+		}
 
 		const dx = to.x - from.x;
 		const dy = to.y - from.y;
@@ -71,11 +86,49 @@ function subdivide(points: readonly Pt[], every: number): Pt[] {
 		const steps = Math.max(1, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / every));
 
 		for (let step = 1; step <= steps; step++) {
+			// The last one is the original point, so a corner keeps its `via`.
+			if (step === steps) {
+				out.push(to);
+				break;
+			}
+
 			out.push({
 				x: from.x + ((to.x - from.x) * step) / steps,
 				y: from.y + ((to.y - from.y) * step) / steps
 			});
 		}
+	}
+
+	return out;
+}
+
+/** A point `distance` along the way from `from` towards `towards`. */
+function along(from: Pt, towards: Pt, distance: number): Pt {
+	const dx = towards.x - from.x;
+	const dy = towards.y - from.y;
+	const len = Math.hypot(dx, dy) || 1;
+	// Never past halfway, or two cuts on a short side would cross each other.
+	const t = Math.min(distance, len / 2) / len;
+
+	return { x: from.x + dx * t, y: from.y + dy * t };
+}
+
+/**
+ * Cuts every corner of a closed polygon back along both its edges.
+ *
+ * The short chord left across each corner is what rounds it: handPath curves
+ * it, and `stroke-linejoin: round` closes what is left. At three pixels that
+ * reads as a pen turning rather than as a chamfer.
+ */
+function roundCorners(corners: readonly Pt[], radius: number): Pt[] {
+	const out: Pt[] = [];
+	const n = corners.length;
+
+	for (let i = 0; i < n; i++) {
+		const here = corners[i];
+		out.push(along(here, corners[(i - 1 + n) % n], radius));
+		// The turn bends through the corner it just cut off.
+		out.push({ ...along(here, corners[(i + 1) % n], radius), via: here });
 	}
 
 	return out;
@@ -87,15 +140,20 @@ function subdivide(points: readonly Pt[], every: number): Pt[] {
  *
  * Long sides wobble along their length rather than bowing once, so a tall
  * panel's edge does not come out ruled.
+ *
+ * With a `radius` the corners are cut and the stroke closes on itself instead
+ * of crossing — a box small enough to sit around a word has no room for an
+ * overshoot, which at that size reads as a mistake rather than as a hand.
  */
 export function handRect(
 	width: number,
 	height: number,
-	options: HandOptions & { inset?: number; overshoot?: number; every?: number }
+	options: HandOptions & { inset?: number; overshoot?: number; every?: number; radius?: number }
 ): string {
 	const i = options.inset ?? 1;
 	const over = options.overshoot ?? 2.5;
 	const every = options.every ?? 90;
+	const radius = options.radius ?? 0;
 	const random = rng(options.seed ^ 0x9e3779b9);
 	const jitter = () => (random() * 2 - 1) * over;
 
@@ -103,6 +161,19 @@ export function handRect(
 	const top = i;
 	const right = width - i;
 	const bottom = height - i;
+
+	if (radius > 0) {
+		const corners = [
+			{ x: left, y: top + jitter() * 0.3 },
+			{ x: right + jitter() * 0.2, y: top },
+			{ x: right, y: bottom + jitter() * 0.3 },
+			{ x: left + jitter() * 0.2, y: bottom }
+		];
+		const rounded = roundCorners(corners, radius);
+
+		// Back to where the pen started, rather than past it.
+		return handPath(subdivide([...rounded, rounded[0]], every), options);
+	}
 
 	return handPath(
 		subdivide(

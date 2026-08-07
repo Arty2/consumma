@@ -181,7 +181,7 @@
 				disabled={sync.busy || sync.cooling}
 				onclick={syncNow}
 			>
-				<HandRect seed="btnsync" wobble={1.4} />
+				<HandRect seed="btnsync" wobble={1.4} radius={3} />
 				{#if sync.busy}
 					Syncing…
 				{:else if sync.cooling}
@@ -202,11 +202,11 @@
 
 			<div class="pair">
 				<button type="button" class="caps" onclick={onShare}>
-					<HandRect seed="btnshare" wobble={1.4} />
+					<HandRect seed="btnshare" wobble={1.4} radius={3} />
 					Share
 				</button>
 				<button type="button" class="caps" onclick={onCopy}>
-					<HandRect seed="btncopy" wobble={1.4} />
+					<HandRect seed="btncopy" wobble={1.4} radius={3} />
 					{copied ? 'Copied' : 'Copy'}
 				</button>
 			</div>
@@ -215,11 +215,11 @@
 
 			<div class="pair apart">
 				<button type="button" class="caps" onclick={onimport}>
-					<HandRect seed="btnimport" wobble={1.4} />
+					<HandRect seed="btnimport" wobble={1.4} radius={3} />
 					Import
 				</button>
 				<button type="button" class="caps" onclick={onexport}>
-					<HandRect seed="btnexport" wobble={1.4} />
+					<HandRect seed="btnexport" wobble={1.4} radius={3} />
 					Export
 				</button>
 			</div>
@@ -233,11 +233,11 @@
 					disabled={sheet.doneCount === 0}
 					onclick={onclear}
 				>
-					<HandRect seed="btnclear" wobble={1.4} />
+					<HandRect seed="btnclear" wobble={1.4} radius={3} />
 					Clear
 				</button>
 				<button type="button" class="caps" onclick={ondelete}>
-					<HandRect seed="btndelete" wobble={1.4} />
+					<HandRect seed="btndelete" wobble={1.4} radius={3} />
 					Delete
 				</button>
 			</div>
@@ -256,15 +256,15 @@
 				</p>
 				<div class="pair wrap">
 					<button type="button" class="caps" onclick={() => join(true)}>
-						<HandRect seed="btntake" wobble={1.4} />
+						<HandRect seed="btntake" wobble={1.4} radius={3} />
 						Take them
 					</button>
 					<button type="button" class="caps" onclick={() => join(false)}>
-						<HandRect seed="btnleave" wobble={1.4} />
+						<HandRect seed="btnleave" wobble={1.4} radius={3} />
 						Leave them
 					</button>
 					<button type="button" class="caps" onclick={() => (joining = false)}>
-						<HandRect seed="btncancel" wobble={1.4} />
+						<HandRect seed="btncancel" wobble={1.4} radius={3} />
 						Cancel
 					</button>
 				</div>
@@ -275,7 +275,7 @@
 					disabled={!valid || sync.busy}
 					onclick={() => (hasLocal ? (joining = true) : join(false))}
 				>
-					<HandRect seed="btnjoin" wobble={1.4} />
+					<HandRect seed="btnjoin" wobble={1.4} radius={3} />
 					Join
 				</button>
 			{/if}
@@ -418,7 +418,20 @@
 	.action {
 		position: relative;
 		min-height: var(--touch);
-		padding: 0.6rem 1.1rem;
+		padding: 0.3rem 0.75rem;
+	}
+
+	/*
+	 * The box lifts onto the word, the same way a checkbox lifts beside one.
+	 * Centred on the button it sits low, because the capitals inside it ride
+	 * high in their own line box.
+	 *
+	 * The button keeps its 44px where it is — the tap area is not what moved,
+	 * only the mark drawn over it.
+	 */
+	.pair button :global(svg.rect),
+	.action :global(svg.rect) {
+		translate: 0 calc(-1 * var(--cap-lift));
 	}
 
 	.pair button:disabled {

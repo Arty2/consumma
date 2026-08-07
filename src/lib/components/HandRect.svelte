@@ -7,9 +7,11 @@
 		seed: string;
 		wobble?: number;
 		dashed?: boolean;
+		/** Cuts the corners and closes the stroke instead of crossing it. */
+		radius?: number;
 	};
 
-	let { seed, wobble = 1.6, dashed = false }: Props = $props();
+	let { seed, wobble = 1.6, dashed = false, radius = 0 }: Props = $props();
 
 	/*
 	 * Measured rather than stretched: a box drawn in a fixed viewBox and scaled
@@ -20,7 +22,7 @@
 	let height = $state(0);
 
 	const d = $derived(
-		width > 0 && height > 0 ? handRect(width, height, { seed: seedFrom(seed), wobble }) : ''
+		width > 0 && height > 0 ? handRect(width, height, { seed: seedFrom(seed), wobble, radius }) : ''
 	);
 </script>
 

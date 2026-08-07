@@ -420,7 +420,13 @@ Numbers in brackets are the section of the build plan a decision came from.
     read as a stamp, which is the thing this app never does.
 
     A CSS border was not available: it is a ruled straight line, and nothing
-    drawn here is ruled. The whole-document underline check in
+    drawn here is ruled — which is also why the 3px corners are a `radius`
+    option on `handRect` rather than a `border-radius`. The turn bends through
+    the corner it cut off, because a quadratic whose control point is its own
+    chord's midpoint draws a chamfer, not an arc.
+
+    The box lifts by `--cap-lift` to sit on the word instead of under it. The
+    button keeps its 44px where it is: the tap area is not what moved. The whole-document underline check in
     `e2e/design.e2e.ts` is what keeps this from creeping back — it used to scan
     the sheet only, which is how the menu kept eleven of them.
 

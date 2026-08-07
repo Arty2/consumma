@@ -198,6 +198,47 @@ describe('hand', () => {
 		expect(points).toHaveLength(5);
 	});
 
+	it('rounds its corners on request, and closes instead of crossing', () => {
+		const r = 3;
+		const points = endpoints(handRect(100, 44, { seed: 9, wobble: 0, radius: r }));
+
+		// Four corners, two points each, and back to the first to close.
+		expect(points).toHaveLength(9);
+		expect(points[0].x).toBeCloseTo(points.at(-1)!.x, 5);
+		expect(points[0].y).toBeCloseTo(points.at(-1)!.y, 5);
+
+		// No point sits in a corner any more: each was cut back along its edges.
+		for (const { x, y } of points) {
+			const inCorner = (x < r - 0.5 || x > 100 - r + 0.5) && (y < r - 0.5 || y > 44 - r + 0.5);
+			expect(inCorner, `${x},${y}`).toBe(false);
+		}
+	});
+
+	it('bends a rounded corner through the corner, not across it', () => {
+		/*
+		 * A quadratic whose control point is the midpoint of its own chord is a
+		 * straight line — which is a chamfer, not a radius. The turn has to reach
+		 * for the vertex it cut off.
+		 */
+		const d = handRect(100, 44, { seed: 9, wobble: 0, radius: 3 });
+		const first = d.split('Q')[1].trim().split(/\s+/).map(Number);
+		const [cx, cy] = first;
+
+		const start = endpoints(d)[0];
+		const end = endpoints(d)[1];
+		const midX = (start.x + end.x) / 2;
+		const midY = (start.y + end.y) / 2;
+
+		expect(Math.hypot(cx - midX, cy - midY)).toBeGreaterThan(0.5);
+	});
+
+	it('leaves every box already drawn exactly where it was', () => {
+		// The radius is opt-in; nothing that does not ask for one may move.
+		expect(handRect(200, 44, { seed: 5, wobble: 2 })).toBe(
+			handRect(200, 44, { seed: 5, wobble: 2, radius: 0 })
+		);
+	});
+
 	it('keeps a long side inside its box, so the frame is not clipped', () => {
 		const points = endpoints(handRect(380, 900, { seed: 4, wobble: 2, overshoot: 2.5 }));
 

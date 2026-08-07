@@ -73,10 +73,14 @@
 	 * The sheet's titles start at the left margin and the rule follows them
 	 * there. A centred heading has to bring its rule with it, or the mark ends
 	 * up under nothing.
+	 *
+	 * Only the rule moves. The hidden copy stays pinned to the left, because it
+	 * needs the whole row to lay out in — centring it on 50% left it half the
+	 * width, and "Join another list" wrapped and measured 132px instead of 224.
+	 * It is invisible; where it sits was never the point, only how wide it is.
 	 */
 	.centred .sizer {
-		left: 50%;
-		translate: -50% 0;
+		left: 0;
 	}
 
 	.centred .rule {
