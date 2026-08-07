@@ -10,22 +10,23 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  * headers, served by a real function. Only writes failed, and the client
  * reported that as being offline.
  *
+ * The same disguise covered a store set to private, which refuses a public
+ * write and cannot be read through a public URL at all.
+ *
  * The SDK is mocked because the alternative is a network and a token; what is
  * under test is which failures mean "nothing written yet" and which mean
  * something is wrong.
  */
 
-const head = vi.fn();
+const get = vi.fn();
 const put = vi.fn();
 const del = vi.fn();
 const list = vi.fn();
 
-class BlobNotFoundError extends Error {}
 class BlobStoreNotFoundError extends Error {}
 
 vi.mock('@vercel/blob', () => ({
-	BlobNotFoundError,
-	head: (...args: unknown[]) => head(...args),
+	get: (...args: unknown[]) => get(...args),
 	put: (...args: unknown[]) => put(...args),
 	del: (...args: unknown[]) => del(...args),
 	list: (...args: unknown[]) => list(...args)
@@ -40,49 +41,40 @@ beforeEach(() => {
 
 describe('the blob backend', () => {
 	it('reports a blob that is not there as nothing, which is a list nobody wrote', async () => {
-		head.mockRejectedValueOnce(new BlobNotFoundError('not found'));
+		get.mockResolvedValueOnce(null);
 
 		await expect(vercelBlobs.get('rooms/abc.json')).resolves.toBeNull();
 	});
 
 	it('refuses to pass off a disconnected store as an empty list', async () => {
-		head.mockRejectedValueOnce(new BlobStoreNotFoundError('no store'));
+		get.mockRejectedValueOnce(new BlobStoreNotFoundError('no store'));
 
 		await expect(vercelBlobs.get('rooms/abc.json')).rejects.toThrow('no store');
 	});
 
 	it('refuses to pass off a missing token as an empty list', async () => {
 		// What the SDK throws with no BLOB_READ_WRITE_TOKEN set.
-		head.mockRejectedValueOnce(new Error('No token found'));
+		get.mockRejectedValueOnce(new Error('No token found'));
 
 		await expect(vercelBlobs.get('rooms/abc.json')).rejects.toThrow('No token found');
 	});
 
-	it('reads the body through the url head gave it, never from a cache', async () => {
-		head.mockResolvedValueOnce({ downloadUrl: 'https://blob.example/abc' });
-		const fetched = vi.fn(async () => new Response('{"v":1}', { status: 200 }));
-		vi.stubGlobal('fetch', fetched);
+	it('reads privately, and never from a cache', async () => {
+		get.mockResolvedValueOnce({ stream: new Response('{"v":1}').body });
 
 		await expect(vercelBlobs.get('rooms/abc.json')).resolves.toBe('{"v":1}');
 
-		const [url, init] = fetched.mock.calls[0] as unknown as [string, RequestInit];
-		expect(url).toBe('https://blob.example/abc');
 		// A stale ciphertext from a CDN looks exactly like someone's edit vanishing.
-		expect(init.cache).toBe('no-store');
-	});
-
-	it('treats a body it could not fetch as nothing rather than as an error', async () => {
-		head.mockResolvedValueOnce({ downloadUrl: 'https://blob.example/abc' });
-		vi.stubGlobal('fetch', async () => new Response(null, { status: 500 }));
-
-		await expect(vercelBlobs.get('rooms/abc.json')).resolves.toBeNull();
+		expect(get).toHaveBeenCalledWith('rooms/abc.json', { access: 'private', useCache: false });
 	});
 
 	it('writes one file in place, uncacheable, at the path it was given', async () => {
 		await vercelBlobs.put('rooms/abc.json', '{"v":2}');
 
 		expect(put).toHaveBeenCalledWith('rooms/abc.json', '{"v":2}', {
-			access: 'public',
+			// A public write is refused outright by a private store, and the
+			// ciphertext has no business being fetchable from a guessable path.
+			access: 'private',
 			// The path has to stay derivable from the room id.
 			addRandomSuffix: false,
 			// A list is one file, rewritten.

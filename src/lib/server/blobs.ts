@@ -1,4 +1,4 @@
-import { BlobNotFoundError, del, head, list, put } from '@vercel/blob';
+import { del, get, list, put } from '@vercel/blob';
 import type { BlobEntry, Blobs } from './store';
 
 /**
@@ -6,43 +6,40 @@ import type { BlobEntry, Blobs } from './store';
  * interface, so the routes are tested against an in-memory double and this
  * file stays thin enough to read in one go.
  *
+ * Everything here is `access: 'private'`. The bytes are ciphertext either way,
+ * but the blob path is derived from the room id and so is guessable by anyone
+ * holding it — public access would leave that ciphertext one request from the
+ * open internet for no benefit. Nothing but the function ever needs to read it,
+ * which is what the README always said.
+ *
+ * A store set to private also refuses a public write, and the failure is
+ * opaque: the PUT is a 500 while reads answer an ordinary-looking 404.
+ *
  * `addRandomSuffix: false` because the path has to be derivable from the room
  * id; `allowOverwrite: true` because a list is one file rewritten in place;
- * `cacheControlMaxAge: 0` because a stale ciphertext served from a CDN would
- * look exactly like someone else's edit vanishing.
+ * `cacheControlMaxAge: 0` and `useCache: false` because a stale ciphertext
+ * served from a CDN would look exactly like someone else's edit vanishing.
  */
 export const vercelBlobs: Blobs = {
 	async get(pathname) {
-		let downloadUrl: string;
+		/*
+		 * One call, and it answers null rather than throwing when there is no such
+		 * blob — the only "failure" that means a list nobody has written yet.
+		 * Everything else throws, and is meant to: a store that is not connected,
+		 * or a token that is missing, must not be dressed up as an empty list.
+		 *
+		 * This replaced head() plus a fetch of the public URL, which cost two blob
+		 * operations per read and could not work against a private store at all.
+		 */
+		const result = await get(pathname, { access: 'private', useCache: false });
+		if (!result) return null;
 
-		try {
-			// head() is what turns a pathname into a URL to fetch. It costs one
-			// extra blob operation per read; at manual-sync volumes that is a
-			// handful a day, and the alternative is caching the store's base URL
-			// in module scope for a saving nobody would notice.
-			({ downloadUrl } = await head(pathname));
-		} catch (error) {
-			// The SDK throws rather than returning null for a blob that is not
-			// there, and that is the only failure that means "no list yet".
-			if (error instanceof BlobNotFoundError) return null;
-
-			/*
-			 * Everything else is a real problem and must not be dressed up as an
-			 * empty list. A store that is not connected, or a token that is missing
-			 * or expired, throws here — and swallowing that answered every read
-			 * with 404, so a misconfigured deployment looked exactly like a list
-			 * nobody had written yet. The only sign was writes failing.
-			 */
-			throw error;
-		}
-
-		const response = await fetch(downloadUrl, { cache: 'no-store' });
-		return response.ok ? await response.text() : null;
+		return await new Response(result.stream).text();
 	},
 
 	async put(pathname, body) {
 		await put(pathname, body, {
-			access: 'public',
+			access: 'private',
 			addRandomSuffix: false,
 			allowOverwrite: true,
 			contentType: 'application/json',

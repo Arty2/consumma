@@ -93,8 +93,10 @@ when M4 needs it. What it needs:
    Framework preset SvelteKit; the build command and output directory are
    detected. Production deploys from `main`, previews from pull requests.
 2. **Create a Blob store** and connect it to the project. This injects
-   `BLOB_READ_WRITE_TOKEN`. Keep the store private; nothing but the function
-   needs to read it.
+   `BLOB_READ_WRITE_TOKEN`. Keep the store **private** — the app reads and
+   writes with `access: 'private'`, and nothing but the function ever needs to
+   read it. A public store would leave the ciphertext one request away from
+   anyone who can guess a room id, which is derived from the code.
 
    Preview and production should ideally get **separate stores**. If they share
    one, they are still isolated: `src/lib/server/env.ts` reads Vercel's own

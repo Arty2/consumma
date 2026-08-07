@@ -325,6 +325,18 @@ Numbers in brackets are the section of the build plan a decision came from.
     else is rethrown and surfaces as a 500 the message names. `tests/blobs.spec.ts`
     is the first test this file has had, which is not a coincidence.
 
+40. **Blobs are private, and read with `get()`.** The store was written with
+    `access: 'public'` and read by fetching the public download URL — which a
+    store set to private refuses outright, opaquely: the PUT is a 500 while
+    reads answer an ordinary-looking 404.
+
+    Private is what the README always asked for and what the design wants. The
+    bytes are ciphertext either way, but the blob path is derived from the room
+    id, so public access left that ciphertext one request from anyone holding
+    one. `get(pathname, { access: 'private', useCache: false })` also replaces
+    `head()` plus a fetch, halving the blob operations per read and returning
+    null for a missing blob instead of throwing.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
