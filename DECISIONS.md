@@ -300,6 +300,17 @@ Numbers in brackets are the section of the build plan a decision came from.
     JOIN, because JOIN forces a sync and the ten-second cooldown then dominates
     the run. The join path has its own test.
 
+38. **An answer from our own origin is not the same as no answer.**
+    `src/lib/sync/api.ts` collapsed every non-OK response into `offline`, so a
+    deployment whose blob store is not connected — which answers 500 to
+    everything — told people their connection was down. That sends the one
+    person who can fix it to look at their wifi.
+
+    `refused` is now its own outcome and carries the status code, because the
+    code is the one thing that says which: 404 is a route that was never
+    deployed, 500 is a route that cannot reach its store. `offline` still means
+    exactly what it says — nothing answered.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as

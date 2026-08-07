@@ -320,6 +320,31 @@ describe('when things go wrong', () => {
 		expect(outcome.status).toBe('wrong-code');
 	});
 
+	it('says the server refused, rather than blaming the connection', async () => {
+		/*
+		 * A deployment whose blob store is not connected answers 500 to
+		 * everything. Reported as "offline" — which it was, for a while — that
+		 * sends the one person who can fix it looking at their wifi.
+		 */
+		for (const code of [500, 502, 403]) {
+			vi.stubGlobal('fetch', async () => new Response(null, { status: code }));
+
+			const d = fresh('a');
+			const outcome = await sync(d);
+
+			expect(outcome.status, String(code)).toBe('refused');
+			expect(outcome.status === 'refused' && outcome.code, String(code)).toBe(code);
+		}
+	});
+
+	it('still says offline when nothing answers at all', async () => {
+		vi.stubGlobal('fetch', async () => {
+			throw new TypeError('Failed to fetch');
+		});
+
+		expect((await sync(fresh('a'))).status).toBe('offline');
+	});
+
 	it('leaves the local document untouched when the list cannot be reached', async () => {
 		vi.stubGlobal('fetch', async () => {
 			throw new TypeError('Failed to fetch');

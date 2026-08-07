@@ -176,6 +176,10 @@ function messageFor(outcome: SyncOutcome): string | null {
 	switch (outcome.status) {
 		case 'offline':
 			return 'Couldn’t reach the list — your changes are saved here.';
+		case 'refused':
+			// Naming the code is the point: it is the only thing that says whether
+			// the route is missing or its store is.
+			return `The list’s server answered ${outcome.code}. Nothing here was lost.`;
 		case 'wrong-code':
 			return 'That code doesn’t match a list.';
 		case 'damaged':

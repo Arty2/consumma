@@ -23,8 +23,10 @@ import { getRoom, putRoom, type RoomSnapshot } from './api';
 export type SyncOutcome =
 	/** Everything matches: nothing to send, nothing to fetch. */
 	| { status: 'synced'; doc: Doc; v: number }
-	/** The list could not be reached. The local document is untouched. */
+	/** Nothing answered at all. The local document is untouched. */
 	| { status: 'offline' }
+	/** Our own origin answered and said no — a deployment problem, not a network one. */
+	| { status: 'refused'; code: number }
 	/** Decryption failed — almost always the wrong code. */
 	| { status: 'wrong-code' }
 	/** It decrypted but is not a document we can trust. */
@@ -74,6 +76,7 @@ export async function syncNow(input: SyncInput): Promise<SyncOutcome> {
 		const result = await putRoom(input.roomId, { baseV: remoteV, blob });
 
 		if (result.status === 'offline') return { status: 'offline' };
+		if (result.status === 'refused') return { status: 'refused', code: result.code };
 		if (result.status === 'too-large') return { status: 'too-large' };
 
 		if (result.status === 'conflict') {
@@ -114,6 +117,9 @@ async function pull(input: SyncInput): Promise<Pulled> {
 	const result = await getRoom(input.roomId, input.etag);
 
 	if (result.status === 'offline') return { status: 'stop', outcome: { status: 'offline' } };
+	if (result.status === 'refused') {
+		return { status: 'stop', outcome: { status: 'refused', code: result.code } };
+	}
 
 	// Nobody has written this list yet. Ours becomes the first version.
 	if (result.status === 'missing') return { status: 'ok', remote: null, v: 0 };
