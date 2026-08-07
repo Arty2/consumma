@@ -399,16 +399,27 @@ export function handSlashedCircle(size: number, options: HandOptions): string {
 
 	const ring = handPath(points, options);
 
-	// Corner to corner through the middle, running past the ring at both ends
-	// the way a pen does when it strikes something out.
-	const reach = r * 1.24;
+	/*
+	 * One stroke, corner to corner through the middle, ending well clear of the
+	 * ring at both ends the way a pen does when it strikes something out.
+	 *
+	 * The reach is what makes it read as a crossing rather than a chord. At a
+	 * quarter past the radius the ends cleared the ring by about the width of
+	 * the stroke itself, which at 22px is not a crossing — it is a line that
+	 * stops where the circle is.
+	 *
+	 * Two points rather than three: handPath bends each segment once, so a
+	 * middle point put a kink at the centre of what should be one fast stroke.
+	 * Half the wobble, for the same reason — this is the most deliberate mark
+	 * in the app.
+	 */
+	const reach = r * 0.98;
 	const slash = handPath(
 		[
-			{ x: c - reach * 0.7, y: c + reach * 0.7 },
-			{ x: c, y: c },
-			{ x: c + reach * 0.7, y: c - reach * 0.7 }
+			{ x: c - reach, y: c + reach },
+			{ x: c + reach, y: c - reach }
 		],
-		{ ...options, seed: options.seed + 419 }
+		{ ...options, seed: options.seed + 419, wobble: (options.wobble ?? 1) * 0.5 }
 	);
 
 	return `${ring} ${slash}`;

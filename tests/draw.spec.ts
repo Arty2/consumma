@@ -417,18 +417,29 @@ describe('handSlashedCircle', () => {
 		expect(gap).toBeLessThan(0.01);
 	});
 
-	it('strikes through the middle and past the ring', () => {
+	it('strikes clear through the ring, in one stroke', () => {
 		const points = endpoints(handSlashedCircle(SIZE, { seed: 3, wobble: 0 }));
 		const centre = { x: SIZE / 2, y: SIZE / 2 };
 		const slash = points.slice(13);
 
-		// Three points: past one side, the middle, past the other.
-		expect(slash).toHaveLength(3);
-		expect(Math.hypot(slash[1].x - centre.x, slash[1].y - centre.y)).toBeLessThan(0.01);
+		/*
+		 * Two points, not three. handPath bends each segment once, so a middle
+		 * point put a kink at the centre of what should be one fast stroke.
+		 */
+		expect(slash).toHaveLength(2);
 
+		// It goes through the middle: the chord's midpoint is the centre.
+		expect((slash[0].x + slash[1].x) / 2).toBeCloseTo(centre.x, 5);
+		expect((slash[0].y + slash[1].y) / 2).toBeCloseTo(centre.y, 5);
+
+		/*
+		 * And well past the ring at both ends. Clearing it by about the width of
+		 * the stroke is not a crossing — at 22px that reads as a line stopping
+		 * where the circle is, which is what this glyph used to look like.
+		 */
 		const r = SIZE * 0.34;
-		for (const end of [slash[0], slash[2]]) {
-			expect(Math.hypot(end.x - centre.x, end.y - centre.y)).toBeGreaterThan(r);
+		for (const end of slash) {
+			expect(Math.hypot(end.x - centre.x, end.y - centre.y)).toBeGreaterThan(r * 1.25);
 		}
 	});
 
