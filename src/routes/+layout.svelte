@@ -1,5 +1,4 @@
 <script lang="ts">
-	import favicon from '$lib/assets/favicon.svg';
 	import '../app.css';
 
 	let { children } = $props();
@@ -7,7 +6,11 @@
 
 <svelte:head>
 	<title>Consumma</title>
-	<link rel="icon" href={favicon} />
+	<!--
+		Served from static/ rather than imported, so it stays a URL. Vite inlines
+		small assets as data: URIs, which `img-src 'self'` refuses.
+	-->
+	<link rel="icon" href="/favicon.svg" />
 </svelte:head>
 
 {@render children()}

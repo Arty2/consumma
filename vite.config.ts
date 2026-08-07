@@ -3,6 +3,12 @@ import adapter from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	build: {
+		// Never inline an asset as a data: URI. `img-src 'self'` refuses them, and
+		// a violation that only appears once an asset drops under the size
+		// threshold is exactly the kind of surprise a strict CSP should not have.
+		assetsInlineLimit: 0
+	},
 	plugins: [
 		sveltekit({
 			compilerOptions: {
@@ -11,13 +17,65 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 			// Pinned rather than adapter-auto so CI and Vercel build identically.
-			adapter: adapter({ runtime: 'nodejs22.x' })
+			adapter: adapter({ runtime: 'nodejs22.x' }),
 
-			// CSP lands in M2, once there is markup to protect. It needs
-			// `trusted-types: ['svelte-trusted-html']` alongside
-			// `require-trusted-types-for: ['script']` — Svelte creates that policy
-			// itself for its internal innerHTML writes, and Chrome refuses to
-			// hydrate without it. See sveltejs/svelte#16271 (svelte 5.51.0).
+			/*
+			 * The app holds a secret in the browser — the code, and the key derived
+			 * from it. One successful script injection exfiltrates it and every
+			 * list it opens. That single fact sets the posture: the browser talks
+			 * to nothing but its own origin, and no string from anywhere becomes
+			 * markup.
+			 *
+			 * Configured here rather than hand-written, because a hand-written CSP
+			 * and SvelteKit's hydration script do not coexist. 'auto' uses hashes
+			 * for prerendered pages and nonces for dynamic ones.
+			 *
+			 * `trusted-types svelte-trusted-html` is not optional: Svelte writes
+			 * its own templates through innerHTML behind a policy of that name
+			 * (sveltejs/svelte#16271, svelte 5.51.0), and Chrome refuses to hydrate
+			 * without it allow-listed. Turned on now, while the surface is small,
+			 * rather than at M7 when something has quietly started depending on it.
+			 */
+			csp: {
+				mode: 'auto',
+				directives: {
+					'default-src': ['self'],
+					'script-src': ['self'],
+					/*
+					 * 'self' plus exactly one pinned hash, and nothing else.
+					 *
+					 * SvelteKit's own #svelte-announcer element carries a hardcoded
+					 * style="..." attribute that we do not author and cannot switch
+					 * off. 'unsafe-hashes' is what lets a hash apply to a style
+					 * attribute at all — it does not permit inline styles generally,
+					 * only this one exact string. Nothing in src/ has a style
+					 * attribute, and every dynamic value goes through the CSSOM,
+					 * which Svelte's style: directive compiles to and which CSP does
+					 * not govern.
+					 *
+					 * If a SvelteKit upgrade changes that string, e2e/csp.e2e.ts
+					 * fails on the console error rather than the app quietly
+					 * shipping a broken policy.
+					 */
+					'style-src': [
+						'self',
+						'unsafe-hashes',
+						'sha256-S8qMpvofolR8Mpjy4kQvEm7m1q8clzU4dfDH0AmvZjo='
+					],
+					'img-src': ['self'],
+					'font-src': ['self'],
+					'connect-src': ['self'],
+					'manifest-src': ['self'],
+					'worker-src': ['self'],
+					'object-src': ['none'],
+					'base-uri': ['none'],
+					'form-action': ['none'],
+					'frame-ancestors': ['none'],
+					'require-trusted-types-for': ['script'],
+					'trusted-types': ['svelte-trusted-html'],
+					'upgrade-insecure-requests': true
+				}
+			}
 		})
 	],
 	test: {

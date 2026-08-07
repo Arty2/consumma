@@ -2,12 +2,42 @@
  * Two colours, and that is the whole palette (§6). Secondary emphasis comes
  * from stroke weight, dashes, hatching and opacity of black — never a grey
  * fill. No shadows anywhere; scripts/gates.sh fails the build if one appears.
- * The design pass in M2 fills the rest of this file in.
+ *
+ * Both faces are SIL OFL, served from our own origin. No Google Fonts request
+ * is ever made — that is bandwidth, privacy, and a hole in `connect-src`.
  */
+
+@font-face {
+	font-family: 'Patrick Hand';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/patrick-hand-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+	font-family: 'Caveat';
+	font-style: normal;
+	font-weight: 400;
+	font-display: swap;
+	src: url('/fonts/caveat-latin-400-normal.woff2') format('woff2');
+}
 
 :root {
 	--ink: #000;
 	--paper: #fff;
+
+	--body: 'Patrick Hand', ui-rounded, cursive;
+	--display: 'Caveat', 'Patrick Hand', cursive;
+
+	/* 32 / 22 / 17 / 14. Handwritten faces need more line-height than you think. */
+	--size-display: 2rem;
+	--size-title: 1.5rem;
+	--size-body: 1.0625rem;
+	--size-small: 0.875rem;
+
+	--stroke: 1.4;
+	--touch: 44px;
 
 	color-scheme: light;
 }
@@ -21,10 +51,88 @@
 html {
 	background: var(--paper);
 	color: var(--ink);
+	-webkit-text-size-adjust: 100%;
 }
 
 body {
 	margin: 0;
 	background: var(--paper);
 	color: var(--ink);
+	font-family: var(--body);
+	font-size: var(--size-body);
+	line-height: 1.5;
+}
+
+/*
+ * Every control and title is set in caps, as in the sketch — in CSS only.
+ * A group the person typed as "Weekend jobs" must still export as
+ * "Weekend jobs".
+ */
+.caps {
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+button,
+input,
+textarea {
+	font: inherit;
+	color: inherit;
+	background: none;
+	border: none;
+	padding: 0;
+	margin: 0;
+}
+
+button {
+	cursor: pointer;
+}
+
+/* A dashed hand-drawn outline, not a browser ring — there is no other colour. */
+:focus-visible {
+	outline: 1.5px dashed var(--ink);
+	outline-offset: 3px;
+}
+
+:focus:not(:focus-visible) {
+	outline: none;
+}
+
+/* Every drawn mark. Stroke only: the sheet and the page are both white, so a
+   tear reads as a drawn line rather than as a cut-out. */
+.drawn {
+	fill: none;
+	stroke: var(--ink);
+	stroke-width: var(--stroke);
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.drawn--dashed {
+	stroke-dasharray: 5 4;
+}
+
+.drawn--faint {
+	opacity: 0.45;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+	}
 }

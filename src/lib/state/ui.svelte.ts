@@ -1,0 +1,78 @@
+import { KEYS, readJson, writeJson } from './storage';
+
+export type Toast = {
+	text: string;
+	/** Present only while an action is still reversible. */
+	undo?: () => void;
+};
+
+/**
+ * Everything on screen that is not the document.
+ *
+ * Collapsed state lives here rather than in the document: your collapsing a
+ * group must not collapse it on the other person's phone (§4).
+ */
+export class Ui {
+	collapsed = $state<Record<string, boolean>>({});
+	toast = $state<Toast | null>(null);
+	/** Announced to screen readers after a keyboard move. */
+	announcement = $state('');
+
+	#timer: ReturnType<typeof setTimeout> | null = null;
+	/** Consummatum fires once, and not again until something is finished anew. */
+	#celebrated = false;
+
+	load(): void {
+		this.collapsed = readJson<Record<string, boolean>>(KEYS.collapsed, {});
+	}
+
+	isCollapsed(groupId: string): boolean {
+		return this.collapsed[groupId] === true;
+	}
+
+	toggleCollapsed(groupId: string): void {
+		this.collapsed = { ...this.collapsed, [groupId]: !this.isCollapsed(groupId) };
+		writeJson(KEYS.collapsed, this.collapsed);
+	}
+
+	expand(groupId: string): void {
+		if (!this.isCollapsed(groupId)) return;
+		this.collapsed = { ...this.collapsed, [groupId]: false };
+		writeJson(KEYS.collapsed, this.collapsed);
+	}
+
+	say(text: string, undo?: () => void): void {
+		if (this.#timer) clearTimeout(this.#timer);
+
+		this.toast = { text, undo };
+		this.#timer = setTimeout(() => this.dismiss(), undo ? 10_000 : 4_000);
+	}
+
+	dismiss(): void {
+		if (this.#timer) clearTimeout(this.#timer);
+		this.#timer = null;
+		this.toast = null;
+	}
+
+	announce(text: string): void {
+		this.announcement = text;
+	}
+
+	/**
+	 * The one flourish. Called after every state change; fires only on the
+	 * transition into "everything on the sheet is done", and not on an empty
+	 * sheet.
+	 */
+	celebrate(finished: boolean): void {
+		if (!finished) {
+			this.#celebrated = false;
+			return;
+		}
+		if (this.#celebrated) return;
+
+		this.#celebrated = true;
+		this.say('Consummatum');
+	}
+}
+
+export const ui = new Ui();
