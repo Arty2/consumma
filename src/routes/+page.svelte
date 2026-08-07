@@ -1,9 +1,9 @@
 <script lang="ts">
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
+	import Menu from '$lib/components/Menu.svelte';
+	import MenuButton from '$lib/components/MenuButton.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
-	import StatusMark from '$lib/components/StatusMark.svelte';
-	import SyncModal from '$lib/components/SyncModal.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
@@ -16,15 +16,15 @@
 	import { ui } from '$lib/state/ui.svelte';
 
 	/*
-	 * There is no SYNC · SHARE row above the sheet. The status mark in the
-	 * sheet's corner is the whole control: it reports what has not been sent,
-	 * and opens the panel that sends it and hands the list to someone else.
+	 * Nothing sits on the page but the sheet and the one button that opens the
+	 * menu. Syncing, sharing, importing, clearing and the credit all live behind
+	 * it — the paper carries only what someone wrote on it.
 	 *
-	 * That also removes the opening scroll. It existed to put those two buttons
-	 * out of sight above the fold; with nothing above the sheet, the page simply
-	 * opens on the list.
+	 * The menu closes before any panel opens over it. Two focus traps at once is
+	 * a keyboard trap, and returning to a menu buried under a confirm is not a
+	 * step anyone wants.
 	 */
-	type Panel = 'sync' | 'import' | 'clear' | 'delete' | null;
+	type Panel = 'menu' | 'import' | 'clear' | 'delete' | null;
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
 
@@ -55,6 +55,12 @@
 	async function onImport() {
 		pasted = await paste();
 		panel = 'import';
+	}
+
+	/* EXPORT has no panel of its own: it copies and says so in a toast. */
+	async function onExportFromMenu() {
+		panel = null;
+		await onExport();
 	}
 
 	function applyMarkdown(parsed: Parsed, mode: 'add' | 'replace') {
@@ -108,45 +114,22 @@
 
 	<main data-sheet>
 		<div class="corner">
-			<StatusMark onopen={() => (panel = 'sync')} />
+			<MenuButton onopen={() => (panel = 'menu')} />
 		</div>
 		<Sheet />
 	</main>
 
 	<TornEdge seed="bottom" flip />
-
-	<nav class="below" aria-label="The list">
-		<button type="button" class="caps" onclick={onImport}>IMPORT</button>
-		<span aria-hidden="true">•</span>
-		<button type="button" class="caps" onclick={onExport}>EXPORT</button>
-	</nav>
-
-	<!-- The only two that take something away, and both stop and ask. -->
-	<nav class="below" aria-label="Removing things">
-		<button type="button" class="caps" onclick={() => (panel = 'delete')}>DELETE</button>
-		<span aria-hidden="true">•</span>
-		<button
-			type="button"
-			class="caps"
-			class:nothing={sheet.doneCount === 0}
-			disabled={sheet.doneCount === 0}
-			onclick={() => (panel = 'clear')}
-		>
-			CLEAR
-		</button>
-	</nav>
-
-	<footer class="credit">
-		<!-- Three asterisks, as typed. Not a rule: it is punctuation, not a mark. -->
-		<p class="break" aria-hidden="true">* * *</p>
-
-		<p>v{__VERSION__} • heracl.es/consumma</p>
-		<p class="dedication">Dialectic Acheropoieton of Heracles Papatheodorou and Claude</p>
-	</footer>
 </div>
 
-{#if panel === 'sync'}
-	<SyncModal onclose={() => (panel = null)} />
+{#if panel === 'menu'}
+	<Menu
+		onclose={() => (panel = null)}
+		onimport={onImport}
+		onexport={onExportFromMenu}
+		onclear={() => (panel = 'clear')}
+		ondelete={() => (panel = 'delete')}
+	/>
 {:else if panel === 'import'}
 	<ImportModal initial={pasted} onapply={applyMarkdown} onclose={() => (panel = null)} />
 {:else if panel === 'clear'}
@@ -183,7 +166,7 @@
 	.page {
 		max-width: 34rem;
 		margin: 0 auto;
-		padding: 0 1rem;
+		padding: 0 1rem calc(2rem + env(safe-area-inset-bottom));
 	}
 
 	.top {
@@ -191,70 +174,12 @@
 	}
 
 	/*
-	 * The mark sits in the sheet's top-right corner with a row to itself. It
+	 * The button sits in the sheet's top-right corner with a row to itself. It
 	 * used to be positioned over the sheet, where the first task row covered it
 	 * and swallowed the tap.
 	 */
 	.corner {
 		display: flex;
 		justify-content: flex-end;
-	}
-
-	nav {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		/* Every action row fits one line at 320px, so none wraps. */
-		flex-wrap: nowrap;
-		gap: 0.5rem;
-		min-height: var(--touch);
-	}
-
-	.below {
-		padding-top: 1.25rem;
-	}
-
-	.credit {
-		padding: 2.5rem 0 calc(1.5rem + env(safe-area-inset-bottom));
-		text-align: center;
-	}
-
-	.credit .break {
-		margin: 0 0 1.25rem;
-		letter-spacing: 0.3em;
-		/* The letter-spacing hangs off the last asterisk; pull the row back. */
-		text-indent: 0.3em;
-	}
-
-	.credit p {
-		margin: 0;
-		font-size: var(--size-small);
-		line-height: 1.7;
-		overflow-wrap: anywhere;
-	}
-
-	/*
-	 * Graphe has one style, so this is the browser's synthetic oblique. With a
-	 * single face that is the only italic available, and the line wants to sit
-	 * apart from the version above it.
-	 */
-	.dedication {
-		font-style: italic;
-	}
-
-	nav button {
-		padding: 0.5rem;
-		min-height: var(--touch);
-		white-space: nowrap;
-	}
-
-	nav button:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-
-	/* Drawn with a dashed outline when nothing is done. */
-	.nothing {
-		opacity: 0.4;
 	}
 </style>

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { fromMenu, menuButton, openMenu } from './menu';
 
 /*
  * M6's acceptance, minus the two things a headless browser cannot judge: the
@@ -24,11 +25,6 @@ function task(page: Page, text: string) {
 	return page.getByRole('checkbox', { name: text });
 }
 
-/** The status mark is the only control that opens the sync panel. */
-function mark(page: Page) {
-	return page.getByRole('button', { name: /not sent|Synced|Offline/ });
-}
-
 test.beforeEach(async ({ page }) => {
 	await page.goto('/');
 	await page.evaluate(() => localStorage.clear());
@@ -36,7 +32,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('a code exists from the first run, and is never in the URL', async ({ page }) => {
-	await mark(page).click();
+	await openMenu(page);
 
 	const code = await page.locator('.code').first().innerText();
 	// Twelve hex characters, shown in groups of four for reading aloud.
@@ -46,18 +42,51 @@ test('a code exists from the first run, and is never in the URL', async ({ page 
 	expect(page.url()).toBe(new URL(page.url()).origin + '/');
 });
 
-test('the status mark says how much has not been sent', async ({ page }) => {
+test('the one button on the page names what is waiting, and opens the menu', async ({ page }) => {
+	// Nothing else is on the paper.
+	await expect(page.getByRole('button', { name: /^Menu/ })).toHaveCount(1);
+	for (const gone of ['SYNC', 'SHARE', 'IMPORT', 'EXPORT', 'CLEAR', 'DELETE']) {
+		await expect(page.getByRole('button', { name: gone, exact: true })).toHaveCount(0);
+	}
+
+	const waiting = async () => {
+		const label = await menuButton(page).getAttribute('aria-label');
+		return Number(label?.match(/(\d+) change/)?.[1] ?? 0);
+	};
+
+	// A fresh sheet already has its first group waiting to go, which is why the
+	// button leads with the count rather than with a health light.
+	const before = await waiting();
+	expect(before).toBeGreaterThan(0);
+
 	await addTask(page, 'Bread');
+	expect(await waiting()).toBe(before + 1);
 
-	await expect(mark(page)).toBeVisible();
-	await expect(mark(page)).toHaveAttribute('aria-label', /change|changes/);
+	// What the button counts and what the menu says are the same number.
+	await openMenu(page);
+	await expect(page.getByText(`${before + 1} changes are waiting to go.`)).toBeVisible();
+});
 
-	// There is no SYNC button: the mark is the whole control.
-	await expect(page.getByRole('button', { name: 'SYNC', exact: true })).toHaveCount(0);
-	await expect(page.getByRole('button', { name: 'SHARE', exact: true })).toHaveCount(0);
+test('the sync copy separates what is waiting from why it matters', async ({ page, context }) => {
+	await addTask(page, 'Bread');
+	await openMenu(page);
 
-	await mark(page).click();
-	await expect(page.getByRole('dialog', { name: 'Sync' })).toBeVisible();
+	// The count is the headline; the consequence is its own line.
+	await expect(page.getByText(/\d+ changes? (is|are) waiting to go\./)).toBeVisible();
+	await expect(page.getByText('Nobody else can see them until you sync.')).toBeVisible();
+
+	await context.setOffline(true);
+	await page.getByRole('button', { name: /Sync now|Syncing/ }).click();
+
+	/*
+	 * Being unreachable is a condition, not a failure — and it never swallows
+	 * the count, which is exactly when someone wants to know it. The old copy
+	 * replaced the whole line with "Offline.", which read as an error.
+	 */
+	await expect(page.getByText(/\d+ changes? (is|are) waiting to go\./)).toBeVisible();
+	await expect(page.getByText(/safe on this device/)).toBeVisible();
+
+	await context.setOffline(false);
 });
 
 test('the invitation carries the link and the code together, with no query string', async ({
@@ -66,7 +95,7 @@ test('the invitation carries the link and the code together, with no query strin
 }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-	await mark(page).click();
+	await openMenu(page);
 
 	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
 	await page.getByRole('button', { name: 'Copy', exact: true }).click();
@@ -93,7 +122,7 @@ test('EXPORT copies the whole list and says how many', async ({ page, context })
 	await addTask(page, 'Coffee');
 	await task(page, 'Bread').click();
 
-	await page.getByRole('button', { name: 'EXPORT', exact: true }).click();
+	await fromMenu(page, 'Export');
 	await expect(page.getByText('Copied 2 tasks.')).toBeVisible();
 
 	// The first group has a name now, so the export carries its heading.
@@ -116,7 +145,7 @@ test('EXPORT then IMPORT into an empty list reproduces everything', async ({ pag
 	await task(page, 'Coffee').focus();
 	await page.keyboard.press('Shift+ ');
 
-	await page.getByRole('button', { name: 'EXPORT', exact: true }).click();
+	await fromMenu(page, 'Export');
 	const exported = await page.evaluate(() => navigator.clipboard.readText());
 
 	// A fresh device with nothing on it.
@@ -124,14 +153,14 @@ test('EXPORT then IMPORT into an empty list reproduces everything', async ({ pag
 	await page.reload();
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 
-	await page.getByRole('button', { name: 'IMPORT', exact: true }).click();
+	await fromMenu(page, 'Import');
 	await page.getByRole('button', { name: 'Add', exact: true }).click();
 
 	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
 	await expect(task(page, 'Coffee')).toHaveAttribute('aria-checked', 'mixed');
 	await expect(page.getByRole('button', { name: 'Market' })).toBeVisible();
 
-	await page.getByRole('button', { name: 'EXPORT', exact: true }).click();
+	await fromMenu(page, 'Export');
 	expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(exported);
 });
 
@@ -141,7 +170,7 @@ test('IMPORT skips duplicates and says so', async ({ page, context }) => {
 	await addTask(page, 'Bread');
 	await page.evaluate(() => navigator.clipboard.writeText('- [ ] Bread\n- [ ] Coffee\n'));
 
-	await page.getByRole('button', { name: 'IMPORT', exact: true }).click();
+	await fromMenu(page, 'Import');
 	await page.getByRole('button', { name: 'Add', exact: true }).click();
 
 	await expect(page.getByText('Added 1, skipped 1 already there.')).toBeVisible();
@@ -157,7 +186,7 @@ test('IMPORT refuses something that is not a task list, and changes nothing', as
 	await addTask(page, 'Bread');
 	await page.evaluate(() => navigator.clipboard.writeText('just some prose, honestly'));
 
-	await page.getByRole('button', { name: 'IMPORT', exact: true }).click();
+	await fromMenu(page, 'Import');
 	await expect(page.getByText('That doesn’t look like a task list.')).toBeVisible();
 
 	await page.getByRole('button', { name: 'Close' }).click();
@@ -169,7 +198,7 @@ test('CLEAR asks first, then clears, and the undo still works', async ({ page })
 	await addTask(page, 'Coffee');
 	await task(page, 'Bread').click();
 
-	await page.getByRole('button', { name: 'CLEAR', exact: true }).click();
+	await fromMenu(page, 'Clear');
 
 	const confirm = page.getByRole('dialog', { name: 'Clear completed tasks' });
 	await expect(confirm).toBeVisible();
@@ -180,7 +209,7 @@ test('CLEAR asks first, then clears, and the undo still works', async ({ page })
 	await page.getByRole('button', { name: 'Cancel' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 
-	await page.getByRole('button', { name: 'CLEAR', exact: true }).click();
+	await fromMenu(page, 'Clear');
 	await page.getByRole('button', { name: 'Clear', exact: true }).click();
 
 	await expect(task(page, 'Bread')).toHaveCount(0);
@@ -193,11 +222,11 @@ test('CLEAR asks first, then clears, and the undo still works', async ({ page })
 test('DELETE shows the code one last time, then wipes only this device', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	await mark(page).click();
+	await openMenu(page);
 	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
 	await page.getByRole('button', { name: 'Close' }).click();
 
-	await page.getByRole('button', { name: 'DELETE', exact: true }).click();
+	await fromMenu(page, 'Delete');
 
 	const confirm = page.getByRole('dialog', { name: /Remove this list/ });
 	await expect(confirm).toContainText('Everyone else keeps it');
@@ -208,13 +237,13 @@ test('DELETE shows the code one last time, then wipes only this device', async (
 	await page.getByRole('button', { name: 'Cancel' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 
-	await page.getByRole('button', { name: 'DELETE', exact: true }).click();
+	await fromMenu(page, 'Delete');
 	await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 
 	// A new code, because this device is no longer on the old list.
-	await mark(page).click();
+	await openMenu(page);
 	const fresh = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
 	expect(fresh).not.toBe(code);
 });
@@ -222,14 +251,14 @@ test('DELETE shows the code one last time, then wipes only this device', async (
 test('joining with tasks already here asks rather than deciding', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	await mark(page).click();
+	await openMenu(page);
 	await page.getByRole('textbox', { name: 'Code' }).fill('0123 4567 89ab');
 	await page.getByRole('button', { name: 'Join' }).click();
 
 	// Merge or discard is offered as a choice, never decided silently.
 	await expect(page.getByRole('button', { name: 'Take them' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Leave them' })).toBeVisible();
-	await expect(page.getByRole('dialog', { name: 'Sync' })).toContainText('1 task here');
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toContainText('1 task here');
 });
 
 test('a second sync tap inside the cooldown costs nothing', async ({ page }) => {
@@ -240,7 +269,7 @@ test('a second sync tap inside the cooldown costs nothing', async ({ page }) => 
 	});
 
 	await addTask(page, 'Bread');
-	await mark(page).click();
+	await openMenu(page);
 
 	const button = page.getByRole('button', { name: /^Sync now/ });
 	await button.click();
@@ -254,24 +283,20 @@ test('a second sync tap inside the cooldown costs nothing', async ({ page }) => 
 	expect(requests).toBe(after);
 });
 
-test('a modal closes on Escape and returns focus to what opened it', async ({ page }) => {
-	await mark(page).click();
-
-	await expect(page.getByRole('dialog', { name: 'Sync' })).toBeVisible();
+test('a panel closes on Escape and returns focus to what opened it', async ({ page }) => {
+	await openMenu(page);
 
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toHaveCount(0);
-	await expect(mark(page)).toBeFocused();
+	await expect(menuButton(page)).toBeFocused();
 });
 
-test('the sync panel reports being unable to reach the list, and keeps the tasks', async ({
-	page
-}) => {
+test('the menu reports being unable to reach the list, and keeps the tasks', async ({ page }) => {
 	await addTask(page, 'Bread');
 
 	await page.route('**/api/room/**', (route) => route.abort());
 
-	await mark(page).click();
+	await openMenu(page);
 	await page.getByRole('button', { name: /Sync now|Syncing/ }).click();
 
 	await expect(page.getByRole('alert')).toContainText('Couldn’t reach the list');

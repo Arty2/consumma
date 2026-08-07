@@ -1,5 +1,6 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
+	import { trap } from '$lib/a11y/trap';
 	import { handCross, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import type { Snippet } from 'svelte';
@@ -28,47 +29,6 @@
 	let panel = $state<HTMLElement | null>(null);
 	let offset = $state(0);
 	let dragStart: { y: number; at: number } | null = null;
-
-	$effect(() => {
-		const previous = document.activeElement as HTMLElement | null;
-		const overflow = document.body.style.overflow;
-
-		document.body.style.overflow = 'hidden';
-		panel?.focus();
-
-		return () => {
-			document.body.style.overflow = overflow;
-			previous?.focus();
-		};
-	});
-
-	function onkeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			onclose();
-			return;
-		}
-
-		if (event.key !== 'Tab' || !panel) return;
-
-		const focusable = [
-			...panel.querySelectorAll<HTMLElement>(
-				'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-			)
-		];
-		if (focusable.length === 0) return;
-
-		const first = focusable[0];
-		const last = focusable[focusable.length - 1];
-
-		if (event.shiftKey && document.activeElement === first) {
-			event.preventDefault();
-			last.focus();
-		} else if (!event.shiftKey && document.activeElement === last) {
-			event.preventDefault();
-			first.focus();
-		}
-	}
 
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0) return;
@@ -104,7 +64,7 @@
 	tabindex="-1"
 	bind:this={panel}
 	style:--offset="{offset}px"
-	{onkeydown}
+	use:trap={onclose}
 	{onpointerdown}
 	{onpointermove}
 	{onpointerup}

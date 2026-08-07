@@ -22,6 +22,7 @@ linter cannot. CI runs it first, before anything else.
 - CLEAR sweeps done tasks only. DELETE is local-only and never calls the server. Undo re-stamps forward, never rewinds.
 - Two long-presses, separated by hit area: on the checkbox it sets half, on the row text it starts a drag. Never merge them.
 - UI labels are uppercased in CSS only. Stored titles and markdown exports keep the casing the user typed.
+- Anything drawn that sits beside capitals lifts by `--cap-lift`. Graphe's caps ride high in their own line box, so a centred checkbox reads low against them. The value is measured in a browser, not derived — retune it with the face.
 - Anything showing user text in caps sets `lang={langOf(text)}` (src/lib/doc/lang.ts). Greek drops the tonos in capitals and browsers only apply that with the language declared — without it Chrome renders μαΐστρος as ΜΑΪ́ΣΤΡΟΣ. Never uppercase in JS to work around it; that would break the CSS-only rule above.
 - Limits: 100 chars/task, 100 tasks, 50 chars/group title, 20 groups, 128 KB blob. Enforce at input; merge never discards to fit.
 - Never {@html}, never innerHTML, never eval. `pnpm gates` fails on them.
@@ -32,7 +33,9 @@ linter cannot. CI runs it first, before anything else.
 The build plan is the specification; these were settled after it was written and win where they conflict.
 
 - **`CODE_LENGTH = 12`**, not 8. 48 bits. The salt is frozen at `consumma:v1`. The code is displayed grouped — `5e6b 7c1a 93f2` — for reading aloud; what is stored is bare lowercase hex, and the SYNC input strips whitespace.
-- **There is no SYNC · SHARE row.** The status mark in the sheet's corner opens the sync panel, and sharing lives inside it. No opening scroll either — nothing sits above the sheet.
+- **Nothing is on the page but the sheet and one button.** A burger in the sheet's corner, which becomes an arrow when edits are unsent; it opens a side menu holding sync, share, join, IMPORT/EXPORT/CLEAR/DELETE and the credit. No opening scroll — nothing sits above the sheet.
+- The menu closes before any panel opens over it. Two focus traps at once is a keyboard trap. `src/lib/a11y/trap.ts` is shared by the menu and the modal; do not write a second copy.
+- Sync copy comes from `src/lib/sync/status.ts`, never inline. Two lines: how much is waiting, then why it still is. Being unreachable is a condition, not an error, and it never hides the count.
 - **SHARE and COPY hand over one payload** carrying the link and the code together; either half alone is useless. It goes in `navigator.share`'s `text` with no `url` field, so no target can keep one and drop the other. The link stays bare.
 - **Sync is entirely manual.** There is no poll interval, no visibilitychange/focus/online trigger, no push debounce, and no queue that flushes on reconnect. One `syncNow()` runs on the SYNC tap and nowhere else, doing both directions, with a 10-second cooldown. §5's `head()` read path and `cacheControlMaxAge: 0` therefore stand as written — the operations budget is no longer under pressure.
 - An unsynced edit reaches nobody and dies with the device. Three things carry that, and no fourth is added: the status mark is hollow whenever local edits are unsent, the SYNC panel names how many, and the DELETE confirm says so. No nagging, no auto-sync, no banner.

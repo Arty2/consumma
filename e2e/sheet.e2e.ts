@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { fromMenu } from './menu';
 
 /*
  * M1's acceptance: add, edit, reorder, tri-state, group, collapse and delete
@@ -180,7 +181,7 @@ test('CLEAR sweeps done tasks only, and half-done stays', async ({ page }) => {
 	await task(page, 'Coffee').focus();
 	await page.keyboard.press('Shift+ ');
 
-	await page.getByRole('button', { name: 'CLEAR', exact: true }).click();
+	await fromMenu(page, 'Clear');
 	await page.getByRole('button', { name: 'Clear', exact: true }).click();
 
 	await expect(task(page, 'Bread')).toHaveCount(0);

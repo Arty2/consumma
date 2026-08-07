@@ -55,6 +55,20 @@
 	--stroke: 1.4;
 	--touch: 44px;
 
+	/*
+	 * How far a line of capitals sits above the middle of its own line box.
+	 *
+	 * Graphe's capitals reach 15px on a 17px body while the face declares an
+	 * ascent of 12, so a row that centres the line box leaves the capitals
+	 * riding high — and the sheet is set entirely in capitals. Anything that has
+	 * to sit level with them, a checkbox or a chevron, lifts by this much.
+	 *
+	 * Measured in the browser rather than derived: the overrides below resolve
+	 * against the size-adjusted em, which is not what the arithmetic assumes.
+	 * Retune it with the face.
+	 */
+	--cap-lift: 0.235em;
+
 	color-scheme: light;
 }
 

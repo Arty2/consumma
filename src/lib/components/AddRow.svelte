@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import { handRect } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
@@ -69,9 +70,15 @@
 	</span>
 
 	{#if open}
+		<!--
+			Caps here too: a task being typed has to look like the task it becomes,
+			the way a group title already does. Without it the line changes shape
+			the moment it is committed.
+		-->
 		<input
-			class="text"
+			class="text caps"
 			type="text"
+			lang={langOf(draft)}
 			bind:this={input}
 			bind:value={draft}
 			maxlength={LIMITS.taskText}
@@ -80,7 +87,7 @@
 			{onkeydown}
 		/>
 	{:else}
-		<button class="text" type="button" onclick={start} {disabled} aria-label="Add a task">
+		<button class="text caps" type="button" onclick={start} {disabled} aria-label="Add a task">
 			…
 		</button>
 	{/if}
@@ -102,6 +109,9 @@
 		width: var(--touch);
 		height: var(--touch);
 		flex: 0 0 var(--touch);
+		/* Level with the capitals beside it, not with their line box. */
+		position: relative;
+		top: calc(-1 * var(--cap-lift));
 	}
 
 	.box svg {

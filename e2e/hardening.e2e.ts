@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { fromMenu, menuButton, openMenu } from './menu';
 
 /*
  * M7. The parts a browser can judge: accessibility, the installable shell, and
@@ -41,10 +42,7 @@ test('the sheet has no accessibility violations', async ({ page }) => {
 test('the modals have no accessibility violations either', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-	const open = [
-		() => page.getByRole('button', { name: /not sent|Synced|Offline/ }).click(),
-		() => page.getByRole('button', { name: 'IMPORT', exact: true }).click()
-	];
+	const open = [() => openMenu(page), () => fromMenu(page, 'Import')];
 
 	for (const [index, click] of open.entries()) {
 		await click();
@@ -63,21 +61,21 @@ test('the modals have no accessibility violations either', async ({ page, contex
 test('the sheet is reachable and operable with a keyboard alone', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	// The status mark is the only way into the sync panel, so it has to be
-	// reachable — there is no SYNC button behind it any more.
-	const mark = page.getByRole('button', { name: /not sent|Synced|Offline/ });
-	await mark.focus();
-	await expect(mark).toBeFocused();
+	// The burger is the only way to anything that is not the list, so it has to
+	// be reachable and operable without a pointer.
+	const button = menuButton(page);
+	await button.focus();
+	await expect(button).toBeFocused();
 
 	await page.keyboard.press('Enter');
-	await expect(page.getByRole('dialog', { name: 'Sync' })).toBeVisible();
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
 
 	await page.keyboard.press('Escape');
-	await expect(mark).toBeFocused();
+	await expect(button).toBeFocused();
 });
 
 test('focus is visible, and drawn rather than coloured', async ({ page }) => {
-	const first = page.getByRole('button', { name: 'IMPORT', exact: true });
+	const first = menuButton(page);
 	await first.focus();
 
 	const outline = await first.evaluate((el) => getComputedStyle(el).outline);

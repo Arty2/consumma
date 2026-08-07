@@ -70,6 +70,9 @@
 		width: var(--touch);
 		height: var(--touch);
 		flex: 0 0 var(--touch);
+		/* Level with the capitals beside it, not with their line box. */
+		position: relative;
+		top: calc(-1 * var(--cap-lift));
 		cursor: pointer;
 		/* Otherwise Android raises the text-selection menu mid-press. */
 		touch-action: manipulation;

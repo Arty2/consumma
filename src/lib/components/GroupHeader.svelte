@@ -134,6 +134,9 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		/* Level with the title's capitals, not with their line box. */
+		position: relative;
+		top: calc(-1 * var(--cap-lift));
 	}
 
 	.collapsed {

@@ -203,6 +203,50 @@ Numbers in brackets are the section of the build plan a decision came from.
     for a border — and this is not one: it is punctuation, set in the same hand
     as the words around it.
 
+30. **Everything that is not the list moved into a side menu.** The sheet had
+    grown two rows of buttons and a footer beneath it; none of that is what
+    someone wrote on the paper. One button sits in the corner — three strokes
+    normally, an arrow up and out when something is waiting to go — and opens a
+    panel holding sync, the code and sharing, joining, IMPORT/EXPORT,
+    CLEAR/DELETE and the credit.
+
+    The arrow replaces the hollow status mark, and is a better sign for the
+    same fact: not a health light to be decoded, but an outbox that is not
+    empty. What is waiting, and why, is spelt out in words the moment the panel
+    opens. Decision 21 stands — the one control still opens the one panel — and
+    the mark's three states collapse into two, because the third was explained
+    every time anyway.
+
+    The menu closes before any panel opens over it: two focus traps at once is
+    a keyboard trap. `src/lib/a11y/trap.ts` is now shared rather than written
+    twice, which is how the second copy would have drifted.
+
+31. **The sync copy names two things separately.** `src/lib/sync/status.ts` is
+    pure and tested: a headline saying how much is waiting, and a second line
+    saying why it still is.
+
+    The old single sentence conflated them. "Offline." replaced the whole line,
+    so the count vanished at exactly the moment someone would want it, and it
+    read as a failure rather than as a condition — which under manual sync it
+    never is. Errors still go through `sync.message`, in an alert, where they
+    belong.
+
+32. **Long drawn sides are subdivided.** `handPath` bends a segment once,
+    however long it is, so the menu's edge came out as a single gentle bow —
+    a ruled line with extra steps. `handRect` now breaks runs longer than 90px
+    into shorter ones, so a tall panel wobbles along its length. Short boxes
+    are untouched, deliberately: subdividing a 22px checkbox would re-cut every
+    one already drawn, and `e2e/design.e2e.ts` asserts a drawn line never moves.
+
+33. **`--cap-lift` levels drawn marks with capitals.** Graphe's capitals reach
+    15px on a 17px body while the face declares an ascent of 12, so a row that
+    centres the line box leaves the capitals riding high — and the sheet is set
+    entirely in capitals. Checkboxes and chevrons lift by that difference.
+
+    The value is measured in a browser rather than derived, because
+    `ascent-override` resolves against the size-adjusted em and the arithmetic
+    that assumes otherwise is off by exactly the amount that looks wrong.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as

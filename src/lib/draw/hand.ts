@@ -54,16 +54,48 @@ export function handPath(points: readonly Pt[], options: HandOptions): string {
 }
 
 /**
+ * Splits long runs into shorter ones.
+ *
+ * handPath nudges one control point per segment, so however long a segment is,
+ * it bends exactly once. A 900px side drawn in one go is a single gentle bow —
+ * which is to say a ruled line; the wobble has to recur along a stroke to read
+ * as a hand. Short sides are left alone: a 22px checkbox needs no help, and
+ * subdividing it would re-cut every box already drawn.
+ */
+function subdivide(points: readonly Pt[], every: number): Pt[] {
+	const out: Pt[] = [points[0]];
+
+	for (let i = 1; i < points.length; i++) {
+		const from = points[i - 1];
+		const to = points[i];
+		const steps = Math.max(1, Math.round(Math.hypot(to.x - from.x, to.y - from.y) / every));
+
+		for (let step = 1; step <= steps; step++) {
+			out.push({
+				x: from.x + ((to.x - from.x) * step) / steps,
+				y: from.y + ((to.y - from.y) * step) / steps
+			});
+		}
+	}
+
+	return out;
+}
+
+/**
  * A rectangle drawn as one continuous stroke whose corners overshoot slightly,
  * the way a pen does when it does not stop exactly where it started.
+ *
+ * Long sides wobble along their length rather than bowing once, so a tall
+ * panel's edge does not come out ruled.
  */
 export function handRect(
 	width: number,
 	height: number,
-	options: HandOptions & { inset?: number; overshoot?: number }
+	options: HandOptions & { inset?: number; overshoot?: number; every?: number }
 ): string {
 	const i = options.inset ?? 1;
 	const over = options.overshoot ?? 2.5;
+	const every = options.every ?? 90;
 	const random = rng(options.seed ^ 0x9e3779b9);
 	const jitter = () => (random() * 2 - 1) * over;
 
@@ -73,15 +105,18 @@ export function handRect(
 	const bottom = height - i;
 
 	return handPath(
-		[
-			{ x: left + over, y: top },
-			{ x: right, y: top + jitter() },
-			{ x: right + jitter() * 0.3, y: bottom },
-			{ x: left, y: bottom + jitter() * 0.3 },
-			// Past the start, so the corner closes with a crossing rather than a
-			// join.
-			{ x: left + jitter() * 0.3, y: top - over * 0.4 }
-		],
+		subdivide(
+			[
+				{ x: left + over, y: top },
+				{ x: right, y: top + jitter() },
+				{ x: right + jitter() * 0.3, y: bottom },
+				{ x: left, y: bottom + jitter() * 0.3 },
+				// Past the start, so the corner closes with a crossing rather than a
+				// join.
+				{ x: left + jitter() * 0.3, y: top - over * 0.4 }
+			],
+			every
+		),
 		options
 	);
 }
@@ -217,4 +252,54 @@ export function handChevron(size: number, collapsed: boolean, options: HandOptio
 				],
 		options
 	);
+}
+
+/**
+ * The burger that opens the menu: three strokes, each seeded apart so they
+ * wobble independently rather than reading as one shape stamped three times.
+ *
+ * The bars are unequal by a few percent, the way three pen strokes are.
+ */
+export function handBurger(size: number, options: HandOptions): string {
+	const widths = [1, 0.88, 0.96];
+	const gap = size * 0.3;
+	const top = (size - gap * 2) / 2;
+
+	return widths
+		.map((factor, i) => {
+			const w = size * factor;
+			const x = (size - w) / 2;
+			const y = top + gap * i;
+
+			return handPath(
+				[
+					{ x, y },
+					{ x: x + w * 0.45, y },
+					{ x: x + w, y }
+				],
+				{ ...options, seed: options.seed + i * 977 }
+			);
+		})
+		.join(' ');
+}
+
+/**
+ * The same button when something is waiting to go: an arrow up and to the
+ * right. Not a status light — it is the outbox, pointing the way out.
+ */
+export function handArrow(size: number, options: HandOptions): string {
+	const pad = size * 0.22;
+	const from = { x: pad, y: size - pad };
+	const to = { x: size - pad, y: pad };
+	const head = size * 0.34;
+
+	const shaft = handPath([from, { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 }, to], options);
+
+	// Two strokes off the point, drawn as one polyline so the corner joins.
+	const barb = handPath([{ x: to.x - head, y: to.y }, to, { x: to.x, y: to.y + head }], {
+		...options,
+		seed: options.seed + 613
+	});
+
+	return `${shaft} ${barb}`;
 }

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openMenu } from './menu';
 
 /*
  * The strict CSP is only worth having if the app still runs under it. Chrome
@@ -31,6 +32,16 @@ test('the app hydrates under the CSP with no violations', async ({ page }) => {
 	await input.press('Enter');
 
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+
+	/*
+	 * And the menu, which is most of the app's chrome and none of it prerendered.
+	 * The panels were outside this test for a long time: an inline style there
+	 * would only be refused once someone opened one.
+	 */
+	await openMenu(page);
+	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeVisible();
+	await page.keyboard.press('Escape');
+
 	expect(problems).toStrictEqual([]);
 });
 

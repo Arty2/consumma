@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { fromMenu, openMenu } from './menu';
 
 /*
  * M2's acceptance, as far as a browser can check it: two colours and nothing
@@ -96,10 +97,20 @@ test('works at 320px without scrolling sideways', async ({ page }) => {
 	);
 	expect(overflows).toBe(false);
 
-	// Each action row still fits on one line.
-	for (const label of ['IMPORT', 'EXPORT', 'DELETE', 'CLEAR']) {
-		const box = await page.getByRole('button', { name: label, exact: true }).boundingBox();
-		expect(box!.height).toBeLessThan(70);
+	// And the menu, which is where every action lives now, fits too.
+	await openMenu(page);
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth > document.documentElement.clientWidth
+		)
+	).toBe(false);
+
+	for (const label of ['Import', 'Export', 'Delete', 'Clear']) {
+		const box = await page
+			.getByRole('dialog', { name: 'Menu' })
+			.getByRole('button', { name: label })
+			.boundingBox();
+		expect(box!.height, label).toBeLessThan(70);
 	}
 });
 
@@ -122,7 +133,7 @@ test('tasks are shown in caps, but stored and exported as typed', async ({ page,
 	 */
 	await expect(text).toHaveAttribute('aria-label', 'Coffee, the dark one');
 
-	await page.getByRole('button', { name: 'EXPORT', exact: true }).click();
+	await fromMenu(page, 'Export');
 	const exported = await page.evaluate(() => navigator.clipboard.readText());
 	expect(exported).toContain('- [ ] Coffee, the dark one');
 	expect(exported).not.toContain('COFFEE');
@@ -164,7 +175,7 @@ test('Greek loses its tonos in caps, and keeps it everywhere else', async ({ pag
 	 */
 	await expect(greek).toHaveAttribute('aria-label', 'Καφές σκέτος');
 
-	await page.getByRole('button', { name: 'EXPORT', exact: true }).click();
+	await fromMenu(page, 'Export');
 	const exported = await page.evaluate(() => navigator.clipboard.readText());
 	expect(exported).toContain('Καφές σκέτος');
 	expect(exported).toContain('μαΐστρος');
@@ -189,6 +200,10 @@ test('the rule under a title is as wide as the title, not the row', async ({ pag
 });
 
 test('the credit names the version, the project and both authors', async ({ page }) => {
+	// It sits at the foot of the menu now, not on the sheet.
+	await expect(page.locator('footer')).toHaveCount(0);
+	await openMenu(page);
+
 	const credit = page.locator('footer');
 
 	// The version is injected from package.json, never typed out a second time.
