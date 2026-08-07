@@ -89,7 +89,7 @@ test('works at 320px without scrolling sideways', async ({ page }) => {
 	expect(overflows).toBe(false);
 
 	// Each action row still fits on one line.
-	for (const label of ['SYNC', 'SHARE', 'IMPORT', 'EXPORT', 'DELETE', 'CLEAR']) {
+	for (const label of ['IMPORT', 'EXPORT', 'DELETE', 'CLEAR']) {
 		const box = await page.getByRole('button', { name: label, exact: true }).boundingBox();
 		expect(box!.height).toBeLessThan(70);
 	}
@@ -112,7 +112,7 @@ test('a drawn line does not move when the row around it re-renders', async ({ pa
 	expect(after).toBe(before);
 });
 
-test('the app opens with the torn edge at the top of the viewport', async ({ page }) => {
+test('the app opens on the list, with the torn edge whole and not clipped', async ({ page }) => {
 	await page.getByRole('button', { name: 'Add a task' }).click();
 	const input = page.getByRole('textbox', { name: 'New task' });
 	for (const text of ['Bread', 'Coffee', 'Milk']) {
@@ -124,11 +124,17 @@ test('the app opens with the torn edge at the top of the viewport', async ({ pag
 	await page.reload();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
 
-	// SYNC · SHARE sits above the tear, scrolled out of sight on open.
-	const sync = await page.getByRole('button', { name: 'SYNC' }).boundingBox();
-	expect(sync!.y).toBeLessThan(0);
+	// Nothing sits above the sheet, so the page opens where it starts.
+	expect(await page.evaluate(() => window.scrollY)).toBe(0);
 
-	// And it is reachable rather than merely hidden.
-	await page.getByRole('button', { name: 'SYNC' }).scrollIntoViewIfNeeded();
-	await expect(page.getByRole('button', { name: 'SYNC' })).toBeVisible();
+	/*
+	 * The tear is drawn to the edges of its own box and stroked on the path, so
+	 * half the stroke falls outside it. There has to be room above for that, or
+	 * the peaks come off flat against the top of the viewport.
+	 */
+	const tear = page.locator('svg.tear').first();
+	await expect(tear).toBeInViewport();
+
+	const box = (await tear.boundingBox())!;
+	expect(box.y).toBeGreaterThan(8);
 });

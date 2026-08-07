@@ -30,7 +30,9 @@ linter cannot. CI runs it first, before anything else.
 
 The build plan is the specification; these were settled after it was written and win where they conflict.
 
-- **`CODE_LENGTH = 12`**, not 8. 48 bits. The salt is frozen at `consumma:v1`. The SHARE modal displays the code grouped — `5e6b 7c1a 93f2` — for reading aloud; what is stored, copied and typed is bare lowercase hex, and the SYNC input strips whitespace.
+- **`CODE_LENGTH = 12`**, not 8. 48 bits. The salt is frozen at `consumma:v1`. The code is displayed grouped — `5e6b 7c1a 93f2` — for reading aloud; what is stored is bare lowercase hex, and the SYNC input strips whitespace.
+- **There is no SYNC · SHARE row.** The status mark in the sheet's corner opens the sync panel, and sharing lives inside it. No opening scroll either — nothing sits above the sheet.
+- **SHARE and COPY hand over one payload** carrying the link and the code together; either half alone is useless. It goes in `navigator.share`'s `text` with no `url` field, so no target can keep one and drop the other. The link stays bare.
 - **Sync is entirely manual.** There is no poll interval, no visibilitychange/focus/online trigger, no push debounce, and no queue that flushes on reconnect. One `syncNow()` runs on the SYNC tap and nowhere else, doing both directions, with a 10-second cooldown. §5's `head()` read path and `cacheControlMaxAge: 0` therefore stand as written — the operations budget is no longer under pressure.
 - An unsynced edit reaches nobody and dies with the device. Three things carry that, and no fourth is added: the status mark is hollow whenever local edits are unsent, the SYNC panel names how many, and the DELETE confirm says so. No nagging, no auto-sync, no banner.
 - **No `PUBLIC_BLOB_BASE`** and no `/api/room/[roomId]/version` route. Both are leftovers from a draft where the browser read the CDN directly.

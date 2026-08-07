@@ -2,12 +2,11 @@
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
-	import ShareModal from '$lib/components/ShareModal.svelte';
 	import StatusMark from '$lib/components/StatusMark.svelte';
 	import SyncModal from '$lib/components/SyncModal.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
-	import { copy, paste, share } from '$lib/clipboard';
+	import { copy, paste } from '$lib/clipboard';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -17,18 +16,15 @@
 	import { ui } from '$lib/state/ui.svelte';
 
 	/*
-	 * The page opens scrolled so the torn top edge sits at the top of the
-	 * viewport and SYNC · SHARE is just above it, out of sight. The app opens on
-	 * the list, not on its controls.
+	 * There is no SYNC · SHARE row above the sheet. The status mark in the
+	 * sheet's corner is the whole control: it reports what has not been sent,
+	 * and opens the panel that sends it and hands the list to someone else.
 	 *
-	 * The controls stay first in the DOM, so tabbing to them scrolls them into
-	 * view naturally — hidden is not the same as unreachable.
+	 * That also removes the opening scroll. It existed to put those two buttons
+	 * out of sight above the fold; with nothing above the sheet, the page simply
+	 * opens on the list.
 	 */
-	let top = $state<HTMLElement | null>(null);
-	let settled = false;
-
-	/** Never more than one at a time, and a modal never opens another. */
-	type Panel = 'sync' | 'share' | 'import' | 'clear' | 'delete' | null;
+	type Panel = 'sync' | 'import' | 'clear' | 'delete' | null;
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
 
@@ -43,40 +39,6 @@
 		void sheet.doc;
 		sync.refresh();
 	});
-
-	$effect(() => {
-		if (settled || !top) return;
-		settled = true;
-
-		history.scrollRestoration = 'manual';
-		// Jump, never smooth-scroll, and never again: if someone has scrolled up
-		// to reach SYNC, a re-render must not yank them back down.
-		requestAnimationFrame(() => {
-			top?.scrollIntoView({ block: 'start', behavior: 'instant' });
-		});
-	});
-
-	function openSync() {
-		panel = 'sync';
-		top?.scrollIntoView({ block: 'start', behavior: 'instant' });
-	}
-
-	/*
-	 * navigator.share must be called synchronously inside the click handler,
-	 * before any await — deriving a string first throws NotAllowedError. The
-	 * modal opens once the share promise settles, either way.
-	 */
-	function onShare() {
-		const code = sync.code;
-		if (!code) return;
-
-		const text = `Join my list on Consumma. Code: ${code}`;
-		// The bare front page. The code never goes in the URL.
-		share(text, location.origin).then((result) => {
-			if (result === 'copied') ui.say('Copied the code.');
-			panel = 'share';
-		});
-	}
 
 	async function onExport() {
 		const markdown = toMarkdown(sheet.doc);
@@ -139,19 +101,14 @@
 </script>
 
 <div class="page">
-	<nav class="above" aria-label="Sharing">
-		<button type="button" class="caps" onclick={openSync}>SYNC</button>
-		<span aria-hidden="true">·</span>
-		<button type="button" class="caps" onclick={onShare}>SHARE</button>
-	</nav>
-
-	<div bind:this={top}>
+	<!-- Room above the tear, so the stroke is never clipped by the viewport. -->
+	<div class="top">
 		<TornEdge seed="top" />
 	</div>
 
 	<main data-sheet>
 		<div class="corner">
-			<StatusMark onopen={openSync} />
+			<StatusMark onopen={() => (panel = 'sync')} />
 		</div>
 		<Sheet />
 	</main>
@@ -182,8 +139,6 @@
 
 {#if panel === 'sync'}
 	<SyncModal onclose={() => (panel = null)} />
-{:else if panel === 'share' && sync.code}
-	<ShareModal code={sync.code} onclose={() => (panel = null)} />
 {:else if panel === 'import'}
 	<ImportModal initial={pasted} onapply={applyMarkdown} onclose={() => (panel = null)} />
 {:else if panel === 'clear'}
@@ -223,6 +178,10 @@
 		padding: 0 1rem;
 	}
 
+	.top {
+		padding-top: calc(2rem + env(safe-area-inset-top));
+	}
+
 	/*
 	 * The mark sits in the sheet's top-right corner with a row to itself. It
 	 * used to be positioned over the sheet, where the first task row covered it
@@ -241,11 +200,6 @@
 		flex-wrap: nowrap;
 		gap: 0.5rem;
 		min-height: var(--touch);
-	}
-
-	.above {
-		padding-top: calc(1rem + env(safe-area-inset-top));
-		padding-bottom: 1rem;
 	}
 
 	.below {

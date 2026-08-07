@@ -27,6 +27,9 @@
 		display: block;
 		width: 100%;
 		height: 16px;
+		/* The stroke sits on the path, so half of it falls outside a viewBox
+		   the teeth already reach the edges of. */
+		overflow: visible;
 	}
 
 	.flip {

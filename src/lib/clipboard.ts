@@ -29,22 +29,24 @@ export async function paste(): Promise<string | null> {
 export type ShareResult = 'shared' | 'dismissed' | 'copied' | 'failed';
 
 /**
- * The native share sheet, then the modal.
+ * The native share sheet.
  *
- * Called synchronously inside the click handler, before any await — browsers
- * require the call to happen in the user gesture, and deriving a string first
- * throws NotAllowedError.
+ * Must be called synchronously inside the click handler, before any await —
+ * browsers require the call to happen in the user gesture, and building the
+ * string first throws NotAllowedError. The caller passes one it already has.
  *
- * The code travels as text beside a bare URL, never inside it. A URL carrying
- * the key would end up in browser history, in link previews, and in whatever
- * service renders the message.
+ * Everything travels in `text`, the link included. Splitting it across `text`
+ * and `url` lets a share target keep one and drop the other, and an invitation
+ * missing either half is useless. The link itself stays bare: the code is
+ * never a query parameter or a fragment, or it would end up in history, in
+ * link previews, and in whatever service renders the message.
  */
-export function share(text: string, url: string): Promise<ShareResult> {
+export function share(text: string): Promise<ShareResult> {
 	if (typeof navigator.share !== 'function') {
 		return copy(text).then((ok) => (ok ? 'copied' : 'failed'));
 	}
 
-	return navigator.share({ text, url }).then(
+	return navigator.share({ text }).then(
 		() => 'shared' as const,
 		(error: unknown) => {
 			// Dismissing the share sheet is not a failure.

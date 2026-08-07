@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Modal from './Modal.svelte';
+	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
@@ -11,6 +12,7 @@
 	let entered = $state('');
 	let joining = $state(false);
 	let error = $state<string | null>(null);
+	let copied = $state(false);
 
 	const valid = $derived(normaliseCode(entered) !== null);
 	/** Joining with tasks already here is never decided silently. */
@@ -18,12 +20,25 @@
 
 	const status = $derived(
 		sync.status === 'offline'
-			? 'Offline. Your changes are saved here.'
+			? 'Offline. Changes are saved here.'
 			: sync.unsent === 0
 				? 'Everything here has been sent.'
 				: sync.unsent === 1
 					? '1 change has not been sent.'
 					: `${sync.unsent} changes have not been sent.`
+	);
+
+	/**
+	 * One payload, carrying the link and the code together — either alone is
+	 * useless. Built ahead of the click so the share sheet can be opened
+	 * synchronously inside the handler.
+	 *
+	 * The link is bare. The code is never a query parameter or a fragment.
+	 */
+	const invitation = $derived(
+		sync.code
+			? `Consumma — a shared checklist.\n${location.origin}\nCode: ${formatCode(sync.code)}`
+			: ''
 	);
 
 	/*
@@ -44,6 +59,16 @@
 		const tick = setInterval(() => (sync.now = Date.now()), 500);
 		return () => clearInterval(tick);
 	});
+
+	function onShare() {
+		share(invitation).then((result) => {
+			if (result === 'copied') copied = true;
+		});
+	}
+
+	async function onCopy() {
+		copied = await copy(invitation);
+	}
 
 	async function join(keep: boolean) {
 		error = null;
@@ -77,8 +102,21 @@
 		{/if}
 	</button>
 
-	<h2>This device</h2>
+	<h2>This list</h2>
+
 	<p class="code">{sync.code ? formatCode(sync.code) : ''}</p>
+
+	<div class="give">
+		<button type="button" class="caps" onclick={onShare}>Share</button>
+		<span aria-hidden="true">·</span>
+		<button type="button" class="caps" onclick={onCopy}>
+			{copied ? 'Copied' : 'Copy'}
+		</button>
+	</div>
+
+	<p class="note">Anyone with this code can read and change the list.</p>
+	<p class="note">There is no recovery. Losing the code loses the list; EXPORT is the backup.</p>
+	<p class="note">Lists go six months without an edit, then are deleted.</p>
 
 	<h2>Join another list</h2>
 
@@ -126,12 +164,12 @@
 
 <style>
 	.status {
-		margin: 0 0 1rem;
+		margin: 0 0 0.5rem;
 		line-height: 1.6;
 	}
 
 	h2 {
-		margin: 2rem 0 0.5rem;
+		margin: 2.5rem 0 0.75rem;
 		font-family: var(--display);
 		font-size: var(--size-title);
 		font-weight: 400;
@@ -139,12 +177,34 @@
 		letter-spacing: 0.06em;
 	}
 
+	/* The code is the thing on this panel. It sits in the middle of it. */
 	.code {
 		margin: 0;
 		font-family: var(--display);
 		font-size: var(--size-display);
-		letter-spacing: 0.06em;
+		letter-spacing: 0.08em;
+		text-align: center;
 		overflow-wrap: anywhere;
+	}
+
+	.give {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.75rem;
+		margin-bottom: 1.5rem;
+	}
+
+	.give button {
+		min-height: var(--touch);
+		padding: 0.5rem;
+		text-decoration: underline;
+		text-underline-offset: 4px;
+	}
+
+	.note {
+		margin: 0 0 0.5rem;
+		line-height: 1.6;
 	}
 
 	.field input {

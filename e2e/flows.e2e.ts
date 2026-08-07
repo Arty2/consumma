@@ -24,6 +24,11 @@ function task(page: Page, text: string) {
 	return page.getByRole('checkbox', { name: text });
 }
 
+/** The status mark is the only control that opens the sync panel. */
+function mark(page: Page) {
+	return page.getByRole('button', { name: /not sent|Synced|Offline/ });
+}
+
 test.beforeEach(async ({ page }) => {
 	await page.goto('/');
 	await page.evaluate(() => localStorage.clear());
@@ -31,7 +36,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('a code exists from the first run, and is never in the URL', async ({ page }) => {
-	await page.getByRole('button', { name: 'SYNC', exact: true }).click();
+	await mark(page).click();
 
 	const code = await page.locator('.code').first().innerText();
 	// Twelve hex characters, shown in groups of four for reading aloud.
@@ -44,13 +49,41 @@ test('a code exists from the first run, and is never in the URL', async ({ page 
 test('the status mark says how much has not been sent', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	const mark = page.getByRole('button', { name: /not sent|Synced|Offline/ });
-	await expect(mark).toBeVisible();
-	await expect(mark).toHaveAttribute('aria-label', /change|changes/);
+	await expect(mark(page)).toBeVisible();
+	await expect(mark(page)).toHaveAttribute('aria-label', /change|changes/);
 
-	// Tapping it opens SYNC, which is the only way to send anything.
-	await mark.click();
+	// There is no SYNC button: the mark is the whole control.
+	await expect(page.getByRole('button', { name: 'SYNC', exact: true })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'SHARE', exact: true })).toHaveCount(0);
+
+	await mark(page).click();
 	await expect(page.getByRole('dialog', { name: 'Sync' })).toBeVisible();
+});
+
+test('the invitation carries the link and the code together, with no query string', async ({
+	page,
+	context
+}) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	await mark(page).click();
+
+	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
+	await page.getByRole('button', { name: 'Copy', exact: true }).click();
+
+	const invitation = await page.evaluate(() => navigator.clipboard.readText());
+	const origin = new URL(page.url()).origin;
+
+	// Either half alone is useless, so one payload carries both.
+	expect(invitation).toContain(origin);
+	expect(invitation.replace(/\s/g, '')).toContain(code);
+
+	// And the link stays bare — no query, no fragment.
+	const link = invitation.match(/https?:\/\/\S+/)![0];
+	expect(link).toBe(origin);
+	expect(link).not.toContain('?');
+	expect(link).not.toContain('#');
+	expect(link).not.toContain(code);
 });
 
 test('EXPORT copies the whole list and says how many', async ({ page, context }) => {
@@ -159,7 +192,7 @@ test('CLEAR asks first, then clears, and the undo still works', async ({ page })
 test('DELETE shows the code one last time, then wipes only this device', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	await page.getByRole('button', { name: 'SYNC', exact: true }).click();
+	await mark(page).click();
 	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
 	await page.getByRole('button', { name: 'Close' }).click();
 
@@ -180,7 +213,7 @@ test('DELETE shows the code one last time, then wipes only this device', async (
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 
 	// A new code, because this device is no longer on the old list.
-	await page.getByRole('button', { name: 'SYNC', exact: true }).click();
+	await mark(page).click();
 	const fresh = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
 	expect(fresh).not.toBe(code);
 });
@@ -188,7 +221,7 @@ test('DELETE shows the code one last time, then wipes only this device', async (
 test('joining with tasks already here asks rather than deciding', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	await page.getByRole('button', { name: 'SYNC', exact: true }).click();
+	await mark(page).click();
 	await page.getByRole('textbox', { name: 'Code' }).fill('0123 4567 89ab');
 	await page.getByRole('button', { name: 'Join' }).click();
 
@@ -206,7 +239,7 @@ test('a second sync tap inside the cooldown costs nothing', async ({ page }) => 
 	});
 
 	await addTask(page, 'Bread');
-	await page.getByRole('button', { name: 'SYNC', exact: true }).click();
+	await mark(page).click();
 
 	const button = page.getByRole('button', { name: /^Sync now/ });
 	await button.click();
@@ -221,14 +254,13 @@ test('a second sync tap inside the cooldown costs nothing', async ({ page }) => 
 });
 
 test('a modal closes on Escape and returns focus to what opened it', async ({ page }) => {
-	const sync = page.getByRole('button', { name: 'SYNC', exact: true });
-	await sync.click();
+	await mark(page).click();
 
 	await expect(page.getByRole('dialog', { name: 'Sync' })).toBeVisible();
 
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toHaveCount(0);
-	await expect(sync).toBeFocused();
+	await expect(mark(page)).toBeFocused();
 });
 
 test('the sync panel reports being unable to reach the list, and keeps the tasks', async ({
@@ -238,7 +270,7 @@ test('the sync panel reports being unable to reach the list, and keeps the tasks
 
 	await page.route('**/api/room/**', (route) => route.abort());
 
-	await page.getByRole('button', { name: 'SYNC', exact: true }).click();
+	await mark(page).click();
 	await page.getByRole('button', { name: /Sync now|Syncing/ }).click();
 
 	await expect(page.getByRole('alert')).toContainText('Couldn’t reach the list');

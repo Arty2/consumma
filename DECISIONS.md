@@ -38,10 +38,10 @@ Numbers in brackets are the section of the build plan a decision came from.
     `…` in header type. [§12.14]
 13. **Installable, with icons drawn at build time** so no raster asset is ever
     committed. [§12.15]
-14. **The app opens scrolled** so the torn top edge sits at the viewport top.
-    [§12.17]
-15. **SHARE fires the native share sheet first**, with a bare URL and the code
-    as text — never the code in the URL — and then opens the modal. [§12.18]
+14. ~~**The app opens scrolled** so the torn top edge sits at the viewport
+    top.~~ [§12.17 — superseded by 29]
+15. ~~**SHARE fires the native share sheet first**, then opens the modal.~~
+    [§12.18 — superseded by 29; the bare URL survives]
 16. **One hand-rolled modal component**: full-white panel, swipe-down to
     dismiss, `✕`, Escape. Never `window.confirm()`. [§12.19]
 
@@ -72,6 +72,28 @@ Numbers in brackets are the section of the build plan a decision came from.
 
 20. **Markdown half-done is `- [~]` on export**; import also accepts `[/]` and
     `[-]`, which other apps use. [closed §12.23]
+
+21. **There is no SYNC · SHARE row.** The status mark in the sheet's corner is
+    the whole control: it reports what has not been sent, and opens the panel
+    that sends it. A button that only opens a panel the mark already opens is
+    a second name for the same thing.
+
+    Three consequences. Sharing moved into that panel, next to the code it is
+    about. The opening scroll is gone — it existed to put those two buttons out
+    of sight above the fold, and with nothing above the sheet the page simply
+    opens on the list. And the sheet no longer needs `min-height: 100dvh` to
+    guarantee something to scroll.
+
+22. **One invitation, carrying the link and the code together.** Either half
+    alone is useless: the link without the code opens an empty sheet, the code
+    without the link is a string nobody can place. SHARE and COPY hand over the
+    same payload.
+
+    It all travels in `navigator.share`'s `text`, with no `url` field —
+    splitting it lets a share target keep one and drop the other. The link
+    itself stays bare, so §12.18's rule holds where it matters: the code is
+    never a query parameter or a fragment, and never reaches history, a link
+    preview, or whatever service renders the message.
 
 ## Corrections to the build plan
 

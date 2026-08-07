@@ -41,54 +41,46 @@ test('the sheet has no accessibility violations', async ({ page }) => {
 test('the modals have no accessibility violations either', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
-	for (const label of ['SYNC', 'IMPORT']) {
-		await page.getByRole('button', { name: label, exact: true }).click();
+	const open = [
+		() => page.getByRole('button', { name: /not sent|Synced|Offline/ }).click(),
+		() => page.getByRole('button', { name: 'IMPORT', exact: true }).click()
+	];
+
+	for (const [index, click] of open.entries()) {
+		await click();
 		await expect(page.getByRole('dialog')).toBeVisible();
 
 		const results = await new AxeBuilder({ page })
 			.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
 			.analyze();
 
-		expect(results.violations, `${label} modal`).toStrictEqual([]);
+		expect(results.violations, `modal ${index}`).toStrictEqual([]);
 
 		await page.keyboard.press('Escape');
 	}
 });
 
-test('the controls come first in the tab order, hidden but not unreachable', async ({ page }) => {
-	/*
-	 * SYNC and SHARE are scrolled off the top on open. They stay first in the
-	 * DOM so tabbing reaches them and scrolls them into view.
-	 *
-	 * Asserted on document order plus one real Tab, rather than by pressing Tab
-	 * from wherever focus happens to start — that depends on whether the page
-	 * has focus at all, which is not what this test is about.
-	 */
-	const order = await page.evaluate(() =>
-		[...document.querySelectorAll<HTMLElement>('button, input, [tabindex]:not([tabindex="-1"])')]
-			.filter((el) => !(el as HTMLButtonElement).disabled)
-			.map((el) => el.getAttribute('aria-label') ?? el.textContent?.trim())
-	);
+test('the sheet is reachable and operable with a keyboard alone', async ({ page }) => {
+	await addTask(page, 'Bread');
 
-	expect(order.slice(0, 2)).toStrictEqual(['SYNC', 'SHARE']);
+	// The status mark is the only way into the sync panel, so it has to be
+	// reachable — there is no SYNC button behind it any more.
+	const mark = page.getByRole('button', { name: /not sent|Synced|Offline/ });
+	await mark.focus();
+	await expect(mark).toBeFocused();
 
-	const sync = page.getByRole('button', { name: 'SYNC', exact: true });
-	await sync.focus();
-	await expect(sync).toBeFocused();
+	await page.keyboard.press('Enter');
+	await expect(page.getByRole('dialog', { name: 'Sync' })).toBeVisible();
 
-	await page.keyboard.press('Tab');
-	await expect(page.getByRole('button', { name: 'SHARE', exact: true })).toBeFocused();
-
-	// And it is genuinely on screen once focused, not merely focusable.
-	await expect(sync).toBeInViewport();
+	await page.keyboard.press('Escape');
+	await expect(mark).toBeFocused();
 });
 
 test('focus is visible, and drawn rather than coloured', async ({ page }) => {
-	await page.getByRole('button', { name: 'SYNC', exact: true }).focus();
+	const first = page.getByRole('button', { name: 'IMPORT', exact: true });
+	await first.focus();
 
-	const outline = await page
-		.getByRole('button', { name: 'SYNC', exact: true })
-		.evaluate((el) => getComputedStyle(el).outline);
+	const outline = await first.evaluate((el) => getComputedStyle(el).outline);
 
 	expect(outline).toContain('dashed');
 	expect(outline).toContain('rgb(0, 0, 0)');
