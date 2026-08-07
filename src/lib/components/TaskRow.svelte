@@ -133,6 +133,7 @@
 	.row {
 		position: relative;
 		display: flex;
+		font-size: var(--size-task);
 		align-items: center;
 		gap: 0.25rem;
 		min-height: var(--touch);

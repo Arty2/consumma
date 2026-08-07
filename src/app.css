@@ -52,6 +52,21 @@
 	--size-body: 1.0625rem;
 	--size-small: 0.875rem;
 
+	/*
+	 * What a task is written in — the one thing on the sheet somebody came to
+	 * read, so it is set a little larger than the chrome around it.
+	 *
+	 * Applied to the row rather than to the text, so the one declaration governs
+	 * the words and the mark beside them together. `--cap-lift` is in em, so the
+	 * checkbox's lift then resolves against the same size the capitals do.
+	 *
+	 * That last part is tidiness, not a fix: measured either way the checkbox
+	 * lands within a third of a pixel of the middle of the letters, because two
+	 * rem of size is a quarter of a pixel of lift. Do not repeat the claim that
+	 * setting it on the text alone knocks the box out of line — it does not.
+	 */
+	--size-task: 1.1875rem;
+
 	--stroke: 1.4;
 	--touch: 44px;
 

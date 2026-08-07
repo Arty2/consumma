@@ -108,6 +108,7 @@
 		gap: 0.25rem;
 		min-height: var(--touch);
 		list-style: none;
+		font-size: var(--size-task);
 	}
 
 	.box {

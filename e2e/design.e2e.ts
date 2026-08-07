@@ -354,6 +354,47 @@ test('a group title has the air under it that the tasks have between them', asyn
 	expect(Math.abs(gaps.underTitle - rhythm)).toBeLessThan(3);
 });
 
+test('a checkbox sits level with the capitals it is beside', async ({ page }) => {
+	/*
+	 * What `--cap-lift` is for. Graphe's capitals ride high in their own line
+	 * box, so a checkbox centred on the row reads low against them — by about
+	 * four pixels, which is plainly visible on a 19px line.
+	 *
+	 * This guards the lift itself, not where the font-size is declared: moving
+	 * the size between the row and the text moves the box by a quarter of a
+	 * pixel, and no assertion should pretend to see that.
+	 */
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+	await page.mouse.move(0, 0);
+
+	const offset = await page.evaluate(() => {
+		const row = document.querySelector('.tasks li')!;
+		const text = row.querySelector('.text')!;
+		const box = row.querySelector('svg path')!.getBoundingClientRect();
+
+		const style = getComputedStyle(text);
+		const range = document.createRange();
+		range.selectNodeContents(text);
+		const line = range.getBoundingClientRect();
+
+		const ctx = document.createElement('canvas').getContext('2d')!;
+		ctx.font = `${style.fontSize} ${style.fontFamily}`;
+		const m = ctx.measureText(text.textContent!.trim().toUpperCase());
+		const fh = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
+		const base = line.top + (line.height - fh) / 2 + m.fontBoundingBoxAscent;
+
+		const inkMiddle = (base - m.actualBoundingBoxAscent + (base + m.actualBoundingBoxDescent)) / 2;
+		return (box.top + box.bottom) / 2 - inkMiddle;
+	});
+
+	// Within a pixel of the middle of the letters. Without the lift it is four.
+	expect(Math.abs(offset)).toBeLessThan(1);
+});
+
 test('the credit names the version, the project and both authors', async ({ page }) => {
 	// It sits at the foot of the menu now, not on the sheet.
 	await expect(page.locator('footer')).toHaveCount(0);
