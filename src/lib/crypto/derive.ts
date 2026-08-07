@@ -64,6 +64,36 @@ export function normaliseCode(input: string): string | null {
  * Grouped for dictation — `5e6b 7c1a 93f2`. Presentation only; what is stored,
  * copied and typed is always the bare code.
  */
+/**
+ * Pulls a code out of whatever was pasted.
+ *
+ * The invitation is a link and a code on two lines, and pasting the whole
+ * thing is the obvious thing to do with it — so the link has to be got rid of
+ * before anything else looks at the characters.
+ *
+ * It cannot be done by stripping non-hex: a domain is made of letters, and
+ * enough of them are hex digits that `consumma.cafe` reads as `cafe`. A URL
+ * would assemble into a code that is wrong and looks right, and send someone
+ * to a list that does not exist.
+ *
+ * Nor by hunting for any twelve hex characters among the words. In
+ * "the cafe — a1b2 c3d4 e5f6" two different runs come to twelve, and picking
+ * one is guessing. A wrong code is worse here than no code: no code leaves the
+ * field alone and the person tries again, a wrong one joins nothing and says
+ * the list is empty.
+ *
+ * So: words that could be part of a URL are dropped whole, and every word left
+ * has to belong to the code. Anything less certain returns null.
+ */
+export function codeFrom(input: string): string | null {
+	const rest = input
+		.split(/\s+/)
+		.filter((word) => word !== '' && !/[:/.]/.test(word))
+		.join('');
+
+	return normaliseCode(rest);
+}
+
 export function formatCode(code: string): string {
 	return (code.match(/.{1,4}/g) ?? [code]).join(' ');
 }

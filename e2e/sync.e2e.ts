@@ -398,3 +398,60 @@ test('a crossed circle when the list cannot be reached', async ({ page }) => {
 	// And the mark has not quietly reverted while it waited.
 	await expect(button).toHaveAttribute('aria-label', /no connection last time/);
 });
+
+test('pasting the whole invitation into JOIN keeps the code and drops the link', async ({
+	page
+}) => {
+	/*
+	 * What someone actually does with a message containing both: select all,
+	 * paste. The field caps at fourteen characters, so before this the paste
+	 * truncated to the front of the URL — `https://consum` — and JOIN sat
+	 * disabled with nothing to say why.
+	 */
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+	await openMenu(page);
+
+	const origin = new URL(page.url()).origin;
+	const field = page.getByRole('textbox', { name: 'Code' });
+	await field.focus();
+
+	await page.evaluate((invitation) => {
+		const data = new DataTransfer();
+		data.setData('text/plain', invitation);
+		document.activeElement!.dispatchEvent(
+			new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
+		);
+	}, `${origin}\ned43 a066 78e0`);
+
+	// Twelve places filled with the code, and no part of the link anywhere.
+	const places = await page.locator('.field .glyph').allInnerTexts();
+	expect(places.join('')).toBe('ed43a06678e0');
+
+	await expect(page.getByRole('button', { name: 'Join', exact: true })).toBeEnabled();
+});
+
+test('pasting a link on its own leaves the join field alone', async ({ page }) => {
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+	await openMenu(page);
+
+	const field = page.getByRole('textbox', { name: 'Code' });
+	await field.fill('ed43a066');
+
+	await page.evaluate((origin) => {
+		const data = new DataTransfer();
+		data.setData('text/plain', origin);
+		document
+			.querySelector('.field input')!
+			.dispatchEvent(
+				new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })
+			);
+	}, new URL(page.url()).origin);
+
+	// There is no code in a bare link, so nothing replaces what was typed.
+	const places = await page.locator('.field .glyph').allInnerTexts();
+	expect(places.join('')).toBe('ed43a066');
+});

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { CODE_LENGTH } from '$lib/crypto/derive';
+	import { CODE_LENGTH, codeFrom } from '$lib/crypto/derive';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 
@@ -37,6 +37,34 @@
 	 */
 	const bare = $derived(value.replace(/\s/g, '').toLowerCase().slice(0, CODE_LENGTH));
 	const cells = $derived(Array.from({ length: CODE_LENGTH }, (_, i) => bare[i] ?? ''));
+
+	/**
+	 * Pasting the whole invitation is the obvious thing to do with it, so the
+	 * link is taken out and the code kept.
+	 *
+	 * Without this the field is worse than unhelpful: `maxlength` truncates a
+	 * pasted invitation to its first fourteen characters, which is the front of
+	 * the URL. The field then holds `https://consum` and JOIN sits disabled with
+	 * nothing to say why.
+	 */
+	function onpaste(event: ClipboardEvent) {
+		const text = event.clipboardData?.getData('text') ?? '';
+		const code = codeFrom(text);
+
+		if (code) {
+			event.preventDefault();
+			value = code;
+			return;
+		}
+
+		/*
+		 * No code in it at all — a link on its own, most likely. Leave the field
+		 * as it was rather than let the first fourteen characters of a URL in.
+		 * Anything else falls through, so half a code typed in two goes still
+		 * works.
+		 */
+		if (/[:/]/.test(text)) event.preventDefault();
+	}
 </script>
 
 <label class="field">
@@ -51,6 +79,7 @@
 		spellcheck="false"
 		maxlength={CODE_LENGTH + 2}
 		bind:value
+		{onpaste}
 	/>
 
 	<span class="cells" aria-hidden="true">

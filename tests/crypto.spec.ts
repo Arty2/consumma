@@ -7,7 +7,8 @@ import {
 	derive,
 	formatCode,
 	newCode,
-	normaliseCode
+	normaliseCode,
+	codeFrom
 } from '../src/lib/crypto/derive';
 
 /*
@@ -207,5 +208,52 @@ describe('the envelope', () => {
 
 		const sealed = await seal(one.key, full);
 		expect(sealed.length).toBeLessThan(128 * 1024);
+	});
+});
+
+describe('codeFrom', () => {
+	const CODE = 'a1b2c3d4e5f6';
+
+	it('takes the code out of a pasted invitation', () => {
+		expect(codeFrom(`https://consumma.example\n${'a1b2 c3d4 e5f6'}`)).toBe(CODE);
+	});
+
+	it('is not fooled by a domain made of hex letters', () => {
+		/*
+		 * The trap this exists for. Strip the non-hex out of "consumma.cafe" and
+		 * it reads as cafe — a URL becomes a code that is wrong and looks right,
+		 * and the person is sent to a list that does not exist.
+		 */
+		expect(codeFrom('https://consumma.cafe')).toBeNull();
+		expect(codeFrom('deadbeefcafe.example.com')).toBeNull();
+		expect(codeFrom('https://abcdef123456.example')).toBeNull();
+	});
+
+	it('reads a code however it was spaced, and in either case', () => {
+		expect(codeFrom(CODE)).toBe(CODE);
+		expect(codeFrom('a1b2 c3d4 e5f6')).toBe(CODE);
+		expect(codeFrom('  A1B2C3D4E5F6  ')).toBe(CODE);
+		expect(codeFrom('a1b2c3 d4e5f6')).toBe(CODE);
+	});
+
+	it('declines rather than guess between two runs that both fit', () => {
+		/*
+		 * "the cafe — a1b2 c3d4 e5f6" contains two twelve-character runs of hex:
+		 * cafea1b2c3d4 and a1b2c3d4e5f6. Picking one is guessing, and a wrong
+		 * code is worse than none — no code leaves the field alone and the person
+		 * tries again, a wrong one joins nothing and reports an empty list.
+		 *
+		 * Nothing the app itself hands over looks like this; the invitation is a
+		 * link and a code and no words at all.
+		 */
+		expect(codeFrom(`be at the cafe — ${'a1b2 c3d4 e5f6'}`)).toBeNull();
+	});
+
+	it('has nothing to give when there is no code', () => {
+		expect(codeFrom('')).toBeNull();
+		expect(codeFrom('https://consumma.example')).toBeNull();
+		expect(codeFrom('a1b2c3')).toBeNull();
+		// Too long is not a code either, even though it starts like one.
+		expect(codeFrom('a1b2c3d4e5f6a7')).toBeNull();
 	});
 });
