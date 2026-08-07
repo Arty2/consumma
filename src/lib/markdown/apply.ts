@@ -38,11 +38,15 @@ export function applyImport(
 
 	const titles = new Map(liveGroups(doc).map((g) => [g.title, g.id]));
 
+	const landing = (title: string) =>
+		title === '' && liveGroups(doc)[0] ? liveGroups(doc)[0].title : title;
+
 	const wouldAdd = parsed.groups.reduce(
-		(total, group) => total + group.tasks.filter((t) => !seen.get(group.title)?.has(t.text)).length,
+		(total, group) =>
+			total + group.tasks.filter((t) => !seen.get(landing(group.title))?.has(t.text)).length,
 		0
 	);
-	const newGroups = parsed.groups.filter((g) => !titles.has(g.title)).length;
+	const newGroups = parsed.groups.filter((g) => !titles.has(landing(g.title))).length;
 
 	if (countTasks(doc) + wouldAdd > LIMITS.tasks) {
 		return { doc: base, added: 0, skipped: 0, refused: 'tasks' };
@@ -54,8 +58,16 @@ export function applyImport(
 	let added = 0;
 	let skipped = 0;
 
+	const [first] = liveGroups(doc);
+
 	for (const group of parsed.groups) {
-		let groupId = titles.get(group.title);
+		/*
+		 * Items above the first heading go into the group already on the sheet
+		 * rather than into a new nameless one beside it. Pasting a plain list is
+		 * the common case, and "here are your tasks, in an untitled group under
+		 * the one you were looking at" is not what anyone means by it.
+		 */
+		let groupId = group.title === '' && first ? first.id : titles.get(group.title);
 
 		if (groupId === undefined) {
 			groupId = newId();
@@ -64,7 +76,7 @@ export function applyImport(
 			seen.set(group.title, new Set());
 		}
 
-		const existing = seen.get(group.title) ?? new Set<string>();
+		const existing = seen.get(landing(group.title)) ?? new Set<string>();
 
 		for (const task of group.tasks) {
 			if (existing.has(task.text)) {

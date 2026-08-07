@@ -120,6 +120,25 @@ describe('hand', () => {
 		expect(Math.max(...points.map((p) => p.y))).toBeGreaterThan(8);
 	});
 
+	it('never ends on a sliver, at any width or seed', () => {
+		/*
+		 * The loop stops once it passes the right edge, so without care its last
+		 * tooth lands a sliver from the one before it and the tear finishes with
+		 * a short near-vertical hook. A tooth can legitimately be 0.45 of the
+		 * nominal width, so the bar is a quarter of one.
+		 */
+		for (const width of [200, 358, 544, 1000]) {
+			for (const seed of [1, 5, 7, 11, 23, 99]) {
+				const teeth = Math.max(8, Math.round(width / 16));
+				const points = endpoints(handTear(width, 16, { seed, teeth }));
+				const [last, previous] = [points.at(-1)!, points.at(-2)!];
+
+				expect(last.x, `${width}/${seed}`).toBe(width);
+				expect(last.x - previous.x, `${width}/${seed}`).toBeGreaterThan(width / teeth / 4);
+			}
+		}
+	});
+
 	it('tears with irregular teeth rather than a saw blade', () => {
 		const points = endpoints(handTear(1000, 16, { seed: 11 }));
 		const widths = points.slice(1).map((p, i) => p.x - points[i].x);

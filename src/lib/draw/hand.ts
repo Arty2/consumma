@@ -103,8 +103,11 @@ export function handLine(width: number, options: HandOptions & { y?: number }): 
 
 /**
  * A paper tear, not a saw blade: irregular tooth widths and depths, stroked
- * across the full width. Drawn in a fixed viewBox and stretched with
- * preserveAspectRatio="none", so it fits any width without recomputing.
+ * across the full width.
+ *
+ * Drawn at the width it will be shown at — see TornEdge.svelte. Generating it
+ * once and stretching it is what made the line weight uneven, because a stroke
+ * under an anisotropic transform is thinner along the compressed axis.
  */
 export function handTear(
 	width: number,
@@ -139,7 +142,23 @@ export function handTear(
 		if (random() > 0.12) up = !up;
 	}
 
-	points.push({ x: width, y: mid });
+	/*
+	 * End on a full-width tooth.
+	 *
+	 * The loop stops once it passes the right edge, so its last tooth is clamped
+	 * to `width` and can end up a sliver away from the one before it. Either
+	 * that, or a midline point appended after a tooth already at the edge,
+	 * leaves a short near-vertical hook that reads as a mistake rather than as
+	 * paper. So: pull the final tooth out to the edge, then drop the one before
+	 * it if the run between them is too short to be a tooth.
+	 */
+	const minimum = width / teeth / 4;
+	points[points.length - 1].x = width;
+
+	while (points.length > 2 && points[points.length - 1].x - points[points.length - 2].x < minimum) {
+		points.splice(points.length - 2, 1);
+	}
+
 	return handPath(points, { ...options, wobble: options.wobble ?? 0.9 });
 }
 

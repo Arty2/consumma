@@ -27,10 +27,44 @@ test.beforeEach(async ({ page }) => {
 	await page.reload();
 });
 
-test('a fresh sheet is one empty box and an ellipsis', async ({ page }) => {
+test('a fresh sheet is one named group, one empty box, and an ellipsis', async ({ page }) => {
+	// Displayed in caps, stored in sentence case — the uppercase is CSS only.
+	const title = page.getByRole('button', { name: 'My list' });
+	await expect(title).toBeVisible();
+	await expect(title).toHaveCSS('text-transform', 'uppercase');
+	expect(await title.innerText()).toBe('MY LIST');
+
 	await expect(page.getByRole('button', { name: 'Add a task' })).toHaveCount(1);
 	await expect(page.getByRole('button', { name: 'Add a group' })).toBeVisible();
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
+});
+
+test('a title being typed looks like the title it becomes', async ({ page }) => {
+	await page.getByRole('button', { name: 'My list' }).dblclick();
+
+	const input = page.getByRole('textbox', { name: 'Group title' });
+	await expect(input).toBeVisible();
+
+	const title = page.getByRole('button', { name: 'Add a group' });
+	const face = await title.evaluate((el) => getComputedStyle(el).fontFamily);
+
+	await expect(input).toHaveCSS('text-transform', 'uppercase');
+	await expect(input).toHaveCSS('font-family', face);
+
+	// And what is stored keeps the casing that was typed.
+	await input.fill('Weekend jobs');
+	await input.press('Enter');
+
+	const renamed = page.getByRole('button', { name: 'Weekend jobs' });
+	expect(await renamed.innerText()).toBe('WEEKEND JOBS');
+});
+
+test('the new-group placeholder lines up with the group titles', async ({ page }) => {
+	const title = await page.getByRole('button', { name: 'My list' }).boundingBox();
+	const placeholder = await page.getByRole('button', { name: 'Add a group' }).boundingBox();
+
+	// Same left edge: it is the same thing, one step earlier.
+	expect(placeholder!.x).toBeCloseTo(title!.x, 0);
 });
 
 test('committing leaves a fresh empty box beneath, so a burst is just typing', async ({ page }) => {

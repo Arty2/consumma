@@ -7,6 +7,9 @@ import { parseDoc } from '$lib/doc/validate';
 import { allDone, openCount, view, type ViewGroup } from '$lib/doc/view';
 import { KEYS, read, write } from './storage';
 
+/** What the first group is called until someone renames it. */
+export const FIRST_GROUP = 'My list';
+
 /**
  * The document, in runes, backed by localStorage.
  *
@@ -41,10 +44,16 @@ export class Sheet {
 		this.doc = parseDoc(read(KEYS.doc) ?? '') ?? emptyDoc();
 		this.loaded = true;
 
-		// A fresh sheet is one untitled group holding one empty checkbox. Every
-		// task belongs to a group, so nothing else in the app has to special-case
-		// the empty state.
-		if (ops.liveGroups(this.doc).length === 0) this.addGroup('');
+		/*
+		 * A fresh sheet is one group holding one empty checkbox. Every task
+		 * belongs to a group, so nothing else in the app has to special-case the
+		 * empty state.
+		 *
+		 * Stored in sentence case and displayed in caps, like every other title:
+		 * the uppercase is CSS only, so the markdown export reads "## My list"
+		 * rather than shouting.
+		 */
+		if (ops.liveGroups(this.doc).length === 0) this.addGroup(FIRST_GROUP);
 	}
 
 	/** Replaces the whole document — used by sync and by import's replace path. */

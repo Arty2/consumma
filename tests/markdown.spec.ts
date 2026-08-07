@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyImport } from '../src/lib/markdown/apply';
 import { fromMarkdown } from '../src/lib/markdown/from';
 import { toMarkdown } from '../src/lib/markdown/to';
-import { addGroup, addTask, liveTasks, setTaskState } from '../src/lib/doc/ops';
+import { addGroup, addTask, liveGroups, liveTasks, setTaskState } from '../src/lib/doc/ops';
 import { createClock, type Ctx } from '../src/lib/doc/stamp';
 import { emptyDoc, type Doc } from '../src/lib/doc/types';
 
@@ -170,6 +170,39 @@ describe('applying an import', () => {
 		expect(result.added).toBe(0);
 		// Nothing was changed at all.
 		expect(result.doc).toBe(doc);
+	});
+
+	it('puts a headingless paste into the group already on the sheet', () => {
+		const { doc, ctx } = sample();
+		const parsed = fromMarkdown('- [ ] Brand new\n')!;
+
+		const result = applyImport(doc, ctx, parsed, 'add');
+
+		// Not a new nameless group beside the one you were looking at.
+		expect(liveGroups(result.doc)).toHaveLength(2);
+		expect(liveTasks(result.doc, liveGroups(result.doc)[0].id).map((t) => t.text)).toContain(
+			'Brand new'
+		);
+	});
+
+	it('still skips a duplicate when the paste has no heading', () => {
+		const { doc, ctx } = sample();
+		const parsed = fromMarkdown('- [ ] To do task\n- [ ] Brand new\n')!;
+
+		const result = applyImport(doc, ctx, parsed, 'add');
+
+		expect(result.added).toBe(1);
+		expect(result.skipped).toBe(1);
+	});
+
+	it('makes an untitled group when there is nothing to land in', () => {
+		const { ctx } = sample();
+		const parsed = fromMarkdown('- [ ] Alone\n')!;
+
+		const result = applyImport(emptyDoc(), ctx, parsed, 'add');
+
+		expect(liveGroups(result.doc)).toHaveLength(1);
+		expect(liveGroups(result.doc)[0].title).toBe('');
 	});
 
 	it('round-trips a list into an empty sheet', () => {

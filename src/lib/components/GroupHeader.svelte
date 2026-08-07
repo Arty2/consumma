@@ -56,7 +56,7 @@
 	{#if editing}
 		<!-- svelte-ignore a11y_autofocus -->
 		<input
-			class="title"
+			class="title caps"
 			type="text"
 			bind:value={draft}
 			maxlength={LIMITS.groupTitle}
@@ -69,12 +69,14 @@
 		<!-- The whole title row is the hit area for collapsing. -->
 		<button
 			class="title caps"
+			class:untitled={title === ''}
 			type="button"
+			aria-label={title === '' ? 'Untitled group' : title}
 			onclick={ontoggle}
 			ondblclick={startEditing}
 			onkeydown={(event) => event.key === 'F2' && startEditing(event)}
 		>
-			{title}
+			{title === '' ? '…' : title}
 		</button>
 		<span class="icon" aria-hidden="true">
 			<svg viewBox="0 0 20 20" width="20" height="20">
@@ -112,11 +114,18 @@
 		overflow-wrap: anywhere;
 	}
 
+	/*
+	 * Typing a title should look like the title it becomes: same face, same
+	 * size, same caps. The uppercase is CSS only, so the value keeps whatever
+	 * casing was typed and the markdown export does too.
+	 */
 	input.title {
-		text-transform: none;
-		letter-spacing: normal;
 		outline: none;
 		cursor: text;
+	}
+
+	.untitled {
+		opacity: 0.55;
 	}
 
 	.icon {

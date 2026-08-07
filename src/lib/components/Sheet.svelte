@@ -99,17 +99,16 @@
 <div class="sheet">
 	{#each sheet.groups as group, groupIndex (group.id)}
 		<section class="group" data-group={group.id}>
-			{#if group.title !== '' || group.synthetic}
-				<GroupHeader
-					title={group.title}
-					seed={group.id}
-					collapsed={ui.isCollapsed(group.id)}
-					count={group.tasks.length}
-					editable={!group.synthetic}
-					ontoggle={() => ui.toggleCollapsed(group.id)}
-					onrename={(title) => sheet.renameGroup(group.id, title)}
-				/>
-			{/if}
+			<!-- Every group gets a header, so one with no title is still nameable. -->
+			<GroupHeader
+				title={group.title}
+				seed={group.id}
+				collapsed={ui.isCollapsed(group.id)}
+				count={group.tasks.length}
+				editable={!group.synthetic}
+				ontoggle={() => ui.toggleCollapsed(group.id)}
+				onrename={(title) => sheet.renameGroup(group.id, title)}
+			/>
 
 			{#if !ui.isCollapsed(group.id)}
 				<ul class="tasks">
@@ -163,6 +162,7 @@
 		{#if newGroupOpen}
 			<!-- svelte-ignore a11y_autofocus -->
 			<input
+				class="caps"
 				type="text"
 				maxlength={LIMITS.groupTitle}
 				aria-label="New group"
@@ -219,19 +219,17 @@
 		opacity: 0.7;
 	}
 
+	/* Flush with the real group titles: it is the same thing, one step earlier. */
 	.new-group button,
 	.new-group input {
 		font-family: var(--display);
 		font-size: var(--size-title);
-		margin-left: var(--touch);
 		text-align: left;
 		text-decoration: underline;
 		text-underline-offset: 4px;
 	}
 
 	.new-group input {
-		text-transform: none;
-		letter-spacing: normal;
 		outline: none;
 		cursor: text;
 	}
