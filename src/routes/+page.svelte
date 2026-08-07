@@ -4,6 +4,7 @@
 	import Menu from '$lib/components/Menu.svelte';
 	import MenuButton from '$lib/components/MenuButton.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
+	import SideEdge from '$lib/components/SideEdge.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
@@ -112,7 +113,14 @@
 		<TornEdge seed="top" />
 	</div>
 
+	<!--
+		The tears close the paper top and bottom; these close it at the sides, so
+		it reads as a strip of paper rather than as text on a page.
+	-->
 	<main data-sheet>
+		<SideEdge seed="left" side="left" />
+		<SideEdge seed="right" side="right" />
+
 		<div class="corner">
 			<MenuButton onopen={() => (panel = 'menu')} />
 		</div>
@@ -171,6 +179,17 @@
 
 	.top {
 		padding-top: calc(2rem + env(safe-area-inset-top));
+	}
+
+	/*
+	 * Holds the two side edges, which span whatever the list comes to. The
+	 * padding keeps the writing off them — a title running into the edge of the
+	 * paper reads as a mistake.
+	 */
+	main {
+		display: block;
+		position: relative;
+		padding: 0 0.6rem;
 	}
 
 	/*

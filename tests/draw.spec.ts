@@ -6,7 +6,8 @@ import {
 	handLine,
 	handPath,
 	handRect,
-	handTear
+	handTear,
+	handVertical
 } from '../src/lib/draw/hand';
 import { rng, seedFrom } from '../src/lib/draw/rng';
 
@@ -288,5 +289,35 @@ describe('handArrow', () => {
 
 	it('is not the burger', () => {
 		expect(handArrow(SIZE, { seed: 4 })).not.toBe(handBurger(SIZE, { seed: 4 }));
+	});
+});
+
+describe('handVertical', () => {
+	it('runs the full height it is given', () => {
+		const points = endpoints(handVertical(600, { seed: 3, wobble: 1 }));
+		const ys = points.map((p) => p.y);
+
+		expect(Math.min(...ys)).toBe(0);
+		expect(Math.max(...ys)).toBe(600);
+	});
+
+	it('wobbles along its length rather than bowing once', () => {
+		// One segment would bend exactly once, which is a ruled line.
+		const points = endpoints(handVertical(600, { seed: 3, wobble: 1 }));
+		const gaps = points.slice(1).map((p, i) => p.y - points[i].y);
+
+		expect(Math.max(...gaps)).toBeLessThan(140);
+	});
+
+	it('stays on its own side, so it never crosses the sheet', () => {
+		for (const seed of [1, 7, 99]) {
+			for (const { x } of endpoints(handVertical(900, { seed, wobble: 1.2, x: 2.5 }))) {
+				expect(x, `seed ${seed}`).toBe(2.5);
+			}
+		}
+	});
+
+	it('is stable for a seed', () => {
+		expect(handVertical(400, { seed: 6 })).toBe(handVertical(400, { seed: 6 }));
 	});
 });

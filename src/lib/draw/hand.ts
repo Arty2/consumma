@@ -303,3 +303,23 @@ export function handArrow(size: number, options: HandOptions): string {
 
 	return `${shaft} ${barb}`;
 }
+
+/**
+ * The side of the sheet: a drawn line down its whole length.
+ *
+ * The torn edges close the paper top and bottom; without these it has no
+ * sides, and reads as text on a page rather than as a strip of paper. Drawn at
+ * the height it is shown at, like the tear — see TornEdge.svelte — so the
+ * weight matches and nothing is stretched.
+ */
+export function handVertical(height: number, options: HandOptions & { x?: number }): string {
+	const x = options.x ?? 1;
+	// The same spacing handRect subdivides at, so every long stroke in the app
+	// wobbles at the same rate.
+	const steps = Math.max(2, Math.round(height / 90));
+
+	const points: Pt[] = [];
+	for (let i = 0; i <= steps; i++) points.push({ x, y: (height * i) / steps });
+
+	return handPath(points, options);
+}

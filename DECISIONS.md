@@ -247,6 +247,32 @@ Numbers in brackets are the section of the build plan a decision came from.
     `ascent-override` resolves against the size-adjusted em and the arithmetic
     that assumes otherwise is off by exactly the amount that looks wrong.
 
+34. **The sheet has drawn sides.** The tears close the paper top and bottom;
+    without sides it read as text on a page rather than as a strip of paper.
+    `handVertical` draws each one at the height it is shown at, like the tear,
+    so the weight matches exactly — a path drawn once and stretched comes out
+    thinner along whichever axis was compressed.
+
+    An `svg` is a replaced element, so `top: 0; bottom: 0` does not stretch it:
+    `height: auto` resolves to its intrinsic 150px and the offsets are ignored.
+    The first attempt stopped a third of the way down the sheet.
+
+35. **The route is tested through its own handlers.** `tests/sync.spec.ts`
+    drives the client against a hand-written `fetch` double that reproduces
+    what the route should do — the right shape for testing a client, but it
+    means the route and the double could disagree while both suites stayed
+    green.
+
+    `tests/route.spec.ts` imports the real `GET` and `PUT` and checks what the
+    client leans on: status codes, the ETag round trip, the state that has to
+    travel with a 409, the shared 404, and `no-store` on every answer. Only the
+    blob backend is faked, because it is the one part that genuinely needs a
+    network.
+
+    What that still does not cover is `src/lib/server/blobs.ts` itself — the
+    `@vercel/blob` calls — and no deployment exists yet, so nothing has run
+    against a real store. That is the honest remaining gap.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
