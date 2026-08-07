@@ -257,3 +257,62 @@ test('joining a list finishes, and says so by closing', async ({ page }) => {
 	await openMenu(page);
 	await expect(page.getByText('1234 5678 9abc')).toBeVisible();
 });
+
+test('the code is typed into twelve places, one underline each', async ({ page }) => {
+	await page.route('**/api/room/**', api);
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+	await openMenu(page);
+
+	const field = page.locator('.field');
+	// One place per character of the code, each with its own drawn rule.
+	await expect(field.locator('.cell')).toHaveCount(12);
+	await expect(field.locator('svg.under path')).toHaveCount(12);
+
+	// The same face and size as the code it is compared against.
+	const shown = await page.locator('.code').evaluate((el) => {
+		const style = getComputedStyle(el);
+		return [style.fontFamily, style.fontSize].join(' ');
+	});
+	const typed = await field
+		.locator('.glyph')
+		.first()
+		.evaluate((el) => {
+			const style = getComputedStyle(el);
+			return [style.fontFamily, style.fontSize].join(' ');
+		});
+	expect(typed).toBe(shown);
+
+	await page.getByRole('textbox', { name: 'Code' }).fill('ed43 a066 78e0');
+
+	// Whitespace is not a place; the twelve characters are.
+	const places = await field.locator('.glyph').allInnerTexts();
+	expect(places.join('')).toBe('ed43a06678e0');
+});
+
+test('a while after a sync, the button offers one rather than counting', async ({ page }) => {
+	await page.clock.install();
+	await page.route('**/api/room/**', api);
+	await page.goto('/');
+	await page.evaluate(() => {
+		localStorage.clear();
+		localStorage.setItem('consumma:code', '123456789abc');
+	});
+	await page.reload();
+
+	await page.getByRole('button', { name: /^Sync —/ }).click();
+	// Nothing is waiting and it just synced, so there is nothing to offer.
+	await expect(page.getByRole('button', { name: /^Sync —/ })).toHaveCount(0);
+
+	/*
+	 * Nothing syncs on its own, so a list left open all morning is exactly as
+	 * old as when it was opened. Ten minutes on, the button comes back — as a
+	 * circular arrow, because there is nothing to send, only something to fetch.
+	 */
+	await page.clock.fastForward('11:00');
+
+	const offered = page.getByRole('button', { name: /^Sync —/ });
+	await expect(offered).toBeVisible();
+	await expect(offered).toHaveAttribute('aria-label', /not synced for a while/);
+});

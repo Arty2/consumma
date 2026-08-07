@@ -249,3 +249,42 @@ test('Consummatum appears when the last open task is ticked, and not on an empty
 	await task(page, 'Coffee').click();
 	await expect(page.getByText('Consummatum')).toBeVisible();
 });
+
+test('the triangle collapses and expands the group', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const triangle = page.getByRole('button', { name: 'Collapse group' });
+	await expect(triangle).toHaveAttribute('aria-expanded', 'true');
+
+	await triangle.click();
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
+
+	const expand = page.getByRole('button', { name: 'Expand group' });
+	await expect(expand).toHaveAttribute('aria-expanded', 'false');
+	await expand.click();
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
+test('a done task offers its own way out, and the way back', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
+
+	// Nothing to remove until something is done — no hover exists on a phone.
+	await expect(page.getByRole('button', { name: 'Delete task' })).toHaveCount(0);
+
+	await page.getByRole('checkbox', { name: 'Bread' }).click();
+	const remove = page.getByRole('button', { name: 'Delete task' });
+	await expect(remove).toHaveCount(1);
+
+	await remove.click();
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
+
+	// Deleting is local and immediate, so the way back is the toast.
+	const toast = page.getByRole('status').filter({ hasText: /deleted/i });
+	await expect(toast).toBeVisible();
+	// Everything the sheet says is set in capitals.
+	await expect(toast.locator('span').first()).toHaveCSS('text-transform', 'uppercase');
+
+	await toast.getByRole('button', { name: 'Undo' }).click();
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});

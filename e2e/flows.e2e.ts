@@ -42,27 +42,36 @@ test('a code exists from the first run, and is never in the URL', async ({ page 
 	expect(page.url()).toBe(new URL(page.url()).origin + '/');
 });
 
-test('the one button on the page names what is waiting, and opens the menu', async ({ page }) => {
+test('the page carries a burger, and a sync button only when there is a reason', async ({
+	page
+}) => {
 	// Nothing else is on the paper.
-	await expect(page.getByRole('button', { name: /^Menu/ })).toHaveCount(1);
 	for (const gone of ['SYNC', 'SHARE', 'IMPORT', 'EXPORT', 'CLEAR', 'DELETE']) {
 		await expect(page.getByRole('button', { name: gone, exact: true })).toHaveCount(0);
 	}
 
+	// The burger says nothing about syncing; that is the other button's job.
+	await expect(menuButton(page)).toHaveAttribute('aria-label', 'Menu');
+
+	const syncButton = page.getByRole('button', { name: /^Sync —/ });
 	const waiting = async () => {
-		const label = await menuButton(page).getAttribute('aria-label');
+		const label = await syncButton.getAttribute('aria-label');
 		return Number(label?.match(/(\d+) change/)?.[1] ?? 0);
 	};
 
-	// A fresh sheet already has its first group waiting to go, which is why the
-	// button leads with the count rather than with a health light.
+	// A fresh sheet already has its first group waiting to go.
 	const before = await waiting();
 	expect(before).toBeGreaterThan(0);
 
 	await addTask(page, 'Bread');
 	expect(await waiting()).toBe(before + 1);
 
-	// What the button counts and what the menu says are the same number.
+	// It sits to the left of the burger, not in place of it.
+	const sync = (await syncButton.boundingBox())!;
+	const menu = (await menuButton(page).boundingBox())!;
+	expect(sync.x).toBeLessThan(menu.x);
+
+	// And what it counts is what the menu says.
 	await openMenu(page);
 	await expect(page.getByText(`${before + 1} changes are waiting to go.`)).toBeVisible();
 });

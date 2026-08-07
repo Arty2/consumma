@@ -12,6 +12,15 @@ export type SyncStatus = 'synced' | 'pending' | 'offline';
 /** Long enough that a double tap costs one request, not two. */
 export const COOLDOWN_MS = 10_000;
 
+/**
+ * Long enough since the last sync that offering one is worth the space.
+ *
+ * Nothing syncs on its own, so a list left open all morning is exactly as old
+ * as when it was opened. This is the one nudge, and it is a button appearing —
+ * not a banner, and not a sync happening.
+ */
+export const STALE_MS = 600_000;
+
 export class SyncState {
 	code = $state<string | null>(null);
 	status = $state<SyncStatus>('pending');
@@ -42,6 +51,9 @@ export class SyncState {
 	 * ticked by whatever is showing the cooldown, so it clears on its own.
 	 */
 	cooling: boolean = $derived(this.now - this.lastSyncAt < COOLDOWN_MS);
+
+	/** Whether it has been long enough to be worth offering a sync. */
+	stale: boolean = $derived(this.now - this.lastSyncAt > STALE_MS);
 
 	/** Seconds left, for the panel to show rather than leaving a dead button. */
 	coolingFor: number = $derived(

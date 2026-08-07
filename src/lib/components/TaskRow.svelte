@@ -114,7 +114,13 @@
 		</button>
 	{/if}
 
-	{#if focused && !editing && !drag.dragging}
+	<!--
+		A done task offers its own way out. Ticking something is usually the last
+		thing you do to it, so the ✕ is there the moment it is done rather than
+		waiting for a hover nobody has on a phone. It still appears on focus for
+		anything else, which is what keeps a keyboard able to reach it.
+	-->
+	{#if (focused || task.state === 'done') && !editing && !drag.dragging}
 		<button class="remove" type="button" onclick={ondelete} aria-label="Delete task">
 			<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
 				<path d={cross} class="drawn" />

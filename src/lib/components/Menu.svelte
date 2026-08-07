@@ -1,9 +1,10 @@
 <script lang="ts">
+	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
-	import { handCross, handLine } from '$lib/draw/hand';
+	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
@@ -32,16 +33,12 @@
 	let joining = $state(false);
 	let error = $state<string | null>(null);
 	let copied = $state(false);
-	let fieldWidth = $state(0);
 
 	let panel = $state<HTMLElement | null>(null);
 	let offset = $state(0);
 	let dragStart: { x: number; at: number } | null = null;
 
 	const cross = $derived(handCross(20, { seed: seedFrom('closemenu'), wobble: 0.8 }));
-	const fieldRule = $derived(
-		fieldWidth > 0 ? handLine(fieldWidth, { seed: seedFrom('join'), wobble: 0.9, y: 2 }) : ''
-	);
 
 	const summary = $derived(statusText(sync.status, sync.unsent));
 	const valid = $derived(normaliseCode(entered) !== null);
@@ -229,23 +226,7 @@
 
 			<h2>Join another list</h2>
 
-			<label class="field">
-				<span class="sr-only">Code</span>
-				<input
-					type="text"
-					inputmode="text"
-					autocomplete="off"
-					autocapitalize="off"
-					spellcheck="false"
-					placeholder="0000 0000 0000"
-					bind:value={entered}
-				/>
-				<svg class="rule" bind:clientWidth={fieldWidth} aria-hidden="true">
-					{#if fieldRule}
-						<path d={fieldRule} class="drawn drawn--dashed" />
-					{/if}
-				</svg>
-			</label>
+			<CodeField bind:value={entered} label="Code" />
 
 			{#if joining}
 				<!-- Ask whether to merge or discard. Never decide silently. -->
@@ -275,7 +256,9 @@
 			<footer class="credit">
 				<p class="break" aria-hidden="true">* * *</p>
 				<p>v{__VERSION__} • heracl.es/consumma</p>
-				<p class="dedication">Dialectic Acheropoieton of Heracles Papatheodorou and Claude</p>
+				<p class="dedication">
+					Dialectic Acheropoieton<br />of Heracles Papatheodorou and Claude
+				</p>
 			</footer>
 		</div>
 	</div>
@@ -406,31 +389,6 @@
 	.note {
 		margin: 0.75rem 0 0;
 		line-height: 1.6;
-	}
-
-	/* As wide as the code it is a field for, and centred under it. */
-	.field {
-		display: block;
-		max-width: 15rem;
-		margin: 0 auto;
-	}
-
-	.field input {
-		width: 100%;
-		min-height: var(--touch);
-		padding: 0.25rem 0;
-		font-family: var(--hand);
-		font-size: var(--size-title);
-		letter-spacing: 0.06em;
-		text-align: center;
-	}
-
-	.field .rule {
-		display: block;
-		width: 100%;
-		height: 5px;
-		margin-top: -0.35rem;
-		overflow: visible;
 	}
 
 	.action {

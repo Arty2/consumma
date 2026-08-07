@@ -326,3 +326,37 @@ export function handVertical(
 
 	return handPath(points, options);
 }
+
+/**
+ * A circular arrow: sync when nothing is waiting but the list has not been
+ * looked at in a while.
+ *
+ * Open at the top, so it reads as a stroke someone came back round rather than
+ * a closed ring, and it can never be mistaken for the status square.
+ */
+export function handRefresh(size: number, options: HandOptions): string {
+	const r = size * 0.34;
+	const c = size / 2;
+	// Most of the way round, leaving a gap the arrowhead sits in.
+	const from = -Math.PI * 0.35;
+	const to = Math.PI * 1.5;
+
+	const points: Pt[] = [];
+	const steps = 10;
+	for (let i = 0; i <= steps; i++) {
+		const a = from + ((to - from) * i) / steps;
+		points.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r });
+	}
+
+	const ring = handPath(points, options);
+
+	// The head sits on the open end, pointing the way the stroke was travelling.
+	const tip = points[0];
+	const head = size * 0.2;
+	const barb = handPath(
+		[{ x: tip.x - head, y: tip.y - head * 0.35 }, tip, { x: tip.x - head * 0.15, y: tip.y + head }],
+		{ ...options, seed: options.seed + 271 }
+	);
+
+	return `${ring} ${barb}`;
+}

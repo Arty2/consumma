@@ -6,6 +6,7 @@ import {
 	handLine,
 	handPath,
 	handRect,
+	handRefresh,
 	handTear,
 	handVertical
 } from '../src/lib/draw/hand';
@@ -319,5 +320,39 @@ describe('handVertical', () => {
 
 	it('is stable for a seed', () => {
 		expect(handVertical(400, { seed: 6 })).toBe(handVertical(400, { seed: 6 }));
+	});
+});
+
+describe('handRefresh', () => {
+	const SIZE = 22;
+
+	it('comes back round on itself without closing', () => {
+		const points = endpoints(handRefresh(SIZE, { seed: 3, wobble: 0 }));
+		const centre = { x: SIZE / 2, y: SIZE / 2 };
+		const ring = points.slice(0, 11);
+
+		// Every point of the ring sits at the same distance from the middle.
+		const radii = ring.map((p) => Math.hypot(p.x - centre.x, p.y - centre.y));
+		expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(0.01);
+
+		// And the ends do not meet, or it would be a circle with a spike.
+		const gap = Math.hypot(ring[0].x - ring.at(-1)!.x, ring[0].y - ring.at(-1)!.y);
+		expect(gap).toBeGreaterThan(1);
+	});
+
+	it('stays inside its box at any seed', () => {
+		for (const seed of [1, 7, 99, 1234]) {
+			for (const { x, y } of endpoints(handRefresh(SIZE, { seed, wobble: 1 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+			}
+		}
+	});
+
+	it('is stable for a seed, and is not the arrow', () => {
+		expect(handRefresh(SIZE, { seed: 4 })).toBe(handRefresh(SIZE, { seed: 4 }));
+		expect(handRefresh(SIZE, { seed: 4 })).not.toBe(handArrow(SIZE, { seed: 4 }));
 	});
 });

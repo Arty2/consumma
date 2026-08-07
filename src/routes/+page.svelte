@@ -6,6 +6,7 @@
 	import MenuButton from '$lib/components/MenuButton.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
 	import SideEdge from '$lib/components/SideEdge.svelte';
+	import SyncButton from '$lib/components/SyncButton.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
@@ -137,6 +138,7 @@
 		<SideEdge seed="right" side="right" />
 
 		<div class="corner">
+			<SyncButton />
 			<MenuButton onopen={() => (panel = 'menu')} />
 		</div>
 		<Sheet />

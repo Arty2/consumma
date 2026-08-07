@@ -337,6 +337,37 @@ Numbers in brackets are the section of the build plan a decision came from.
     `head()` plus a fetch, halving the blob operations per read and returning
     null for a missing blob instead of throwing.
 
+41. **Two buttons in the corner, not one that changes shape.** The burger
+    reported sync state by becoming an arrow, which was two jobs on one
+    control. The burger is now only a burger; a separate button sits to its
+    left and appears only when there is a reason.
+
+    An arrow up and out when edits are waiting. A circular arrow when nothing
+    is waiting but it has been ten minutes — nothing syncs on its own, so a
+    list left open all morning is exactly as old as when it was opened. The
+    button appearing is the whole nudge: no banner, and nothing syncs until it
+    is tapped. `page.clock` is what makes the ten minutes testable.
+
+42. **The triangle collapses the group.** Tapping the title still does too, but
+    the title is also where renaming starts, so the one thing on the row that
+    does nothing else had to be tappable. It carries `aria-expanded`.
+
+43. **A done task shows its own ✕.** It used to appear on hover or focus, which
+    is nothing at all on a phone. Ticking something is usually the last thing
+    you do to it, so the way out is there the moment it is done. Deleting is
+    still local, immediate and undoable from the toast.
+
+44. **The join field is twelve places, one rule each.** One dashed rule said
+    "a string goes here"; twelve short ones say how long it is and how far
+    along you are, which is what someone reading a code aloud is asking. Same
+    face and size as the code above it, so the two can be compared.
+
+    The input sits over the cells, transparent, holding the value and the
+    keyboard — hiding it would take the field off the accessibility tree. Its
+    caret is hidden too: it cannot line up with the places, and a caret in the
+    wrong place reads worse than none. The solid rule moving along says where
+    the next character lands.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as

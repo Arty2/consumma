@@ -1,0 +1,137 @@
+<script lang="ts">
+	import { CODE_LENGTH } from '$lib/crypto/derive';
+	import { handLine } from '$lib/draw/hand';
+	import { seedFrom } from '$lib/draw/rng';
+
+	/*
+	 * Twelve places to write a character into, grouped the way the code is shown
+	 * above it — same face, same size, so what is typed looks like what it is
+	 * being compared against.
+	 *
+	 * One dashed rule under the whole field said "a string goes here". Twelve
+	 * short ones say how long it is and how far along you are, which is the
+	 * question anyone reading a code aloud is actually asking.
+	 *
+	 * A real input sits over the cells, holding the value, the caret and the
+	 * keyboard. It is transparent rather than hidden: hiding it would take the
+	 * field off the accessibility tree and out of reach of a password manager.
+	 */
+
+	type Props = { value: string; label: string };
+
+	let { value = $bindable(), label }: Props = $props();
+
+	/* Twelve of these plus their gaps have to fit a 320px screen. */
+	const CELL = 19;
+
+	// One stroke per place, each seeded apart so twelve of them are not one
+	// stamp repeated.
+	const rules = Array.from({ length: CODE_LENGTH }, (_, i) =>
+		handLine(CELL - 5, { seed: seedFrom(`cell${i}`), wobble: 0.7, y: 2 })
+	);
+
+	/** What is in each place, ignoring the spaces someone may have typed. */
+	const bare = $derived(value.replace(/\s/g, '').slice(0, CODE_LENGTH));
+	const cells = $derived(Array.from({ length: CODE_LENGTH }, (_, i) => bare[i] ?? ''));
+</script>
+
+<label class="field">
+	<span class="sr-only">{label}</span>
+
+	<input
+		type="text"
+		inputmode="text"
+		autocomplete="off"
+		autocapitalize="off"
+		autocorrect="off"
+		spellcheck="false"
+		bind:value
+	/>
+
+	<span class="cells" aria-hidden="true">
+		{#each cells as character, i (i)}
+			<!-- A gap every four, matching how the code above is grouped. -->
+			<span class="cell" class:apart={i > 0 && i % 4 === 0}>
+				<span class="glyph">{character}</span>
+				<svg class="under" viewBox="0 0 {CELL - 5} 5" width={CELL - 5} height="5">
+					<!-- Written, and the one about to be: the rest wait their turn. -->
+					<path d={rules[i]} class="drawn" class:drawn--faint={i > bare.length} />
+				</svg>
+			</span>
+		{/each}
+	</span>
+</label>
+
+<style>
+	.field {
+		position: relative;
+		display: block;
+		width: fit-content;
+		margin: 0 auto;
+	}
+
+	/*
+	 * Over the cells, and carrying the caret. `color: transparent` leaves the
+	 * caret visible while the characters themselves are drawn by the cells
+	 * underneath, which is what lets them sit in their places.
+	 */
+	.field input {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		font-family: var(--hand);
+		font-size: var(--size-display);
+		text-align: center;
+		color: transparent;
+		/*
+		 * No caret either. It cannot line up with the places — the face is
+		 * proportional and the value carries whatever spaces were typed — and a
+		 * caret in the wrong place reads worse than none. The solid underline
+		 * moving along says where the next character lands.
+		 */
+		caret-color: transparent;
+		cursor: text;
+		outline: none;
+	}
+
+	.cells {
+		display: flex;
+		align-items: flex-end;
+		justify-content: center;
+		gap: 1px;
+		pointer-events: none;
+	}
+
+	.cell {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		width: 19px;
+	}
+
+	/* A gap every four, so the code reads the way it is written out. */
+	.apart {
+		margin-left: 0.3rem;
+	}
+
+	.glyph {
+		font-family: var(--hand);
+		font-size: var(--size-display);
+		line-height: 1.25;
+		/*
+		 * An empty place still holds its line. Without this the cell collapses to
+		 * nothing — an empty span is zero tall, the negative margin below then
+		 * swallows the underline, and the whole field measures 0px high, which
+		 * takes the input over it out of reach along with everything else.
+		 */
+		min-height: 1.25em;
+		/* Close under the character, the way the rule sits under a title. */
+		margin-bottom: calc(-1 * var(--cap-lift));
+	}
+
+	.under {
+		display: block;
+		overflow: visible;
+	}
+</style>

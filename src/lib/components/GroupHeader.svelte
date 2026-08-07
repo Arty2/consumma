@@ -81,11 +81,22 @@
 		>
 			{title === '' ? '…' : title}
 		</button>
-		<span class="icon" aria-hidden="true">
-			<svg viewBox="0 0 20 20" width="20" height="20">
+		<!--
+			The triangle is a control in its own right. Tapping the title toggles
+			too, but the title is also where renaming starts, so the one thing on
+			the row that does nothing else has to be tappable.
+		-->
+		<button
+			class="icon"
+			type="button"
+			onclick={ontoggle}
+			aria-expanded={!collapsed}
+			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+		>
+			<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
 				<path d={chevron} class="drawn" />
 			</svg>
-		</span>
+		</button>
 	{/if}
 </div>
 

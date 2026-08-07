@@ -6,7 +6,7 @@
 {#if ui.toast}
 	<div class="toast" role="status" aria-live="polite">
 		<HandRect seed="toast" wobble={2} />
-		<span>{ui.toast.text}</span>
+		<span class="caps">{ui.toast.text}</span>
 		{#if ui.toast.undo}
 			<button type="button" class="caps" onclick={ui.toast.undo}>UNDO</button>
 		{/if}

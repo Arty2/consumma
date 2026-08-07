@@ -1,16 +1,11 @@
 <script lang="ts">
-	import { handArrow, handBurger } from '$lib/draw/hand';
+	import { handBurger } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
-	import { sync } from '$lib/state/sync.svelte';
 
 	/*
-	 * The only control on the page. Three strokes normally; an arrow up and out
-	 * when something is waiting to go.
-	 *
-	 * The arrow is not a warning light. It says there is an outbox and it is not
-	 * empty — which under manual sync is a common and perfectly good state, and
-	 * the reason the mark it replaced had to be explained every time. What is
-	 * waiting, and why, is spelt out in words the moment the menu opens.
+	 * Three strokes, and nothing else. What is waiting to be synced is said by
+	 * the button beside it — a menu that changed shape to report sync state was
+	 * two jobs on one control, and neither read clearly.
 	 */
 
 	type Props = { onopen: () => void };
@@ -19,25 +14,13 @@
 
 	const SIZE = 22;
 
-	// Drawn once each, never re-seeded, so the strokes do not twitch when the
-	// count changes underneath them.
+	// Drawn once, never re-seeded.
 	const burger = handBurger(SIZE, { seed: seedFrom('burger'), wobble: 0.7 });
-	const arrow = handArrow(SIZE, { seed: seedFrom('arrow'), wobble: 0.7 });
-
-	const waiting = $derived(sync.unsent > 0);
-
-	const label = $derived(
-		waiting
-			? sync.unsent === 1
-				? 'Menu — 1 change waiting to go'
-				: `Menu — ${sync.unsent} changes waiting to go`
-			: 'Menu'
-	);
 </script>
 
-<button class="menu-button" type="button" onclick={onopen} aria-label={label} title={label}>
+<button class="menu-button" type="button" onclick={onopen} aria-label="Menu" title="Menu">
 	<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE} aria-hidden="true">
-		<path d={waiting ? arrow : burger} class="drawn" />
+		<path d={burger} class="drawn" />
 	</svg>
 </button>
 
