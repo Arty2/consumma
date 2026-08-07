@@ -72,7 +72,13 @@ export default defineConfig({
 					'form-action': ['none'],
 					'frame-ancestors': ['none'],
 					'require-trusted-types-for': ['script'],
-					'trusted-types': ['svelte-trusted-html'],
+					/*
+					 * Two policies, both created by the framework rather than by us:
+					 * Svelte's for its own template writes, and SvelteKit's for the
+					 * service worker's registration URL. SvelteKit refuses to build
+					 * if the second is missing once a worker exists.
+					 */
+					'trusted-types': ['svelte-trusted-html', 'sveltekit-trusted-url'],
 					'upgrade-insecure-requests': true
 				}
 			}

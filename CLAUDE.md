@@ -4,7 +4,7 @@ Shared end-to-end encrypted checklist. SvelteKit 2 / Svelte 5 runes / TypeScript
 
 ## Commands
 
-pnpm dev · pnpm check · pnpm lint · pnpm gates · pnpm test · pnpm test:e2e · pnpm build
+pnpm dev · pnpm check · pnpm lint · pnpm gates · pnpm test · pnpm test:e2e · pnpm build · pnpm budget
 
 `pnpm gates` runs `scripts/gates.sh`, which enforces the rules below that a
 linter cannot. CI runs it first, before anything else.
@@ -39,7 +39,10 @@ The build plan is the specification; these were settled after it was written and
 - Crypto envelope is `base64(0x01 ‖ iv ‖ ciphertext)` and the plaintext is always deflate-raw. Compression cannot be optional — a reader cannot tell the two apart — and the version byte buys a future change without orphaning lists.
 - Markdown: export `- [~]` for half; import accepts `[ ]`, `[x]`, `[X]`, `[~]`, `[/]`, `[-]`, and a bare bullet as to-do.
 - QR code in SHARE and a "move everyone to a new code" flow are **out of scope**. Work stops at M7.
-- CSP needs `trusted-types: ['svelte-trusted-html']` alongside `require-trusted-types-for: ['script']`. Svelte creates that policy for its own internal writes; Chrome will not hydrate without it.
+- CSP names two framework Trusted Types policies, `svelte-trusted-html` (Svelte's own template writes) and `sveltekit-trusted-url` (the service worker registration). Chrome will not hydrate without the first; SvelteKit will not build without the second. `style-src` carries one pinned hash under `'unsafe-hashes'` for SvelteKit's `#svelte-announcer`, which is framework markup we do not author — that is not `'unsafe-inline'`, and e2e/csp.e2e.ts fails on any console error if it drifts.
+- The ETag on a room is the document's own version, never the blob's upload time and size: two writes in one millisecond with same-length JSON collide, and the second is reported unchanged.
+- Client JavaScript stays under 60 KB gzipped (`pnpm budget`, enforced in CI).
+- PWA icons are drawn by scripts/icons.ts at build time into static/icons, which is gitignored. The asset gate exempts that directory only while it stays gitignored.
 - The page is prerendered (`prerender = true` in `src/routes/+layout.ts`). Only `/api/*` is dynamic.
 - `src/lib/server/store.ts` is the only file that imports `@vercel/blob`.
 
@@ -49,3 +52,5 @@ The build plan is the specification; these were settled after it was written and
 - No CSS framework, no component library, no crypto library.
 - Config lives in `vite.config.ts` — this scaffold has no `svelte.config.js`. `sveltekit()` takes the kit config directly.
 - Every new module gets a test before it gets wired to the UI.
+- Relative imports inside src/lib/draw use explicit `.ts` specifiers, because scripts/icons.ts runs them through Node's type stripping, which does not resolve extensionless paths.
+- Playwright never reuses an existing preview server. A stale one serves an old build and every failure then points at the wrong thing.

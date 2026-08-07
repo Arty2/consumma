@@ -1,4 +1,4 @@
-import { rng } from './rng';
+import { rng } from './rng.ts';
 
 /**
  * Every mark in the app is one of these. There are no image files, no icon

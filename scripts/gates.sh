@@ -81,7 +81,7 @@ fi
 # Every mark in the app is type or an inline SVG path generated in code. The
 # only binaries in the repo are latin-subset woff2 faces; the PWA's raster
 # icons are drawn and rasterised at build time, never committed.
-assets=$(find src static -type f \( \
+assets=$(find src static -type f -not -path 'static/icons/*' \( \
 	-iname '*.png' -o -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.gif' \
 	-o -iname '*.webp' -o -iname '*.avif' -o -iname '*.bmp' -o -iname '*.tif' \
 	-o -iname '*.tiff' -o -iname '*.ico' \
@@ -92,6 +92,16 @@ if [ -n "$assets" ]; then
 	fail "raster asset or non-woff2 font committed" "$assets"
 else
 	pass "no raster assets or icon fonts"
+fi
+
+# static/icons is the one exception, and only because the build draws it. The
+# exemption is worth nothing unless the directory is also ignored by git —
+# otherwise it becomes the place to hide a committed image.
+if grep -q '^/static/icons$' .gitignore 2>/dev/null; then
+	pass "generated icons are gitignored"
+else
+	fail "static/icons is exempt from the asset gate but is not gitignored" \
+		"add /static/icons to .gitignore"
 fi
 
 # ── 5. Nothing that the sketch does not have ─────────────────────────────────

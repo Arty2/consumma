@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "pnpm run icons && vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -15,9 +15,12 @@
 		"gates": "bash scripts/gates.sh",
 		"test:unit": "vitest",
 		"test:e2e": "playwright test",
-		"test": "pnpm run gates && pnpm run test:unit --run && pnpm run test:e2e"
+		"test": "pnpm run gates && pnpm run test:unit --run && pnpm run test:e2e",
+		"icons": "node --experimental-strip-types scripts/icons.ts",
+		"budget": "bash scripts/budget.sh"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.12.1",
 		"@eslint/js": "^10.0.1",
 		"@fontsource/caveat": "^5.3.0",
 		"@fontsource/patrick-hand": "^5.3.0",
@@ -33,6 +36,7 @@
 		"globals": "^17.6.0",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
+		"sharp": "^0.35.3",
 		"svelte": "^5.56.1",
 		"svelte-check": "^4.6.0",
 		"typescript": "^6.0.3",

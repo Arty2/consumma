@@ -9,9 +9,10 @@ words on it are the ones someone wrote.
 
 ## Where this is
 
-**M0 — skeleton.** The app builds, checks, lints, tests and is ready to deploy.
-There is no list yet: the document model and UI land in M1, the drawn design in
-M2, crypto in M3, storage in M4, sync in M5, the flows in M6.
+Complete through M7. The app runs, syncs, installs to a home screen and works
+with the aeroplane mode on. What is left is the deployment itself — the Vercel
+project and Blob store were deferred until they were needed, and the checklist
+is below.
 
 ## Running it
 
@@ -41,6 +42,11 @@ written down: any route from a string to markup (`{@html}`, `innerHTML`,
 `PUBLIC_` environment variable whose name looks like a secret, a committed
 raster asset or non-woff2 font, and shadows, background-images or `<img>`
 elements anywhere in `src`.
+
+The PWA's raster icons are the one exception, and they are drawn by
+`scripts/icons.ts` at build time from the same primitives as everything else on
+the sheet. The gate exempts `static/icons` only while that directory is
+gitignored — otherwise the exemption would become the place to hide an image.
 
 ## Two things you have to be told
 
@@ -96,6 +102,13 @@ when M4 needs it. What it needs:
    rather than billing you.
 5. **Protect `main`**: green CI required, squash merges, conventional commit
    titles.
+6. **Check the deployed preview** for the things only a deploy can show: the
+   response headers from `vercel.json` (asserted against the file in
+   `tests/headers.spec.ts`, but not live until deployed), Lighthouse on mobile,
+   and its installability audit.
+
+The cron entry for the daily sweep is already in `vercel.json`; it needs
+`CRON_SECRET` set before it will do anything but return 401.
 
 The daily sweep (`/api/cron/sweep`, one run a day, guarded by a constant-time
 `CRON_SECRET` check) is added to `vercel.json` in the same milestone.

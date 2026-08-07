@@ -39,6 +39,8 @@ beforeEach(() => {
 	mkdirSync(join(root, 'static'), { recursive: true });
 	file('src/routes/+page.svelte', '<main data-sheet></main>\n');
 	file('vercel.json', '{}\n');
+	// The asset gate exempts static/icons only while it is gitignored.
+	file('.gitignore', 'node_modules\n/static/icons\n');
 
 	spawnSync('cp', [script, join(root, 'scripts/gates.sh')]);
 });
@@ -132,6 +134,22 @@ describe('gates', () => {
 		file('static/fonts/patrick-hand-latin.woff2', 'not really a font\n');
 
 		expect(runGates().status).toBe(0);
+	});
+
+	it('allows the icons the build draws, because they are never committed', () => {
+		file('static/icons/icon-192.png', 'not really a png\n');
+
+		expect(runGates().status).toBe(0);
+	});
+
+	it('refuses that exemption when the directory is not gitignored', () => {
+		// Otherwise static/icons becomes the place to hide a committed image.
+		file('.gitignore', 'node_modules\n');
+
+		const { status, output } = runGates();
+
+		expect(status).toBe(1);
+		expect(output).toContain('not gitignored');
 	});
 
 	it('rejects a shadow, since a shadow means grey', () => {

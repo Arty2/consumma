@@ -24,3 +24,6 @@ vite.config.ts.timestamp-*
 # Playwright
 test-results
 playwright-report
+
+# Drawn at build time by scripts/icons.ts, never committed
+/static/icons
