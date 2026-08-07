@@ -1,8 +1,11 @@
 <script lang="ts">
 	import CodeField from './CodeField.svelte';
-	import Panel from './Panel.svelte';
+	import HandRect from './HandRect.svelte';
+	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
+	import { handCross } from '$lib/draw/hand';
+	import { seedFrom } from '$lib/draw/rng';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
@@ -33,6 +36,12 @@
 	let refused = $state(false);
 	let copied = $state(false);
 
+	let panel = $state<HTMLElement | null>(null);
+	let offset = $state(0);
+	let dragStart: { x: number; at: number } | null = null;
+
+	const cross = $derived(handCross(20, { seed: seedFrom('closemenu'), wobble: 0.8 }));
+
 	const summary = $derived(statusText(sync.status, sync.unsent, refused));
 	const valid = $derived(normaliseCode(entered) !== null);
 	/** Joining with tasks already here is never decided silently. */
@@ -51,17 +60,10 @@
 			: ''
 	);
 
-	/*
-	 * A second hand, and only while there is a second hand to watch: the cooldown
-	 * counts down in the SYNC NOW label, and nothing else here is per-second.
-	 * SyncButton owns the slow tick that the ten-minute staleness needs.
-	 *
-	 * `now` is written and never read here. An effect that does both never
-	 * settles, and takes the whole tree's reactivity down with it.
-	 */
+	// Nothing else advances the clock, so the cooldown would never clear while
+	// the menu is open and looking at it.
 	$effect(() => {
-		if (!sync.cooling) return;
-
+		sync.now = Date.now();
 		const tick = setInterval(() => (sync.now = Date.now()), 500);
 		return () => clearInterval(tick);
 	});
@@ -106,9 +108,60 @@
 		entered = '';
 		onclose();
 	}
+
+	/* Rightwards only: the menu came from there and goes back the same way. */
+	function onpointerdown(event: PointerEvent) {
+		if (event.button !== 0) return;
+		if ((event.target as HTMLElement).closest('input, textarea, button')) return;
+		dragStart = { x: event.clientX, at: performance.now() };
+	}
+
+	function onpointermove(event: PointerEvent) {
+		if (!dragStart) return;
+		offset = Math.max(0, event.clientX - dragStart.x);
+	}
+
+	function onpointerup(event: PointerEvent) {
+		if (!dragStart || !panel) return;
+
+		const travelled = event.clientX - dragStart.x;
+		const elapsed = performance.now() - dragStart.at;
+		const flick = travelled > 40 && elapsed < 250;
+
+		dragStart = null;
+
+		if (flick || travelled > panel.clientWidth * 0.25) onclose();
+		else offset = 0; // Springs back.
+	}
 </script>
 
-<Panel title="Menu" seed="menu" axis="x" {onclose}>
+<div
+	class="menu"
+	role="dialog"
+	aria-modal="true"
+	aria-label="Menu"
+	tabindex="-1"
+	bind:this={panel}
+	style:--offset="{offset}px"
+	use:trap={onclose}
+	{onpointerdown}
+	{onpointermove}
+	{onpointerup}
+	onpointercancel={() => {
+		dragStart = null;
+		offset = 0;
+	}}
+>
+	<div class="frame" aria-hidden="true">
+		<HandRect seed="menu" wobble={2.2} />
+	</div>
+
+	<button class="close" type="button" onclick={onclose} aria-label="Close">
+		<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+			<path d={cross} class="drawn" />
+		</svg>
+	</button>
+
 	<div class="scroll">
 		<div class="body">
 			<!--
@@ -213,13 +266,57 @@
 			</footer>
 		</div>
 	</div>
-</Panel>
+</div>
 
 <style>
+	/*
+	 * From the right, and the full width of a phone — at that size a drawer and
+	 * a panel are the same thing, and half a sheet of paper is not a shape this
+	 * app has.
+	 */
+	.menu {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		width: min(24rem, 100%);
+		z-index: 10;
+		background: var(--paper);
+		padding: calc(2rem + env(safe-area-inset-top)) 1.75rem calc(2rem + env(safe-area-inset-bottom));
+		display: flex;
+		flex-direction: column;
+		outline: none;
+		touch-action: pan-y;
+		translate: var(--offset, 0);
+	}
+
+	/*
+	 * The frame is the drawer's edge and stays put; the content scrolls inside
+	 * it. Framing the scrolled content instead leaves the last line hanging
+	 * outside the border, because an absolutely positioned box in a scroll
+	 * container sizes to the visible box rather than to what it holds.
+	 */
+	.frame {
+		position: absolute;
+		inset: 0.75rem;
+		pointer-events: none;
+	}
+
 	.scroll {
 		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
+	}
+
+	.close {
+		position: absolute;
+		top: calc(1.1rem + env(safe-area-inset-top));
+		right: 1.1rem;
+		width: var(--touch);
+		height: var(--touch);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 	}
 
 	.body {

@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FakeBlobs } from './fakes';
 import { open, seal } from '../src/lib/crypto/box';
 import { derive } from '../src/lib/crypto/derive';
 import { canonical } from '../src/lib/doc/canonical';
@@ -12,7 +11,9 @@ import {
 	RoomStore,
 	isRoomId,
 	parsePutBody,
-	roomPath
+	roomPath,
+	type BlobEntry,
+	type Blobs
 } from '../src/lib/server/store';
 
 /*
@@ -21,6 +22,29 @@ import {
  * retry and the server's validation are all genuinely exercised — the only
  * thing standing in for the network is the transport.
  */
+
+class FakeBlobs implements Blobs {
+	files = new Map<string, { body: string; uploadedAt: Date }>();
+
+	async get(pathname: string) {
+		return this.files.get(pathname)?.body ?? null;
+	}
+	async put(pathname: string, body: string) {
+		this.files.set(pathname, { body, uploadedAt: new Date() });
+	}
+	async list(prefix: string): Promise<BlobEntry[]> {
+		return [...this.files.entries()]
+			.filter(([path]) => path.startsWith(prefix))
+			.map(([pathname, file]) => ({
+				pathname,
+				uploadedAt: file.uploadedAt,
+				size: file.body.length
+			}));
+	}
+	async del(pathname: string) {
+		this.files.delete(pathname);
+	}
+}
 
 let blobs: FakeBlobs;
 let store: RoomStore;

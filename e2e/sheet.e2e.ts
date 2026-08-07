@@ -1,10 +1,22 @@
-import { expect, test } from '@playwright/test';
-import { fromMenu, addTask } from './app';
+import { expect, test, type Page } from '@playwright/test';
+import { fromMenu } from './menu';
 
 /*
  * M1's acceptance: add, edit, reorder, tri-state, group, collapse and delete
  * all work, and a reload preserves everything.
  */
+
+async function addTask(page: Page, text: string, groupIndex = 0) {
+	// Committing leaves the row open for the next one, so close any that is
+	// already open before picking the group to add to.
+	await page.keyboard.press('Escape');
+	await page.getByRole('button', { name: 'Add a task' }).nth(groupIndex).click();
+
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill(text);
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+}
 
 function task(page: Page, text: string) {
 	return page.getByRole('checkbox', { name: text });

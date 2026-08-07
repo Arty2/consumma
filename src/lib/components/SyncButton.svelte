@@ -50,14 +50,13 @@
 	}
 
 	/*
-	 * Owns the clock. Thirty seconds is plenty against a ten-minute bar, and
-	 * this is the one component always mounted. The interval callback runs
+	 * Advances the clock the staleness derives from. The interval callback runs
 	 * outside the effect, so this writes `now` without ever reading it — an
 	 * effect that does both never settles, and takes the tree down with it.
 	 */
 	$effect(() => {
 		sync.now = Date.now();
-		const tick = setInterval(() => (sync.now = Date.now()), 30_000);
+		const tick = setInterval(() => (sync.now = Date.now()), 15_000);
 		return () => clearInterval(tick);
 	});
 </script>

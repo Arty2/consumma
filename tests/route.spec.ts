@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { FakeBlobs } from './fakes';
+import type { BlobEntry, Blobs } from '../src/lib/server/store';
 
 /*
  * The API route itself, rather than a stand-in for it.
@@ -17,6 +17,29 @@ import { FakeBlobs } from './fakes';
  * Only the blob backend is faked, because it is the one part that genuinely
  * needs a network.
  */
+
+class FakeBlobs implements Blobs {
+	files = new Map<string, { body: string; uploadedAt: Date }>();
+
+	async get(pathname: string) {
+		return this.files.get(pathname)?.body ?? null;
+	}
+	async put(pathname: string, body: string) {
+		this.files.set(pathname, { body, uploadedAt: new Date() });
+	}
+	async list(prefix: string): Promise<BlobEntry[]> {
+		return [...this.files.entries()]
+			.filter(([path]) => path.startsWith(prefix))
+			.map(([pathname, file]) => ({
+				pathname,
+				uploadedAt: file.uploadedAt,
+				size: file.body.length
+			}));
+	}
+	async del(pathname: string) {
+		this.files.delete(pathname);
+	}
+}
 
 let blobs: FakeBlobs;
 

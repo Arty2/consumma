@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { fromMenu, openMenu } from './app';
+import { fromMenu, openMenu } from './menu';
 
 /*
  * M2's acceptance, as far as a browser can check it: two colours and nothing
