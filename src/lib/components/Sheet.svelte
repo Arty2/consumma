@@ -3,6 +3,7 @@
 	import GroupHeader from './GroupHeader.svelte';
 	import TaskRow from './TaskRow.svelte';
 	import TextRule from './TextRule.svelte';
+	import { figures } from '$lib/doc/amount';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import type { State } from '$lib/doc/types';
@@ -24,6 +25,13 @@
 	 * is only one caret.
 	 */
 	let inserting = $state<{ groupId: string; index: number } | null>(null);
+
+	/**
+	 * Which task's editor to open, when the caret is coming back up from a row
+	 * that was backspaced away. Cleared as soon as the row reports it opened, so
+	 * the same row can be reached again the next time.
+	 */
+	let opening = $state<string | null>(null);
 
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
 
@@ -84,6 +92,27 @@
 			sheet.restore([entry]);
 			ui.dismiss();
 		});
+	}
+
+	/**
+	 * Backspace on a row with nothing left in it: the row goes, and the caret
+	 * carries on at the end of the task above.
+	 *
+	 * `index` is where the empty row sits, so the task above it is the one
+	 * before. First in its group and there is nobody above — the row simply
+	 * closes, and nothing is deleted.
+	 */
+	function back(groupId: string, index: number, taskId?: string) {
+		const above = sheet.groups.find((group) => group.id === groupId)?.tasks[index - 1];
+
+		// A task that exists only goes if there is somewhere for the caret to go.
+		if (taskId) {
+			if (!above) return;
+			remove(taskId);
+		}
+
+		inserting = null;
+		opening = above?.id ?? null;
 	}
 
 	/** Where a drag let go. The neighbours are never restamped. */
@@ -158,6 +187,9 @@
 			</div>
 		{/if}
 
+		<!-- Read once for the whole group: the rows write their numbers its way. -->
+		{@const fig = figures(group.tasks)}
+
 		<section class="group" data-group={group.id}>
 			<!-- Every group gets a header, so one with no title is still nameable. -->
 			<GroupHeader
@@ -167,6 +199,7 @@
 				count={group.tasks.length}
 				finished={group.tasks.every((task) => task.state === 'done')}
 				editable={!group.synthetic}
+				total={fig.total}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
 				onrename={(title) => sheet.renameGroup(group.id, title)}
 				ondelete={() => removeGroup(group.id, group.title)}
@@ -184,6 +217,7 @@
 								opened
 								onadd={(text) => insert(group.id, taskIndex, text)}
 								onclose={() => (inserting = null)}
+								onback={() => back(group.id, taskIndex)}
 							/>
 						{/if}
 
@@ -198,10 +232,14 @@
 						<TaskRow
 							{task}
 							groupId={group.id}
+							style={fig.style}
+							open={opening === task.id}
 							onstate={(state) => setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
 							onsplit={() => (inserting = { groupId: group.id, index: taskIndex + 1 })}
+							onback={() => back(group.id, taskIndex, task.id)}
+							onopened={() => (opening = null)}
 							onmove={(direction) => move(groupIndex, taskIndex, direction)}
 							ondrop={(target) => drop(task.id, target)}
 							onEnterGroup={(id) => ui.expand(id)}
@@ -223,6 +261,7 @@
 							opened
 							onadd={(text) => insert(group.id, group.tasks.length, text)}
 							onclose={() => (inserting = null)}
+							onback={() => back(group.id, group.tasks.length)}
 						/>
 					{/if}
 
@@ -231,6 +270,7 @@
 							seed={group.id}
 							disabled={!sheet.canAddTask}
 							onadd={(text) => sheet.addTask(group.id, text) !== null}
+							onback={() => back(group.id, group.tasks.length)}
 						/>
 					{/if}
 				</ul>

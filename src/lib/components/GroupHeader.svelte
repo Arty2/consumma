@@ -17,6 +17,8 @@
 		finished: boolean;
 		/** Loose ends is assembled on read, so it has no title to edit. */
 		editable: boolean;
+		/** What the group's unfinished tasks come to, or nothing to total. */
+		total: string | null;
 		ontoggle: () => void;
 		onrename: (title: string) => void;
 		ondelete: () => void;
@@ -32,6 +34,7 @@
 		count,
 		finished,
 		editable,
+		total,
 		ontoggle,
 		onrename,
 		ondelete,
@@ -83,6 +86,9 @@
 			onaddtask();
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
+			// The name goes back before the field does: taking a focused field out
+			// of the document blurs it, and the blur commits. Escape discards.
+			draft = title;
 			editing = false;
 		}
 	}
@@ -130,25 +136,6 @@
 			onblur={commit}
 			{onkeydown}
 		/>
-
-		<!--
-			While the name is being edited, the icon's place is taken by the way to
-			get rid of the group. It is the same 44px square, so nothing moves.
-		-->
-		<button
-			class="icon"
-			class:nothing={!finished}
-			type="button"
-			disabled={!finished}
-			onclick={remove}
-			onmousedown={(event) => event.preventDefault()}
-			aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
-			title={finished ? 'Delete group' : 'Finish its tasks first'}
-		>
-			<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
-				<path d={cross} class="drawn" />
-			</svg>
-		</button>
 	{:else}
 		<!--
 			The name, and the way to change it. A long press picks the group up
@@ -166,23 +153,65 @@
 		>
 			{title === '' ? '…' : title}
 		</button>
+	{/if}
 
+	<!--
+		Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
+		[…], the same ellipsis an untitled group and the add row use for "there
+		is more here".
+
+		Beside the name rather than at the end of the row, so that the total
+		below is the last thing on the line and lands in the same column as the
+		prices it is the sum of.
+
+		It follows the name whether the name is a word or a field being typed in,
+		so while renaming it stands at the end of the field rather than against
+		the letters. It used to give up its square to the delete; with the
+		delete out in the gutter there is nothing to give up, and the header is
+		three controls that each do one thing.
+
+		Graphe has no brackets and falls back for them, deliberately. Do not
+		swap in characters it does have.
+	-->
+	<button
+		class="icon"
+		type="button"
+		onclick={ontoggle}
+		onmousedown={(event) => editing && event.preventDefault()}
+		aria-expanded={!collapsed}
+		aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+	>
+		<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
+	</button>
+
+	<!--
+		What the group still costs. Done tasks are bought and do not count; half
+		ones are still on the list and count in full. It stays while the group is
+		collapsed, which is when it is worth most.
+	-->
+	{#if total !== null}
+		<span class="num total">{total}</span>
+	{/if}
+
+	{#if editing}
 		<!--
-			Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
-			[…], the same ellipsis an untitled group and the add row use for "there
-			is more here".
-
-			Graphe has no brackets and falls back for them, deliberately. Do not
-			swap in characters it does have.
+			The way to get rid of the group, offered only while its name is being
+			edited — and out in the gutter, in the same column as the ✕ on every
+			done task below it. Deleting is one thing and it happens in one place.
 		-->
 		<button
-			class="icon"
+			class="remove"
+			class:nothing={!finished}
 			type="button"
-			onclick={ontoggle}
-			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+			disabled={!finished}
+			onclick={remove}
+			onmousedown={(event) => event.preventDefault()}
+			aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
+			title={finished ? 'Delete group' : 'Finish its tasks first'}
 		>
-			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
+			<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+				<path d={cross} class="drawn" />
+			</svg>
 		</button>
 	{/if}
 </div>
@@ -234,9 +263,14 @@
 		}
 	}
 
+	/*
+	 * As wide as the name and no wider, so the icon sits against it. Never
+	 * narrower than a touch target, because an untitled group is one ellipsis
+	 * and that still has to be tappable.
+	 */
 	.title {
-		flex: 1 1 auto;
-		min-width: 0;
+		flex: 0 1 auto;
+		min-width: var(--touch);
 		font-family: var(--hand);
 		font-size: var(--size-title);
 		text-align: left;
@@ -252,7 +286,10 @@
 	 * size, same caps. The uppercase is CSS only, so the value keeps whatever
 	 * casing was typed and the markdown export does too.
 	 */
+	/* Typing needs the row, so the field takes it back while it is open. */
 	input.title {
+		flex: 1 1 auto;
+		min-width: 0;
 		outline: none;
 		cursor: text;
 		user-select: text;
@@ -261,6 +298,20 @@
 
 	.untitled {
 		opacity: var(--faint);
+	}
+
+	/*
+	 * Set at task size rather than title size: it belongs to the rows under it,
+	 * not to the name beside it, and a second thing in title type would read as
+	 * a second title.
+	 *
+	 * Pushed to the end of the row so it stands directly above the prices it is
+	 * the sum of — which is the whole reason the icon moved up beside the name.
+	 */
+	.total {
+		flex: 0 0 auto;
+		margin-left: auto;
+		font-size: var(--size-task);
 	}
 
 	.icon {
@@ -274,8 +325,23 @@
 		font-size: var(--size-title);
 	}
 
+	/*
+	 * The same column every ✕ on the sheet stands in — see `--gutter` in
+	 * app.css. Out of the row's flow, so the total keeps its place whether the
+	 * name is being edited or not.
+	 */
+	.remove {
+		position: absolute;
+		right: calc(-1 * var(--gutter));
+		width: var(--gutter);
+		height: var(--touch);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+	}
+
 	/* Drawn, but not offered: the group still has something in it to do. */
-	.icon.nothing {
+	.remove.nothing {
 		opacity: var(--faint);
 		cursor: default;
 	}

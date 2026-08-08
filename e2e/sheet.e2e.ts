@@ -473,6 +473,124 @@ test('Enter on a task opens a fresh one directly beneath it', async ({ page }) =
 	expect(await order()).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
 });
 
+test('tapping a task takes the caret with it, to the end of what it says', async ({ page }) => {
+	/*
+	 * The field used to be swapped in unfocused, which meant it never blurred,
+	 * so the row never committed and never came out of edit mode — it simply sat
+	 * there showing the raw string. On a task with a count and a price in it,
+	 * that reads exactly like the two being lost.
+	 */
+	await addTask(page, '2x Tomatos 5,08');
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
+
+	const field = page.getByRole('textbox').first();
+	await expect(field).toBeFocused();
+	// At the end, so typing adds to what is there rather than landing mid-word.
+	expect(await field.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(15);
+
+	// And because it can blur, it commits, and the row goes back to being read.
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.tasks li .cost').first()).toHaveText('5,08');
+
+	// The same on a task that is done — where this was first noticed.
+	await task(page, '2x Tomatos 5,08').click();
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
+	await expect(page.getByRole('textbox').first()).toBeFocused();
+});
+
+test('Backspace on an empty row takes the caret back to the one above', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
+
+	const order = () =>
+		page
+			.getByRole('checkbox')
+			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+
+	// Enter opens a fresh row; backspace on it closes it again and goes back.
+	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	await page.getByRole('textbox').first().press('Enter');
+	await expect(page.getByRole('textbox', { name: 'New task' })).toBeFocused();
+
+	await page.keyboard.press('Backspace');
+	const field = page.getByRole('textbox').first();
+	await expect(field).toBeFocused();
+	await expect(field).toHaveValue('Bread');
+	// With the caret at the end of it, so typing carries on where it left off.
+	expect(await field.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(5);
+
+	// Nothing was created and nothing was lost.
+	expect(await order()).toStrictEqual(['Bread', 'Milk']);
+});
+
+test('Escape discards an edit rather than committing it', async ({ page }) => {
+	/*
+	 * It could not be told apart while the field was never focused: nothing was
+	 * typed into it, so nothing was there to keep. Now that the caret goes with
+	 * the tap, taking the field out of the document blurs it — and a blur
+	 * commits, which would make Escape a slower Enter.
+	 */
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await field.fill('Sourdough');
+	await field.press('Escape');
+
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(task(page, 'Sourdough')).toHaveCount(0);
+
+	// The same on a group title.
+	await page.getByRole('button', { name: 'My list' }).click();
+	const title = page.getByRole('textbox', { name: 'Group title' });
+	await title.fill('Market');
+	await title.press('Escape');
+
+	await expect(page.getByRole('button', { name: 'My list' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Market' })).toHaveCount(0);
+});
+
+test('Backspace on a task emptied of its words deletes it, and offers it back', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
+
+	const order = () =>
+		page
+			.getByRole('checkbox')
+			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+
+	await page.getByRole('button', { name: 'Milk', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await field.fill('');
+	await field.press('Backspace');
+
+	// Gone, and the caret is at the end of the task above it.
+	expect(await order()).toStrictEqual(['Bread']);
+	await expect(page.getByRole('textbox').first()).toHaveValue('Bread');
+
+	// It goes through the ordinary delete, so the ordinary undo covers it.
+	await page
+		.getByRole('status')
+		.filter({ hasText: /deleted/i })
+		.getByRole('button', { name: 'Undo?' })
+		.click();
+	expect(await order()).toStrictEqual(['Bread', 'Milk']);
+});
+
+test('Backspace on the first task in a group deletes nothing', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await field.fill('');
+	await field.press('Backspace');
+
+	// There is nowhere above for the caret to go, so the task stays.
+	await expect(task(page, 'Bread')).toBeVisible();
+});
+
 test('Enter on a group title opens a task inside the group', async ({ page }) => {
 	await addTask(page, 'Bread');
 

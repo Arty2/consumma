@@ -655,6 +655,146 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     accommodate it: a task pointed at `__loose__` makes the whole document fail
     validation, and the next load then discards the entire list.
 
+78. **A price is read off the task, not stored beside it.** A shopping list
+    already carries its numbers — `2x Tomatos 5,08` — and what it could not do
+    was say what the trolley comes to. That could have been two new fields on a
+    task, and it is not: a task is one string, and adding a `cost` to the
+    document would mean a schema version, a merge rule for it, a stamp for it,
+    and an export that no longer round-trips through another app. `amount.ts`
+    reads the string on the way to the screen instead, the way `lang.ts` does,
+    and `aria-label`, the markdown export and merge never see the difference.
+
+    **Both `,` and `.` are decimal separators, and thousands are still
+    readable.** Picking one mark and calling the other a grouping separator
+    would have been simpler and wrong in half of Europe; picking by locale would
+    make one person's list read differently on the other person's phone, which
+    is the one thing a shared list cannot do. So the digit pattern decides: one
+    or two digits behind the final mark makes it a decimal point, exactly three
+    makes it a grouping mark, four is neither and the line has no price in it.
+    `5,08` and `5.08` are the same money, `1,234` and `1.234` are the same
+    thousand, and `1.234,56` and `1,234.56` both come to the same. Values are
+    held in integer minor units, because ten prices at `0,10` have to come to
+    `1,00` and floats do not.
+
+    **A row counts as count × price, and the row still shows the price.** Three
+    potatoes at 20,00 is 60,00 in the total, and the row goes on saying what one
+    costs — because that is what gets checked against a shelf edge. Showing the
+    line total on the row instead would mean the sheet displaying a number
+    nobody typed, next to a checkbox. The total is the one place a derived
+    number belongs, so it is the only place one appears.
+
+    **A group writes its numbers one way, and it is not always the way they
+    were typed.** Two people adding to one list write `5,08`, `20.00` and `10`
+    down the same column, and a column of prices that cannot be read down is
+    not a column. So the prevailing form wins — the separator most of them
+    used, two decimals if any of them wrote any, and a currency mark when every
+    price that wrote one wrote the same one — and every price in the group is
+    written out in it, including the ones that wrote no mark at all. A count
+    always ends in one `×` and is never padded with decimals; it counts things.
+
+    The style is taken from every priced row, done ones included, so ticking
+    the only price with decimals does not rewrite the column above it.
+
+    **Only the prices are a column.** The counts were given one too at first —
+    a reserved slot on every row of a group, empty where a row had no count, so
+    the names started level. It lines four numbers up at the cost of indenting
+    every row that has none, which on an ordinary list is most of them. A count
+    reads as the word it stands in for and belongs in front of the words; the
+    prices are what a column is for, because reading down them is the point.
+
+    This is a change of position and worth saying so: the row used to show the
+    price exactly as typed. What is inviolate is the text, not the rendering —
+    `aria-label`, the markdown export and merge still see every character that
+    was typed, which is where the promise actually lives.
+
+    **Done does not count; half counts in full.** The total is what is still to
+    buy, so a ticked task is already in the basket — and it takes its count with
+    it, so four loaves ticked removes four loaves, not one. Half is not half the
+    money: it is a task still on the list, and the tri-state was never a
+    progress bar.
+
+    **The total sits on the group header**, between the title and the `[…]`,
+    because a group is what a total belongs to and the header is the one row
+    that is not a task. It stays while the group is collapsed, which is when a
+    number standing in for four hidden rows is worth the most.
+
+    **The figures are set in a system monospace**, and that is the single
+    exception to one typeface. A price is a figure rather than a word: it has to
+    line down a column, and tabular digits in the hand would still not read as a
+    different kind of thing from the words beside them. A system stack rather
+    than a second `@font-face` keeps the exception cheap — no file, no request,
+    nothing added to `connect-src`. `e2e/design.e2e.ts` names it by class
+    instead of loosening the rule, so anything else leaving Graphe still fails.
+
+    `--mono-scale` corrects for the mono being drawn on a larger body than
+    Graphe, in one place and for the same reason `size-adjust` and `--cap-lift`
+    exist. It is measured in a browser, not derived. Inside a row the words take
+    `overflow-wrap: break-word` rather than the `anywhere` a plain row uses:
+    both break the same words, but `anywhere` also shrinks the element's
+    min-content width to a single character, and a flex item sized from that
+    gives the words a column two letters wide while the price sits in daylight.
+
+    **`--num-lift` is the other half of `--cap-lift`.** Two faces sharing a
+    baseline is not the same as two faces looking level: Graphe's capitals are
+    drawn riding high above their own baseline — a canvas puts their ink a pixel
+    clear of it at 19px — so a mono digit sitting honestly on that baseline
+    hangs low beside them. Measured, like its twin, and applied with `position:
+relative` rather than a transform, which does not apply to an inline box.
+
+    The figures carry no weight of their own. A face of its own is difference
+    enough, and synthesised bold on a system mono beside a hand is two kinds of
+    emphasis for one distinction.
+
+79. **Every ✕ stands in one column, out in the margin.** There are two ways to
+    delete something on the sheet — the one a done task offers, and the one a
+    group offers while its name is being edited — and they used to sit in
+    different places, each taking its width out of the row it was on. On a task
+    that meant the price column stopped being a column the moment anything was
+    ticked, which is most of what a shopping list does.
+
+    Both now sit in `--gutter`, absolutely positioned out of the flow, so a ✕
+    appearing moves nothing. The box starts at the row's own edge, so it never
+    covers the price beside it and tapping a price still opens the row, and it
+    stops half a rem short of the viewport, so it cannot push the sheet
+    sideways at 320px. It overlaps the drawn paper edge, which was accepted:
+    the alternative was a permanent 44px indent on every list, numbers or not.
+
+    It is narrower than `--touch` across and keeps the full 44px of height.
+    That is the price of the position, and the only place in the app that pays
+    it.
+
+    A consequence worth naming: **the group's collapse icon stays put while the
+    name is being edited.** It used to give up its square to the delete; with
+    the delete in the gutter there is nothing to give up. The icon also moved up
+    beside the title, so the total is the last thing on the header row and
+    stands directly over the prices it is the sum of.
+
+80. **The caret goes with the tap, and Escape had to be taught to discard.**
+
+    Tapping a task swapped its text for an edit field that was never focused.
+    Nothing could be typed into it, and — because an unfocused field never blurs
+    — the row never committed and never came out of edit mode. On a task with a
+    count and a price in it, that reads exactly like the two being lost, which
+    is how it was found.
+
+    Focusing it exposed the second half. `onblur={commit}` plus an Escape that
+    only set `editing = false` meant Escape _committed_: taking a focused field
+    out of the document blurs it. It was invisible before because there was
+    never anything in the field to keep. Escape now puts the text back before it
+    drops the field, on the task row and the group title alike.
+
+81. **Backspace is the other half of Enter.** Enter leaves a task and opens a
+    fresh row beneath it; backspace on a row with nothing left in it closes that
+    row and carries the caret back to the end of the task above. A task that has
+    been emptied of its words goes the same way, through the ordinary delete, so
+    the ordinary undo catches a slip. A row with nothing above it just closes,
+    and nothing is deleted — there would be nowhere for the caret to land.
+
+    Opening another row's editor is the one thing a `TaskRow` could not do from
+    outside, and it is `Sheet` that knows which row is above which. So `Sheet`
+    holds the id, as it already holds where an open empty row is sitting, and
+    the row clears it as soon as it has taken the caret.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

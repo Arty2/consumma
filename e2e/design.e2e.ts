@@ -70,16 +70,28 @@ test('the palette is black on white and nothing else', async ({ page }) => {
 test('one handwritten face, served from our origin, and only one', async ({ page }) => {
 	const families = await page.evaluate(() => [...document.fonts].map((f) => f.family));
 
-	// Titles and body differ by size and caps, not by typeface.
+	// Titles and body differ by size and caps, not by typeface. This is the
+	// assertion that guards against a second downloaded face, and it holds
+	// whatever the carve-out below allows: the figures are a system stack, so
+	// there is still one @font-face, one file and no extra request.
 	expect(families).toStrictEqual(['Graphe']);
 
-	const used = await page.evaluate(() => [
-		...new Set(
-			[...document.querySelectorAll('body *')].map((el) => getComputedStyle(el).fontFamily)
-		)
-	]);
-	for (const stack of used) {
-		expect(stack, stack).toContain('Graphe');
+	/*
+	 * The one exception, and it is named rather than inferred: a recognised
+	 * count or price carries `.num` and is set in the mono stack, because a
+	 * figure is not a word and the prices have to line down a column. Anything
+	 * else resolving to something other than Graphe is a second face creeping
+	 * back in.
+	 */
+	const used = await page.evaluate(() =>
+		[...document.querySelectorAll('body *')].map((el) => ({
+			figure: el.classList.contains('num'),
+			stack: getComputedStyle(el).fontFamily
+		}))
+	);
+	for (const { figure, stack } of used) {
+		if (figure) expect(stack, stack).toContain('ui-monospace');
+		else expect(stack, stack).toContain('Graphe');
 	}
 });
 
@@ -186,12 +198,17 @@ test('the rule under a title is as wide as the title, not the row', async ({ pag
 	const rule = page.locator('section svg.rule').first();
 
 	const text = await title.evaluate((el) => {
-		// The button fills the row for the tap target; the range measures the ink.
 		const range = document.createRange();
 		range.selectNodeContents(el);
 		return range.getBoundingClientRect().width;
 	});
-	const row = (await title.boundingBox())!.width;
+	/*
+	 * Measured against the header rather than the title button: the button is
+	 * only as wide as the name now, so that the collapse icon can sit against it
+	 * and the total can take the end of the row. The claim is unchanged — a pen
+	 * underlines the word, not the column.
+	 */
+	const row = (await page.locator('section .header').first().boundingBox())!.width;
 	const drawn = (await rule.boundingBox())!.width;
 
 	// A pen underlines the word, not the column.
