@@ -28,6 +28,18 @@
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
 
 	/*
+	 * A sheet with nothing written on it yet, where the add row is the only row
+	 * there is. Its empty box is shown rather than kept back then — there is no
+	 * list for it to sit at the end of and be counted as part of, and it is the
+	 * one thing on an empty sheet saying what a task here looks like.
+	 *
+	 * Both halves are needed. Loose ends is assembled from tasks, so with none
+	 * there is exactly one group and exactly one add row; two empty groups would
+	 * put up two of these, which is a list of nothing rather than an invitation.
+	 */
+	const lone = $derived(sheet.taskCount === 0 && sheet.groups.length === 1);
+
+	/*
 	 * Everything folds shut while a group is being carried, so the whole list is
 	 * a handful of titles and there is somewhere visible to put it down. Nothing
 	 * is written: this is a view of the drag, not a change to what is collapsed.
@@ -230,6 +242,7 @@
 						<AddRow
 							seed={group.id}
 							disabled={!sheet.canAddTask}
+							{lone}
 							onadd={(text) => sheet.addTask(group.id, text) !== null}
 						/>
 					{/if}

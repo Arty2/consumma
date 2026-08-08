@@ -102,6 +102,24 @@ function subdivide(points: readonly Pt[], every: number): Pt[] {
 	return out;
 }
 
+/**
+ * Points along a circular arc, `from` to `to` in radians, sampled evenly.
+ *
+ * Twelve steps everywhere: handPath bends each segment once, so the sampling
+ * rate is what decides how often a ring wobbles, and two rings sampled at
+ * different rates do not read as the same hand.
+ */
+function arc(c: number, r: number, from: number, to: number, steps = 12): Pt[] {
+	const points: Pt[] = [];
+
+	for (let i = 0; i <= steps; i++) {
+		const a = from + ((to - from) * i) / steps;
+		points.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r });
+	}
+
+	return points;
+}
+
 /** A point `distance` along the way from `from` towards `towards`. */
 function along(from: Pt, towards: Pt, distance: number): Pt {
 	const dx = towards.x - from.x;
@@ -409,14 +427,7 @@ export function handSlashedCircle(size: number, options: HandOptions): string {
 	const r = size * 0.34;
 	const c = size / 2;
 
-	const points: Pt[] = [];
-	const steps = 12;
-	for (let i = 0; i <= steps; i++) {
-		const a = (Math.PI * 2 * i) / steps;
-		points.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r });
-	}
-
-	const ring = handPath(points, options);
+	const ring = handPath(arc(c, r, 0, Math.PI * 2), options);
 
 	/*
 	 * One stroke, corner to corner through the middle, ending well clear of the
@@ -553,13 +564,7 @@ export function handRefresh(size: number, options: HandOptions): string {
 	const start = -Math.PI * 1.75;
 	const end = -Math.PI * 0.25;
 
-	const points: Pt[] = [];
-	const steps = 12;
-	for (let i = 0; i <= steps; i++) {
-		const a = start + ((end - start) * i) / steps;
-		points.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r });
-	}
-
+	const points = arc(c, r, start, end);
 	const ring = handPath(points, options);
 
 	/*
@@ -594,4 +599,150 @@ export function handRefresh(size: number, options: HandOptions): string {
 	);
 
 	return `${ring} ${barb}`;
+}
+
+/**
+ * A ring of short strokes struck outward from the middle: the light around a
+ * sun, whichever body is standing in the middle of it.
+ *
+ * Unequal lengths and uneven angles, for the same reason handSparkle's are
+ * unequal — eight even spokes is an asterisk, not a drawing of the sun.
+ */
+function corona(
+	c: number,
+	size: number,
+	rays: number,
+	inner: number,
+	outer: number,
+	options: HandOptions
+): string {
+	const random = rng(options.seed ^ 0x85ebca6b);
+
+	return Array.from({ length: rays }, (_, i) => {
+		// Off the even spoke by up to a third of a step, so no two gaps match.
+		const angle = ((i + (random() * 2 - 1) * 0.3) / rays) * Math.PI * 2;
+		/*
+		 * Either side of the length asked for, rather than only ever longer.
+		 * Jitter that adds is a margin the caller cannot see: it put the tip of
+		 * the longest ray outside the box, which at 22px is a stroke clipped by
+		 * the button rather than a hand that wavered.
+		 */
+		const from = size * inner * (0.96 + random() * 0.08);
+		const to = size * outer * (0.94 + random() * 0.12);
+
+		return handPath(
+			[
+				{ x: c + Math.cos(angle) * from, y: c + Math.sin(angle) * from },
+				{ x: c + Math.cos(angle) * to, y: c + Math.sin(angle) * to }
+			],
+			{ ...options, seed: options.seed + i * 733 }
+		);
+	}).join(' ');
+}
+
+/**
+ * The inner edge of a crescent: a bow between the two horns, curving back
+ * across the disc.
+ *
+ * Sampled off the chord rather than struck as a second circle. A crescent is
+ * properly two circles, one cutting the other, but the horns are then wherever
+ * those two happen to meet — and at 22px the arc between them is three pixels
+ * of a very large circle, which is to say a curve nobody can tell from this
+ * one. This way the horns are given, so the limb and the edge begin and end in
+ * the same two places by construction rather than by arithmetic.
+ *
+ * `waist` is how thick the crescent comes out across its middle, as a fraction
+ * of the radius, and it is the whole glyph: too generous and this is a full
+ * moon with a line drawn on it.
+ */
+function bow(c: number, r: number, facing: number, gap: number, waist: number, steps = 6): Pt[] {
+	const from = { x: c + Math.cos(facing - gap) * r, y: c + Math.sin(facing - gap) * r };
+	const to = { x: c + Math.cos(facing + gap) * r, y: c + Math.sin(facing + gap) * r };
+
+	// Far enough past the chord that the apex lands `waist` short of the limb.
+	const depth = Math.cos(gap) * r + r * (1 - waist);
+
+	const points: Pt[] = [];
+	for (let i = 0; i <= steps; i++) {
+		const t = i / steps;
+		const push = Math.sin(Math.PI * t) * depth;
+
+		points.push({
+			x: from.x + (to.x - from.x) * t - Math.cos(facing) * push,
+			y: from.y + (to.y - from.y) * t - Math.sin(facing) * push
+		});
+	}
+
+	return points;
+}
+
+/**
+ * A crescent in two strokes, seeded apart, so the horns close by hand rather
+ * than by arithmetic — the limb and the edge are drawn to the same two points,
+ * and what is left between them is the join a pen makes.
+ */
+function crescent(
+	c: number,
+	r: number,
+	facing: number,
+	gap: number,
+	waist: number,
+	options: HandOptions
+): string {
+	// The long way round: what is left open is the gap between the horns.
+	const limb = handPath(arc(c, r, facing + gap, facing + Math.PI * 2 - gap), options);
+	const edge = handPath(bow(c, r, facing, gap, waist), {
+		...options,
+		seed: options.seed + 337
+	});
+
+	return `${limb} ${edge}`;
+}
+
+/**
+ * Up and to the right, for both bodies that have a side to face.
+ *
+ * This is not any particular night's moon. It faces that way because the horns
+ * then sit clear of the corners of a square box, and the thick of it falls
+ * down the left where there is room for it.
+ */
+const FACING = -Math.PI * 0.25;
+
+/** The theme is light: a sun, disc and all. */
+export function handSun(size: number, options: HandOptions & { rays?: number }): string {
+	const c = size / 2;
+
+	/*
+	 * A small disc for the box it sits in, because the light has to fit outside
+	 * it. Drawn at the radius the other 22px glyphs use, a sun leaves its rays
+	 * either past the edge of the button or lying on top of itself.
+	 */
+	const disc = handPath(arc(c, size * 0.19, 0, Math.PI * 2), options);
+
+	return `${disc} ${corona(c, size, options.rays ?? 8, 0.29, 0.42, options)}`;
+}
+
+/** The theme is dark: a moon, and nothing else in the sky. */
+export function handMoon(size: number, options: HandOptions): string {
+	return crescent(size / 2, size * 0.32, FACING, Math.PI * 0.34, 0.42, options);
+}
+
+/**
+ * Both bodies at once: the theme is whatever the phone is doing.
+ *
+ * The moon standing in the sun's light — a crescent where the sun keeps its
+ * disc, inside a corona the moon does not have. That is what makes three
+ * glyphs out of two bodies: each of the others is this one with a piece taken
+ * away, and none of the three is the crossed circle the sync button draws when
+ * the list cannot be reached.
+ *
+ * The crescent is thinner and the corona sparser than either mark alone. This
+ * one is carrying two things in the space the others carry one, and a full
+ * eight rays around a crescent closes the gaps that say it is a crescent.
+ */
+export function handSunMoon(size: number, options: HandOptions): string {
+	const c = size / 2;
+	const moon = crescent(c, size * 0.28, FACING, Math.PI * 0.38, 0.42, options);
+
+	return `${moon} ${corona(c, size, 6, 0.37, 0.46, options)}`;
 }

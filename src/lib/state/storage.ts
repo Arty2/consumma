@@ -12,6 +12,13 @@ export const KEYS = {
 	clientId: 'consumma:clientId',
 	lastT: 'consumma:lastT',
 	collapsed: 'consumma:collapsed',
+	/*
+	 * Written only once someone has picked one, and removed again when they go
+	 * back to following the phone. static/theme.js reads this key by name
+	 * before the app has loaded — see the note there, and the test that holds
+	 * the two spellings together.
+	 */
+	theme: 'consumma:theme',
 	code: 'consumma:code',
 	version: 'consumma:version',
 	synced: 'consumma:synced'
