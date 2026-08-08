@@ -15,8 +15,11 @@
 		count: number;
 		/** Whether every task in the group is done, so the group can go. */
 		finished: boolean;
-		/** Loose ends is assembled on read, so it has no title to edit. */
-		editable: boolean;
+		/**
+		 * Loose ends: assembled on read rather than stored, so there is no title
+		 * to edit, nothing to delete, and no order to drag it into.
+		 */
+		synthetic: boolean;
 		ontoggle: () => void;
 		onrename: (title: string) => void;
 		ondelete: () => void;
@@ -31,7 +34,7 @@
 		collapsed,
 		count,
 		finished,
-		editable,
+		synthetic,
 		ontoggle,
 		onrename,
 		ondelete,
@@ -61,7 +64,7 @@
 	 * task up.
 	 */
 	function startEditing() {
-		if (!editable) return;
+		if (synthetic) return;
 		draft = title;
 		editing = true;
 	}
@@ -150,22 +153,40 @@
 			</svg>
 		</button>
 	{:else}
-		<!--
-			The name, and the way to change it. A long press picks the group up
-			instead — the same gesture that lifts a task, on the same kind of row.
-		-->
-		<button
-			class="title caps"
-			class:untitled={title === ''}
-			type="button"
-			lang={langOf(title)}
-			aria-label={title === '' ? 'Untitled group' : title}
-			onclick={startEditing}
-			onkeydown={(event) => event.key === 'F2' && startEditing()}
-			use:dragGroup={{ groupId: seed, enabled: editable, onDrop: onreorder }}
-		>
-			{title === '' ? '…' : title}
-		</button>
+		{#if synthetic}
+			<!--
+				Not a name — a rule between what has a heading and what has lost one.
+				Loose ends is assembled on read, so there is nothing here to rename,
+				delete or carry, and a word set like every other title would offer all
+				three. Three strokes say "these belong under nothing" and offer none
+				of it, which is also why it is not a button: a control that cannot do
+				anything is a tap that goes nowhere and a stop on the way to one.
+
+				The name is still what it is called, for anyone who cannot see the
+				strokes and for what a move is announced as.
+			-->
+			<p class="title caps loose">
+				<span class="sr-only">{title}</span>
+				<span aria-hidden="true">- - -</span>
+			</p>
+		{:else}
+			<!--
+				The name, and the way to change it. A long press picks the group up
+				instead — the same gesture that lifts a task, on the same kind of row.
+			-->
+			<button
+				class="title caps"
+				class:untitled={title === ''}
+				type="button"
+				lang={langOf(title)}
+				aria-label={title === '' ? 'Untitled group' : title}
+				onclick={startEditing}
+				onkeydown={(event) => event.key === 'F2' && startEditing()}
+				use:dragGroup={{ groupId: seed, enabled: !synthetic, onDrop: onreorder }}
+			>
+				{title === '' ? '…' : title}
+			</button>
+		{/if}
 
 		<!--
 			Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
@@ -187,8 +208,16 @@
 	{/if}
 </div>
 
-<!-- Drawn rather than a border, and only as wide as the title. -->
-<TextRule text={shown} {seed} />
+<!--
+	Drawn rather than a border, and only as wide as the title.
+
+	Loose ends has none. The rule is what a title is written on, and this is not
+	a title anyone wrote — underlining the strokes would dress the one heading
+	that cannot be edited as the one thing on the sheet most asking to be.
+-->
+{#if !synthetic}
+	<TextRule text={shown} {seed} />
+{/if}
 
 <style>
 	.header {
@@ -261,6 +290,18 @@
 
 	.untitled {
 		opacity: var(--faint);
+	}
+
+	/*
+	 * A `p` where the others are buttons, so it needs the margin taken off and
+	 * the row's own centring rather than a line box of its own.
+	 */
+	.loose {
+		margin: 0;
+		display: flex;
+		align-items: center;
+		min-height: var(--touch);
+		cursor: default;
 	}
 
 	.icon {

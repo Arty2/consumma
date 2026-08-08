@@ -572,3 +572,63 @@ test('carrying a group folds them all shut, and unfolds them after', async ({ pa
 	await page.reload();
 	await expect(page.getByRole('checkbox')).toHaveCount(2);
 });
+
+/**
+ * Strands a task under a group that is not in the document, which is the only
+ * way Loose ends comes about: a group deleted on another phone, or a list
+ * imported with nothing above it.
+ */
+async function strand(page: Page, ...texts: string[]) {
+	await addTask(page, 'Bread');
+	await page.evaluate((stray) => {
+		const doc = JSON.parse(localStorage.getItem('consumma:doc')!);
+		const first = Object.values(doc.tasks)[0] as Record<string, unknown>;
+
+		stray.forEach((text, i) => {
+			const task = JSON.parse(JSON.stringify(first));
+			task.id = `stranded${i}`;
+			task.text = text;
+			task.groupId = 'agroupthatisgone';
+			doc.tasks[task.id] = task;
+		});
+
+		localStorage.setItem('consumma:doc', JSON.stringify(doc));
+	}, texts);
+	await page.reload();
+}
+
+test('what has lost its group is ruled off rather than given a name', async ({ page }) => {
+	await strand(page, 'Stray');
+
+	/*
+	 * Loose ends is assembled on read, so there is nothing there to rename,
+	 * delete or carry — and a word set like every other title would offer all
+	 * three. Three strokes say "these belong under nothing" and offer none of it.
+	 */
+	const heading = page.locator('section.group .title').last();
+	// The strokes only: the name beside them is there for screen readers.
+	await expect(heading.locator('[aria-hidden="true"]')).toHaveText('- - -');
+	expect(await heading.evaluate((el) => el.tagName)).toBe('P');
+
+	// Not a control, so not a tap that goes nowhere and not a stop on the way.
+	await expect(page.getByRole('button', { name: 'Loose ends' })).toHaveCount(0);
+
+	// Still called what it is, for anyone who cannot see the strokes.
+	await expect(page.getByText('Loose ends')).toHaveCount(1);
+
+	/*
+	 * And no rule. The rule is what a title is written on, and underlining these
+	 * would dress the one heading that cannot be edited as the one most asking
+	 * to be.
+	 */
+	await expect(page.locator('section.group svg.rule')).toHaveCount(1);
+
+	// It still folds shut, and the tasks under it are real tasks.
+	await expect(task(page, 'Stray')).toBeVisible();
+	await page
+		.locator('section.group')
+		.last()
+		.getByRole('button', { name: 'Collapse group' })
+		.click();
+	await expect(task(page, 'Stray')).toHaveCount(0);
+});

@@ -212,7 +212,7 @@
 				collapsed={folded || ui.isCollapsed(group.id)}
 				count={group.tasks.length}
 				finished={group.tasks.every((task) => task.state === 'done')}
-				editable={!group.synthetic}
+				synthetic={group.synthetic}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
 				onrename={(title) => sheet.renameGroup(group.id, title)}
 				ondelete={() => removeGroup(group.id, group.title)}
