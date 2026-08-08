@@ -9,6 +9,19 @@ pnpm dev · pnpm check · pnpm lint · pnpm gates · pnpm test · pnpm test:e2e 
 `pnpm gates` runs `scripts/gates.sh`, which enforces the rules below that a
 linter cannot. CI runs it first, before anything else.
 
+## Version
+
+The number lives in `package.json` and nowhere else. `vite.config.ts` injects
+it as `__VERSION__`, the credit in the menu renders that, and the credit test
+in `e2e/design.e2e.ts` reads `package.json` back off disk and asserts the two
+agree — so the binding is load-bearing rather than a comment, and a number
+typed out a second time somewhere would fail the suite. Never add one.
+
+The vocabulary here is its own, and does not follow semver's names:
+
+- **"bump the version"** moves the middle number: `0.1.0` → `0.2.0`.
+- **"minor bump"** moves the last one: `0.2.0` → `0.2.1`.
+
 ## Non-negotiable
 
 - The share code, derived keys, and plaintext never leave the browser. Server sees ciphertext only.
