@@ -95,8 +95,18 @@ test('it is installable: a manifest, a theme colour, and drawn icons', async ({ 
 	// No slash: that belongs to the address, not to the app on a home screen.
 	expect(parsed.name).toBe('consumma');
 	expect(parsed.display).toBe('standalone');
-	// White, so the toolbar tint does not break the sheet-of-paper illusion.
-	expect(parsed.theme_color).toBe('#ffffff');
+	/*
+	 * Black, and both of them.
+	 *
+	 * A manifest cannot ask what the phone is set to, so these are one colour
+	 * for everybody, and black is the one to be wrong in: opening the app is
+	 * the moment a white screen is least wanted and most likely to be followed
+	 * by a black one. The page takes the tint over from the manifest as soon as
+	 * it loads — see static/theme.js — so this governs the launch and nothing
+	 * after it.
+	 */
+	expect(parsed.background_color).toBe('#000000');
+	expect(parsed.theme_color).toBe('#000000');
 	expect(parsed.icons.some((i: { purpose?: string }) => i.purpose === 'maskable')).toBe(true);
 
 	for (const icon of parsed.icons) {
@@ -108,6 +118,45 @@ test('it is installable: a manifest, a theme colour, and drawn icons', async ({ 
 	// iOS has no install prompt, so the touch icon has to be there.
 	const apple = await page.request.get('/icons/apple-touch-icon.png');
 	expect(apple.ok()).toBe(true);
+});
+
+test('the launch icon is drawn on black, and the home-screen ones are not', async ({ page }) => {
+	/*
+	 * The icon a launch screen puts on `background_color` has to be the same
+	 * black as the screen behind it, or it is a white card in the middle of it.
+	 * The tiles a phone cuts its home-screen icon from are the other way up:
+	 * the mark on a home screen full of other apps is not the place to make a
+	 * statement about the theme.
+	 *
+	 * Read off a canvas rather than trusted to the generator, because these are
+	 * built by scripts/icons.ts at build time and never committed — so nothing
+	 * else in the repository can say what colour they came out.
+	 */
+	const corner = (src: string) =>
+		page.evaluate(async (src) => {
+			const image = new Image();
+			image.src = src;
+			await image.decode();
+
+			const canvas = document.createElement('canvas');
+			canvas.width = image.width;
+			canvas.height = image.height;
+
+			const context = canvas.getContext('2d')!;
+			context.drawImage(image, 0, 0);
+
+			// Well inside the edge, and well outside the mark.
+			const [r, g, b] = context.getImageData(4, 4, 1, 1).data;
+			return [r, g, b];
+		}, src);
+
+	for (const src of ['/icons/icon-192.png', '/icons/icon-512.png']) {
+		expect(await corner(src), src).toStrictEqual([0, 0, 0]);
+	}
+
+	for (const src of ['/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png']) {
+		expect(await corner(src), src).toStrictEqual([255, 255, 255]);
+	}
 });
 
 test('the service worker caches the shell and never an API response', async ({ page }) => {
