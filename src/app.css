@@ -103,6 +103,38 @@
 	color-scheme: light;
 }
 
+/*
+ * Dark is the straight inversion and nothing else: the same two colours, with
+ * the paper and the ink changing places. Everything drawn strokes var(--ink)
+ * and the four surfaces that have a ground fill var(--paper), so the whole
+ * sheet turns on these two declarations — there is no second palette to keep
+ * in step, and no grey has anywhere to appear.
+ *
+ * The attribute carries the resolved colour, never `system`. static/theme.js
+ * puts it there before the first paint and the layout keeps it in step; see
+ * src/lib/state/theme.ts for who decides what it says.
+ */
+:root[data-theme='dark'] {
+	--ink: #fff;
+	--paper: #000;
+
+	color-scheme: dark;
+}
+
+/*
+ * No attribute at all means the script did not run — scripting off, or blocked.
+ * The phone's own preference is still worth honouring, and this is the only
+ * place it can be honoured from.
+ */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme]) {
+		--ink: #fff;
+		--paper: #000;
+
+		color-scheme: dark;
+	}
+}
+
 *,
 *::before,
 *::after {

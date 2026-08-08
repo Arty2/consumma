@@ -5,10 +5,13 @@ import {
 	handBurger,
 	handCheck,
 	handLine,
+	handMoon,
 	handPath,
 	handRect,
 	handRefresh,
 	handSlashedCircle,
+	handSun,
+	handSunMoon,
 	handTear,
 	handVertical
 } from '../src/lib/draw/hand';
@@ -457,6 +460,107 @@ describe('handSlashedCircle', () => {
 	it('is stable for a seed, and is not the refresh', () => {
 		expect(handSlashedCircle(SIZE, { seed: 4 })).toBe(handSlashedCircle(SIZE, { seed: 4 }));
 		expect(handSlashedCircle(SIZE, { seed: 4 })).not.toBe(handRefresh(SIZE, { seed: 4 }));
+	});
+});
+
+describe('handSun, handMoon and handSunMoon', () => {
+	const SIZE = 22;
+	const centre = { x: SIZE / 2, y: SIZE / 2 };
+	const radius = (p: { x: number; y: number }) => Math.hypot(p.x - centre.x, p.y - centre.y);
+
+	/*
+	 * A crescent is a limb and an edge drawn to the same two horns, so the ends
+	 * meet by construction rather than by arithmetic. The limb is 13 points and
+	 * the edge is 7, laid down in that order.
+	 */
+	function horns(d: string) {
+		const points = endpoints(d);
+		const limb = points.slice(0, 13);
+		const edge = points.slice(13, 20);
+
+		return { limb, edge, rays: points.slice(20) };
+	}
+
+	it('draws the sun round, and the moon as a crescent', () => {
+		const disc = endpoints(handSun(SIZE, { seed: 3, wobble: 0 })).slice(0, 13);
+
+		const radii = disc.map(radius);
+		expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(0.01);
+		// Closed: a sun with a gap in it is just the moon again.
+		expect(Math.hypot(disc[0].x - disc.at(-1)!.x, disc[0].y - disc.at(-1)!.y)).toBeLessThan(0.01);
+
+		// The moon's limb is the same arc with a bite out of it, so it does not.
+		const { limb } = horns(handMoon(SIZE, { seed: 3, wobble: 0 }));
+		expect(Math.hypot(limb[0].x - limb.at(-1)!.x, limb[0].y - limb.at(-1)!.y)).toBeGreaterThan(1);
+	});
+
+	it('closes both crescents on their horns', () => {
+		for (const d of [
+			handMoon(SIZE, { seed: 9, wobble: 0 }),
+			handSunMoon(SIZE, { seed: 9, wobble: 0 })
+		]) {
+			const { limb, edge } = horns(d);
+
+			// The edge starts where the limb finished and finishes where it began.
+			expect(Math.hypot(edge[0].x - limb.at(-1)!.x, edge[0].y - limb.at(-1)!.y)).toBeLessThan(0.02);
+			expect(Math.hypot(edge.at(-1)!.x - limb[0].x, edge.at(-1)!.y - limb[0].y)).toBeLessThan(0.02);
+		}
+	});
+
+	it('bows the edge back across the middle, or it is not a crescent', () => {
+		const { edge } = horns(handMoon(SIZE, { seed: 9, wobble: 0 }));
+		const facing = -Math.PI * 0.25;
+		const apex = edge[3];
+
+		/*
+		 * How far the middle of the edge sits along the direction the crescent
+		 * opens. Negative is past the centre, which is what leaves a thin waist
+		 * rather than a full moon with a line drawn on it.
+		 */
+		const along = (apex.x - centre.x) * Math.cos(facing) + (apex.y - centre.y) * Math.sin(facing);
+		expect(along).toBeLessThan(0);
+
+		// And short of the limb, or the two strokes meet and the waist closes.
+		expect(radius(apex)).toBeLessThan(SIZE * 0.32);
+	});
+
+	it('strikes every ray clear of the body in the middle of it', () => {
+		const sun = endpoints(handSun(SIZE, { seed: 5, wobble: 0 })).slice(13);
+		expect(sun).toHaveLength(16);
+		for (const p of sun) expect(radius(p)).toBeGreaterThan(SIZE * 0.19);
+
+		// Sparser, because the gaps in the corona are what say `crescent`.
+		const both = horns(handSunMoon(SIZE, { seed: 5, wobble: 0 })).rays;
+		expect(both).toHaveLength(12);
+		for (const p of both) expect(radius(p)).toBeGreaterThan(SIZE * 0.28);
+	});
+
+	it('stays inside its box at any seed', () => {
+		for (const seed of [1, 7, 99, 1234]) {
+			for (const draw of [handSun, handMoon, handSunMoon]) {
+				for (const { x, y } of endpoints(draw(SIZE, { seed, wobble: 1 }))) {
+					expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+					expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+					expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+					expect(y, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				}
+			}
+		}
+	});
+
+	/*
+	 * Three states on one button, and a fourth glyph on the button beside it.
+	 * Any two of them coming out the same is the whole control saying nothing.
+	 */
+	it('is stable for a seed, and is none of the glyphs it sits beside', () => {
+		expect(handSun(SIZE, { seed: 4 })).toBe(handSun(SIZE, { seed: 4 }));
+		expect(handMoon(SIZE, { seed: 4 })).toBe(handMoon(SIZE, { seed: 4 }));
+		expect(handSunMoon(SIZE, { seed: 4 })).toBe(handSunMoon(SIZE, { seed: 4 }));
+
+		const drawn = [handSun, handMoon, handSunMoon, handSlashedCircle, handRefresh].map((draw) =>
+			draw(SIZE, { seed: 4 })
+		);
+		expect(new Set(drawn).size).toBe(drawn.length);
 	});
 });
 

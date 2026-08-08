@@ -544,3 +544,176 @@ test('the app opens on the list, with the torn edge whole and not clipped', asyn
 	const box = (await tear.boundingBox())!;
 	expect(box.y).toBeGreaterThan(8);
 });
+
+/*
+ * The theme. Two colours still, with the paper and the ink changing places —
+ * everything above holds in dark, and the greyscale test in particular is what
+ * says the inversion did not introduce a colour on the way.
+ */
+
+function themeButton(page: Page) {
+	return page.getByRole('button', { name: /^Theme/ });
+}
+
+const swatch = (page: Page) =>
+	page.evaluate(() => {
+		const style = getComputedStyle(document.documentElement);
+		return {
+			resolved: document.documentElement.dataset.theme,
+			ink: style.getPropertyValue('--ink').trim(),
+			paper: style.getPropertyValue('--paper').trim(),
+			background: style.backgroundColor,
+			tint: document.querySelector('meta[name="theme-color"]')?.getAttribute('content')
+		};
+	});
+
+test('the sheet follows the phone until somebody says otherwise', async ({ page }) => {
+	// The default, and it writes nothing down: arriving is not a choice.
+	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — following the phone');
+	expect(await page.evaluate(() => localStorage.getItem('consumma:theme'))).toBeNull();
+
+	/*
+	 * The phone changing its mind at dusk turns the sheet with it. Polled
+	 * rather than read straight back: the change arrives as a media query
+	 * event, so it lands a tick after the emulation is set.
+	 */
+	await page.emulateMedia({ colorScheme: 'dark' });
+	await expect.poll(async () => (await swatch(page)).resolved).toBe('dark');
+
+	await page.emulateMedia({ colorScheme: 'light' });
+	await expect.poll(async () => (await swatch(page)).resolved).toBe('light');
+});
+
+test('the first tap is always the opposite of the phone, so something changes', async ({
+	page
+}) => {
+	await page.emulateMedia({ colorScheme: 'light' });
+	await themeButton(page).click();
+	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
+	expect((await swatch(page)).resolved).toBe('dark');
+
+	// Round in three, and back to writing nothing down.
+	await themeButton(page).click();
+	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — light');
+	await themeButton(page).click();
+	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — following the phone');
+	expect(await page.evaluate(() => localStorage.getItem('consumma:theme'))).toBeNull();
+
+	// And the other way on a dark phone.
+	await page.emulateMedia({ colorScheme: 'dark' });
+	await themeButton(page).click();
+	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — light');
+});
+
+test('dark is the two colours changing places, and no third one', async ({ page }) => {
+	const light = await swatch(page);
+	expect(light).toMatchObject({ ink: '#000', paper: '#fff', tint: '#ffffff' });
+
+	await themeButton(page).click();
+	const dark = await swatch(page);
+	expect(dark).toMatchObject({ ink: '#fff', paper: '#000', tint: '#000000' });
+	expect(dark.background).not.toBe(light.background);
+
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	// The same rule as in light: a grey would be a channel disagreeing.
+	const colours = await page.evaluate(() => {
+		const seen = new Set<string>();
+		for (const el of document.querySelectorAll('*')) {
+			const style = getComputedStyle(el);
+			for (const value of [style.color, style.backgroundColor, style.borderTopColor]) {
+				if (value === 'rgba(0, 0, 0, 0)' || value === 'transparent') continue;
+				seen.add(value);
+			}
+		}
+		return [...seen];
+	});
+
+	for (const colour of colours) {
+		const [r, g, b] = colour.match(/\d+/g)!.slice(0, 3).map(Number);
+		expect(r).toBe(g);
+		expect(g).toBe(b);
+	}
+});
+
+test('a sheet that is going to be black is never white first', async ({ page }) => {
+	await page.evaluate(() => localStorage.setItem('consumma:theme', 'dark'));
+
+	/*
+	 * With the app's own modules refused outright, so nothing that could set
+	 * this has run except the classic script in the head. If the theme arrived
+	 * with hydration instead, the sheet would be white here — and white for
+	 * that long on every open, which on two colours is the whole screen.
+	 */
+	// The scripts only — the stylesheet is what the attribute then selects on.
+	await page.route('**/_app/**/*.js', (route) => route.abort());
+	await page.goto('/', { waitUntil: 'domcontentloaded' });
+
+	expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('dark');
+	expect(
+		await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)
+	).toBe('rgb(0, 0, 0)');
+});
+
+test('and it does not turn white again once the app has loaded', async ({ page }) => {
+	/*
+	 * The other half of the same flash. The script settles the theme before the
+	 * paint, and then the app hydrates on top of it — so an effect that applies
+	 * the default before the stored choice has been read puts a white frame on
+	 * screen after the sheet is already up, which is worse than the one before.
+	 *
+	 * Every value the attribute takes, from the first script to well past
+	 * hydration. There should be exactly one of them.
+	 */
+	await page.emulateMedia({ colorScheme: 'light' });
+	await page.evaluate(() => localStorage.setItem('consumma:theme', 'dark'));
+
+	await page.addInitScript(() => {
+		const seen: string[] = [];
+		Object.defineProperty(window, 'seenThemes', { get: () => seen });
+
+		const record = () => {
+			const value = document.documentElement?.dataset.theme;
+			if (value) seen.push(value);
+		};
+
+		/*
+		 * Watches the document rather than its element: this runs before the
+		 * page is parsed, when there is no documentElement yet to observe, and
+		 * an observer that throws here leaves the test seeing nothing at all
+		 * and calling it a pass.
+		 */
+		new MutationObserver(record).observe(document, {
+			attributes: true,
+			subtree: true,
+			attributeFilter: ['data-theme']
+		});
+		document.addEventListener('DOMContentLoaded', record);
+	});
+
+	await page.reload();
+	await expect(page.getByRole('button', { name: 'Add a task' })).toBeVisible();
+
+	const seen = await page.evaluate(
+		() => (window as unknown as { seenThemes: string[] }).seenThemes
+	);
+	// Something has to have been recorded, or this passes by having seen nothing.
+	expect(seen.length).toBeGreaterThan(0);
+	expect(new Set(seen)).toStrictEqual(new Set(['dark']));
+});
+
+test('the theme is the device’s, so removing the list does not take it', async ({ page }) => {
+	await themeButton(page).click();
+	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
+
+	await fromMenu(page, 'Delete');
+	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+
+	await page.reload();
+	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
+	expect((await swatch(page)).resolved).toBe('dark');
+});

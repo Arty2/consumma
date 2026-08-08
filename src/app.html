@@ -6,8 +6,13 @@
 		<meta name="text-scale" content="scale" />
 
 		<!--
-			White, not black: a black toolbar tint would break the sheet-of-paper
-			illusion at exactly the moment the app opens.
+			The toolbar tint matches the paper, whichever colour the paper is: a
+			black tint over a white sheet — or a white one over a black sheet —
+			breaks the sheet-of-paper illusion at exactly the moment the app opens.
+
+			White here is the value for a light sheet, and the starting point.
+			theme.js corrects it below before anything is painted, and the layout
+			keeps it in step afterwards.
 		-->
 		<meta name="theme-color" content="#ffffff" />
 		<link rel="manifest" href="/manifest.webmanifest" />
@@ -25,6 +30,24 @@
 		<link rel="preload" href="/fonts/graphe-alpha.woff2" as="font" type="font/woff2" crossorigin />
 
 		%sveltekit.head%
+
+		<!--
+			Decides which of the two colours the sheet is, before anything is
+			painted: one that resolves to black must never be white for a frame
+			first. A classic script runs while the head is still being parsed,
+			where the app's own modules are deferred to after it.
+
+			Last in the head, rather than first, so it comes after the policy
+			SvelteKit writes above and is governed by it — a meta CSP covers only
+			what follows it. It is a file rather than an inline script for that
+			same policy; see the note in static/theme.js.
+
+			Nothing may be written between here and the close of the head that
+			names the placeholder above in prose. It is substituted by plain text
+			replacement, comments included, which quietly moved the whole head —
+			policy, preloads and all — inside the comment that mentioned it.
+		-->
+		<script src="/theme.js"></script>
 	</head>
 	<body>
 		<div>%sveltekit.body%</div>

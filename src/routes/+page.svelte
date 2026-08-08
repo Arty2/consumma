@@ -7,6 +7,7 @@
 	import Sheet from '$lib/components/Sheet.svelte';
 	import SideEdge from '$lib/components/SideEdge.svelte';
 	import SyncButton from '$lib/components/SyncButton.svelte';
+	import ThemeButton from '$lib/components/ThemeButton.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
@@ -19,9 +20,13 @@
 	import { ui } from '$lib/state/ui.svelte';
 
 	/*
-	 * Nothing sits on the page but the sheet and the one button that opens the
-	 * menu. Syncing, sharing, importing, clearing and the credit all live behind
-	 * it — the paper carries only what someone wrote on it.
+	 * Nothing sits on the page but the sheet and the buttons in its corners.
+	 * Syncing, sharing, importing, clearing and the credit all live behind the
+	 * one that opens the menu — the paper carries only what someone wrote on it.
+	 *
+	 * The theme sits beside it rather than inside it, because it is the one
+	 * setting whose result is the screen itself: a control for how the sheet
+	 * looks, buried under a panel that covers the sheet, cannot be seen working.
 	 *
 	 * The menu closes before any panel opens over it. Two focus traps at once is
 	 * a keyboard trap, and returning to a menu buried under a confirm is not a
@@ -137,9 +142,17 @@
 		<SideEdge seed="left" side="left" />
 		<SideEdge seed="right" side="right" />
 
+		<!--
+			Sync on its own at the left, because it is the one that comes and goes;
+			the two that are always there stay together on the right, where the
+			thumb already knows to find the burger.
+		-->
 		<div class="corner">
 			<SyncButton />
-			<MenuButton onopen={() => (panel = 'menu')} />
+			<div class="controls">
+				<ThemeButton />
+				<MenuButton onopen={() => (panel = 'menu')} />
+			</div>
 		</div>
 		<Sheet />
 	</main>
@@ -219,12 +232,22 @@
 	}
 
 	/*
-	 * The button sits in the sheet's top-right corner with a row to itself. It
-	 * used to be positioned over the sheet, where the first task row covered it
-	 * and swallowed the tap.
+	 * The buttons sit in the sheet's top corners with a row to themselves. They
+	 * used to be positioned over the sheet, where the first task row covered
+	 * them and swallowed the tap.
 	 */
 	.corner {
 		display: flex;
-		justify-content: flex-end;
+	}
+
+	/*
+	 * `margin-left: auto` rather than `space-between` on the row: the sync
+	 * button is not there at all when there is nothing to sync, and
+	 * space-between with one child left pushes that child to the *left* — which
+	 * put the burger under the thumb's left hand on an untouched sheet.
+	 */
+	.controls {
+		display: flex;
+		margin-left: auto;
 	}
 </style>
