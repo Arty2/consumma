@@ -677,12 +677,28 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `1,00` and floats do not.
 
     **A row counts as count × price, and the row still shows the price.** Three
-    potatoes at 20,00 is 60,00 in the total, and the row goes on reading
-    `3 POTATOS 20.00` — because that is what was written down and what gets
-    checked against a shelf edge. Showing the line total on the row instead
-    would mean the sheet displaying a number nobody typed, next to a checkbox,
-    in a list whose whole premise is that the text is the text. The total is the
-    one place a derived number belongs, so it is the only place one appears.
+    potatoes at 20,00 is 60,00 in the total, and the row goes on saying what one
+    costs — because that is what gets checked against a shelf edge. Showing the
+    line total on the row instead would mean the sheet displaying a number
+    nobody typed, next to a checkbox. The total is the one place a derived
+    number belongs, so it is the only place one appears.
+
+    **A group writes its numbers one way, and it is not always the way they
+    were typed.** Two people adding to one list write `5,08`, `20.00` and `10`
+    down the same column, and a column of prices that cannot be read down is
+    not a column. So the prevailing form wins — the separator most of them
+    used, two decimals if any of them wrote any, and a currency mark when every
+    price that wrote one wrote the same one — and every price in the group is
+    written out in it, including the ones that wrote no mark at all. A count
+    always ends in one `×` and is never padded with decimals; it counts things.
+
+    The style is taken from every priced row, done ones included, so ticking
+    the only price with decimals does not rewrite the column above it.
+
+    This is a change of position and worth saying so: the row used to show the
+    price exactly as typed. What is inviolate is the text, not the rendering —
+    `aria-label`, the markdown export and merge still see every character that
+    was typed, which is where the promise actually lives.
 
     **Done does not count; half counts in full.** The total is what is still to
     buy, so a ticked task is already in the basket — and it takes its count with
@@ -710,6 +726,67 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     both break the same words, but `anywhere` also shrinks the element's
     min-content width to a single character, and a flex item sized from that
     gives the words a column two letters wide while the price sits in daylight.
+
+    **`--num-lift` is the other half of `--cap-lift`.** Two faces sharing a
+    baseline is not the same as two faces looking level: Graphe's capitals are
+    drawn riding high above their own baseline — a canvas puts their ink a pixel
+    clear of it at 19px — so a mono digit sitting honestly on that baseline
+    hangs low beside them. Measured, like its twin, and applied with `position:
+relative` rather than a transform, which does not apply to an inline box.
+
+    The figures carry no weight of their own. A face of its own is difference
+    enough, and synthesised bold on a system mono beside a hand is two kinds of
+    emphasis for one distinction.
+
+79. **Every ✕ stands in one column, out in the margin.** There are two ways to
+    delete something on the sheet — the one a done task offers, and the one a
+    group offers while its name is being edited — and they used to sit in
+    different places, each taking its width out of the row it was on. On a task
+    that meant the price column stopped being a column the moment anything was
+    ticked, which is most of what a shopping list does.
+
+    Both now sit in `--gutter`, absolutely positioned out of the flow, so a ✕
+    appearing moves nothing. The box starts at the row's own edge, so it never
+    covers the price beside it and tapping a price still opens the row, and it
+    stops half a rem short of the viewport, so it cannot push the sheet
+    sideways at 320px. It overlaps the drawn paper edge, which was accepted:
+    the alternative was a permanent 44px indent on every list, numbers or not.
+
+    It is narrower than `--touch` across and keeps the full 44px of height.
+    That is the price of the position, and the only place in the app that pays
+    it.
+
+    A consequence worth naming: **the group's collapse icon stays put while the
+    name is being edited.** It used to give up its square to the delete; with
+    the delete in the gutter there is nothing to give up. The icon also moved up
+    beside the title, so the total is the last thing on the header row and
+    stands directly over the prices it is the sum of.
+
+80. **The caret goes with the tap, and Escape had to be taught to discard.**
+
+    Tapping a task swapped its text for an edit field that was never focused.
+    Nothing could be typed into it, and — because an unfocused field never blurs
+    — the row never committed and never came out of edit mode. On a task with a
+    count and a price in it, that reads exactly like the two being lost, which
+    is how it was found.
+
+    Focusing it exposed the second half. `onblur={commit}` plus an Escape that
+    only set `editing = false` meant Escape _committed_: taking a focused field
+    out of the document blurs it. It was invisible before because there was
+    never anything in the field to keep. Escape now puts the text back before it
+    drops the field, on the task row and the group title alike.
+
+81. **Backspace is the other half of Enter.** Enter leaves a task and opens a
+    fresh row beneath it; backspace on a row with nothing left in it closes that
+    row and carries the caret back to the end of the task above. A task that has
+    been emptied of its words goes the same way, through the ordinary delete, so
+    the ordinary undo catches a slip. A row with nothing above it just closes,
+    and nothing is deleted — there would be nowhere for the caret to land.
+
+    Opening another row's editor is the one thing a `TaskRow` could not do from
+    outside, and it is `Sheet` that knows which row is above which. So `Sheet`
+    holds the id, as it already holds where an open empty row is sitting, and
+    the row clears it as soon as it has taken the caret.
 
 ## Known limits
 

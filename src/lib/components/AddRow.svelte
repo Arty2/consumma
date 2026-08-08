@@ -13,9 +13,11 @@
 		/** Opened by the parent: Enter on a task puts one of these beneath it. */
 		opened?: boolean;
 		onclose?: () => void;
+		/** Backspace on an empty row: it closes, and the task above opens. */
+		onback?: () => void;
 	};
 
-	let { onadd, seed, disabled = false, opened = false, onclose }: Props = $props();
+	let { onadd, seed, disabled = false, opened = false, onclose, onback }: Props = $props();
 
 	const SIZE = 22;
 	const box = $derived(
@@ -78,6 +80,17 @@
 			draft = '';
 			byTap = false;
 			onclose?.();
+		} else if (event.key === 'Backspace' && draft === '') {
+			/*
+			 * The other half of Enter. Enter leaves a task and opens a fresh row
+			 * beneath it; backspace on that row, with nothing in it left to
+			 * delete, closes it again and carries the caret back to the end of
+			 * the task above.
+			 */
+			event.preventDefault();
+			byTap = false;
+			onclose?.();
+			onback?.();
 		}
 	}
 </script>

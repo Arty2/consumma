@@ -152,14 +152,25 @@ export function line(reading: Reading): Money | null {
 }
 
 /**
- * What the rest of the list comes to.
+ * How a group writes its numbers.
  *
- * The separator follows the rows — whichever mark they wrote most, with a tie
- * or a silence going to the dot. Decimals appear only if a counted price had
- * them. A currency mark carries only when every row that wrote one wrote the
- * same one; rows that wrote none do not stop it.
+ * One list, one hand: a group that reads `5,08`, `20.00` and `10` down the same
+ * column is three people's habits in one place. The prevailing form wins, and
+ * every price in the group is written out in it.
+ *
+ * The separator is whichever mark the prices used most, a tie or a silence
+ * going to the dot. Decimals are two if any price wrote any, none if none did.
+ * A currency mark carries when every price that wrote one wrote the same one —
+ * onto the prices that wrote none as well, since the group is evidently
+ * counting in it.
  */
-export function total(costs: readonly Money[]): Money | null {
+export type Style = {
+	separator: ',' | '.';
+	decimals: number;
+	currency: Currency | null;
+};
+
+export function styleOf(costs: readonly Money[]): Style | null {
 	if (costs.length === 0) return null;
 
 	let commas = 0;
@@ -173,56 +184,89 @@ export function total(costs: readonly Money[]): Money | null {
 	}
 
 	return {
-		cents: costs.reduce((sum, cost) => sum + cost.cents, 0),
 		separator: commas > dots ? ',' : '.',
 		decimals: costs.every((cost) => cost.decimals === 0) ? 0 : 2,
 		currency: symbols.size === 1 ? [...symbols][0] : null
 	};
 }
 
+export function sum(costs: readonly Money[]): number {
+	return costs.reduce((running, cost) => running + cost.cents, 0);
+}
+
 /**
  * Written out. Ungrouped, deliberately: which mark groups a thousand is a
  * second guess on top of the first, and a list this size rarely gets there.
  */
-export function format(money: Money): string {
-	const whole = Math.trunc(money.cents / 100);
-	const places = money.cents % 100;
+export function format(cents: number, style: Style): string {
+	const whole = Math.trunc(cents / 100);
+	const places = cents % 100;
 
 	const digits =
-		money.decimals === 0
+		style.decimals === 0
 			? String(whole)
-			: `${whole}${money.separator ?? '.'}${String(places).padStart(2, '0')}`;
+			: `${whole}${style.separator}${String(places).padStart(2, '0')}`;
 
-	return money.currency === null ? digits : `${digits}${money.currency}`;
+	return style.currency === null ? digits : `${digits}${style.currency}`;
 }
 
 /**
- * A group's total, or nothing when there is nothing to total.
+ * A count, written out: `3×`, `1,5×`.
  *
- * Done does not count — it is bought, it is not money still to spend. Half
- * counts in full: half a task is one still on the list.
- *
- * Each row is counted times price, so three potatoes at 20,00 is 60,00. The
- * rows themselves still show what one costs.
+ * Always one multiplication sign and never two, whatever was typed — `2x`, `2×`
+ * and `2` all come out `2×`. A fraction follows the group's separator; nothing
+ * is ever padded onto a count, because it counts things and is not money.
  */
-export function groupTotal(tasks: readonly Pick<Task, 'text' | 'state'>[]): string | null {
-	const counted: Money[] = [];
+export function countLabel(count: number, style: Style | null): string {
+	const digits = Number.isInteger(count)
+		? String(count)
+		: String(count).replace('.', style?.separator ?? '.');
+
+	return `${digits}×`;
+}
+
+export type Figures = {
+	/** How this group writes its numbers, or nothing when it writes none. */
+	style: Style | null;
+	/** What is still to buy, written out, or nothing when there is nothing. */
+	total: string | null;
+	/** Whether any row leads with a count, so every row keeps room for one. */
+	counts: boolean;
+};
+
+/**
+ * Everything the sheet needs to know about one group's numbers, read once.
+ *
+ * The style comes from every priced row, done ones included, so the column
+ * stays written one way even when the only price with decimals has been ticked
+ * off. The total comes from what is left: done does not count — it is bought,
+ * not money still to spend — and half counts in full, because half a task is
+ * one still on the list.
+ *
+ * Each row counts as its count times its price, so three potatoes at 20,00 is
+ * 60,00, while the row itself goes on saying what one costs.
+ */
+export function figures(tasks: readonly Pick<Task, 'text' | 'state'>[]): Figures {
+	const all: Money[] = [];
+	const left: Money[] = [];
+	let counts = false;
 
 	for (const task of tasks) {
-		if (task.state === 'done') continue;
-		const row = line(amountsIn(task.text));
-		if (row) counted.push(row);
+		const reading = amountsIn(task.text);
+		if (reading.amount !== null) counts = true;
+
+		const row = line(reading);
+		if (row === null) continue;
+
+		all.push(row);
+		if (task.state !== 'done') left.push(row);
 	}
 
-	const sum = total(counted);
-	return sum === null ? null : format(sum);
-}
+	const style = styleOf(all);
 
-/**
- * Whether any task in the group leads with a count. When one does, every row in
- * the group keeps the space for one, so the names line up down the sheet
- * whether or not a given row has a number in front of it.
- */
-export function hasAmounts(tasks: readonly Pick<Task, 'text'>[]): boolean {
-	return tasks.some((task) => amountsIn(task.text).amount !== null);
+	return {
+		style,
+		total: style === null || left.length === 0 ? null : format(sum(left), style),
+		counts
+	};
 }

@@ -62,6 +62,19 @@
 	--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	--mono-scale: 0.9;
 
+	/*
+	 * How far a figure lifts to sit level with the capitals beside it.
+	 *
+	 * The same fact as `--cap-lift`, seen from the other side. Graphe's capitals
+	 * are drawn riding high above their own baseline, so a mono digit sitting
+	 * honestly on that baseline reads low against them — sharing a baseline is
+	 * not the same as looking level.
+	 *
+	 * Measured in a browser, not derived: the difference between where the two
+	 * faces put their ink, at one size. Retune it with either face.
+	 */
+	--num-lift: 0.06em;
+
 	/* 32 / 22 / 17 / 14. Handwritten faces need more line-height than you think. */
 	--size-display: 2rem;
 	--size-title: 1.5rem;
@@ -85,6 +98,20 @@
 
 	--stroke: 1.4;
 	--touch: 44px;
+
+	/*
+	 * How far a ✕ reaches out past the writing, and how wide it is.
+	 *
+	 * Every way of deleting something stands in one column out here, clear of
+	 * everything in flow, so that a ✕ appearing moves nothing and the prices
+	 * stay a column on the rows that are done.
+	 *
+	 * There is 2.25rem to play with — the sheet's own 1.25rem of padding and the
+	 * page's 1rem beyond it — so this leaves half a rem before the viewport and
+	 * cannot push the sheet sideways. It is narrower than `--touch` across,
+	 * which is the price of the position; it keeps the full 44px of height.
+	 */
+	--gutter: 1.75rem;
 
 	/*
 	 * How faint a thing that is not there yet is drawn.
@@ -154,17 +181,21 @@ body {
  * A figure the app has recognised: the count at the front of a task, the price
  * at the back, and the total on a group's header.
  *
- * Tabular so the prices line down the right-hand edge, heavier so they read as
- * figures against the words, and without the caps letter-spacing, which is set
- * for Graphe's capitals and only loosens digits.
+ * Tabular so the prices line down the right-hand edge, and without the caps
+ * letter-spacing, which is set for Graphe's capitals and only loosens digits.
+ * A face of its own is difference enough; it does not need weight as well.
+ *
+ * Lifted rather than translated: relative positioning applies to an inline box,
+ * and a figure should not have to be a flex item to sit level.
  */
 .num {
 	font-family: var(--mono);
-	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 	font-size: calc(1em * var(--mono-scale));
 	letter-spacing: normal;
 	text-transform: none;
+	position: relative;
+	top: calc(-1 * var(--num-lift));
 }
 
 /*

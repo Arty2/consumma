@@ -2,12 +2,14 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
 	amountsIn,
+	countLabel,
+	figures,
 	format,
-	groupTotal,
-	hasAmounts,
 	line,
-	total,
-	type Money
+	styleOf,
+	sum,
+	type Money,
+	type Style
 } from '../src/lib/doc/amount';
 import type { State } from '../src/lib/doc/types';
 
@@ -186,77 +188,160 @@ describe('the total', () => {
 		return read;
 	};
 
-	it('is nothing when nothing was counted', () => {
-		expect(total([])).toBeNull();
+	const written = (...texts: string[]) => {
+		const rows = texts.map(money);
+		return format(sum(rows), styleOf(rows)!);
+	};
+
+	it('is nothing when nothing was priced', () => {
+		expect(styleOf([])).toBeNull();
+		expect(sum([])).toBe(0);
 	});
 
 	it('follows the mark the rows used most, and the dot on a tie', () => {
-		expect(total([money('a 1,00'), money('a 2,00'), money('a 3.00')])?.separator).toBe(',');
-		expect(total([money('a 1,00'), money('a 2.00')])?.separator).toBe('.');
-		expect(total([money('a 1'), money('a 2')])?.separator).toBe('.');
+		expect(styleOf([money('a 1,00'), money('a 2,00'), money('a 3.00')])?.separator).toBe(',');
+		expect(styleOf([money('a 1,00'), money('a 2.00')])?.separator).toBe('.');
+		expect(styleOf([money('a 1'), money('a 2')])?.separator).toBe('.');
 	});
 
-	it('shows decimals only when a counted price had them', () => {
-		expect(format(total([money('a 10'), money('a 20')])!)).toBe('30');
-		expect(format(total([money('a 5,08'), money('a 20')])!)).toBe('25,08');
-		expect(format(total([money('a 5,9'), money('a 20')])!)).toBe('25,90');
-		expect(format(total([money('a 20.00'), money('a 10')])!)).toBe('30.00');
+	it('shows decimals only when a price had them', () => {
+		expect(written('a 10', 'a 20')).toBe('30');
+		expect(written('a 5,08', 'a 20')).toBe('25,08');
+		expect(written('a 5,9', 'a 20')).toBe('25,90');
+		expect(written('a 20.00', 'a 10')).toBe('30.00');
 	});
 
 	it('carries a currency mark the rows agree on, after the number', () => {
-		expect(format(total([money('a €5,00'), money('a €2,50')])!)).toBe('7,50€');
+		expect(written('a €5,00', 'a €2,50')).toBe('7,50€');
 		// Some wrote one and some did not; the ones that did agree.
-		expect(format(total([money('a €5,00'), money('a 2,50')])!)).toBe('7,50€');
+		expect(written('a €5,00', 'a 2,50')).toBe('7,50€');
 	});
 
 	it('shows no mark when the rows disagree', () => {
-		expect(format(total([money('a €5,00'), money('a $2,50')])!)).toBe('7,50');
+		expect(written('a €5,00', 'a $2,50')).toBe('7,50');
 	});
 
 	it('does not drift over prices a float would round', () => {
-		const rows = Array.from({ length: 10 }, () => money('a 0,10'));
-		expect(format(total(rows)!)).toBe('1,00');
+		expect(written(...Array.from({ length: 10 }, () => 'a 0,10'))).toBe('1,00');
+	});
+});
+
+describe('writing a count out', () => {
+	const comma: Style = { separator: ',', decimals: 2, currency: null };
+	const dot: Style = { separator: '.', decimals: 0, currency: null };
+
+	it('always ends in one multiplication sign, never two', () => {
+		expect(countLabel(amountsIn('2x Tomatos').count!, dot)).toBe('2×');
+		expect(countLabel(amountsIn('2× Tomatos').count!, dot)).toBe('2×');
+		expect(countLabel(amountsIn('3 Potatos').count!, dot)).toBe('3×');
+		expect(countLabel(amountsIn('2 x Tomatos').count!, dot)).toBe('2×');
+	});
+
+	it('follows the group on a fraction, and pads nothing', () => {
+		expect(countLabel(1.5, comma)).toBe('1,5×');
+		expect(countLabel(1.5, dot)).toBe('1.5×');
+		// Two decimal places on the prices does not make a count 2,00.
+		expect(countLabel(2, comma)).toBe('2×');
+	});
+
+	it('falls back to the dot when the group writes no prices', () => {
+		expect(countLabel(1.5, null)).toBe('1.5×');
 	});
 });
 
 describe('a group', () => {
 	const task = (text: string, state: State = 'todo') => ({ text, state });
 
+	const note = [
+		task('2x Tomatos 5,08'),
+		task('3 Potatos 20.00'),
+		task('Onions 5,90'),
+		task('5 Leeks 10', 'done')
+	];
+
 	it('totals the sheet from the note, counts and all', () => {
 		// 2 × 5,08 + 3 × 20,00 + 5,90, with the leeks already in the basket.
-		expect(
-			groupTotal([
-				task('2x Tomatos 5,08'),
-				task('3 Potatos 20.00'),
-				task('Onions 5,90'),
-				task('5 Leeks 10', 'done')
-			])
-		).toBe('76,06');
+		expect(figures(note).total).toBe('76,06');
+	});
+
+	it('writes the whole group the way most of it was written', () => {
+		// Two commas against one dot, and a price with decimals in it.
+		expect(figures(note).style).toStrictEqual({
+			separator: ',',
+			decimals: 2,
+			currency: null
+		});
 	});
 
 	it('counts half in full and done not at all', () => {
-		const rows = [task('Bread 10'), task('Milk 20')];
-		expect(groupTotal(rows)).toBe('30');
-		expect(groupTotal([task('Bread 10'), task('Milk 20', 'half')])).toBe('30');
-		expect(groupTotal([task('Bread 10'), task('Milk 20', 'done')])).toBe('10');
+		expect(figures([task('Bread 10'), task('Milk 20')]).total).toBe('30');
+		expect(figures([task('Bread 10'), task('Milk 20', 'half')]).total).toBe('30');
+		expect(figures([task('Bread 10'), task('Milk 20', 'done')]).total).toBe('10');
 	});
 
 	it('drops the whole line when a counted row is done', () => {
 		// Not 4 × 5,00 less one: done takes its count with it.
-		expect(groupTotal([task('4x Bread 5,00'), task('2x Milk 1,50')])).toBe('23,00');
-		expect(groupTotal([task('4x Bread 5,00', 'done'), task('2x Milk 1,50')])).toBe('3,00');
+		expect(figures([task('4x Bread 5,00'), task('2x Milk 1,50')]).total).toBe('23,00');
+		expect(figures([task('4x Bread 5,00', 'done'), task('2x Milk 1,50')]).total).toBe('3,00');
 	});
 
 	it('shows nothing when there is nothing to total', () => {
-		expect(groupTotal([])).toBeNull();
-		expect(groupTotal([task('Bread'), task('Milk')])).toBeNull();
-		expect(groupTotal([task('Bread 10', 'done')])).toBeNull();
+		expect(figures([]).total).toBeNull();
+		expect(figures([task('Bread'), task('Milk')]).total).toBeNull();
+		expect(figures([task('Bread 10', 'done')]).total).toBeNull();
+	});
+
+	it('keeps writing the column one way when the only decimals are done', () => {
+		// Nothing left to buy, so no total — but the row still reads 2,50.
+		const group = [task('Milk 2,50', 'done')];
+		expect(figures(group).total).toBeNull();
+		expect(figures(group).style?.decimals).toBe(2);
+
+		// And a done row's decimals still set the column for the rows above it.
+		const mixed = [task('Bread 10'), task('Milk 2,50', 'done')];
+		expect(figures(mixed).total).toBe('10,00');
 	});
 
 	it('knows whether to keep space for a count', () => {
-		expect(hasAmounts([task('Bread'), task('2x Milk')])).toBe(true);
-		expect(hasAmounts([task('Bread'), task('Milk 5,00')])).toBe(false);
-		expect(hasAmounts([])).toBe(false);
+		expect(figures([task('Bread'), task('2x Milk')]).counts).toBe(true);
+		expect(figures([task('Bread'), task('Milk 5,00')]).counts).toBe(false);
+		expect(figures([]).counts).toBe(false);
+	});
+});
+
+describe('writing a price out the group’s way', () => {
+	const task = (text: string, state: State = 'todo') => ({ text, state });
+
+	/** What one row shows: its own price, in the group's hand. */
+	const shown = (group: { text: string; state: State }[], text: string) => {
+		const style = figures(group).style!;
+		return format(amountsIn(text).money!.cents, style);
+	};
+
+	it('pads a bare number when another row wrote decimals', () => {
+		const group = [task('Bread 10'), task('Milk 2,50')];
+		expect(shown(group, 'Bread 10')).toBe('10,00');
+		expect(shown(group, 'Milk 2,50')).toBe('2,50');
+	});
+
+	it('rewrites the separator to the prevailing one', () => {
+		const group = [task('a 5,08'), task('b 20.00'), task('c 5,90')];
+		expect(shown(group, 'b 20.00')).toBe('20,00');
+	});
+
+	it('leaves a whole-number group whole', () => {
+		const group = [task('Bread 10'), task('Milk 20')];
+		expect(shown(group, 'Bread 10')).toBe('10');
+	});
+
+	it('gives the group’s mark to a row that wrote none', () => {
+		const group = [task('Bread €10'), task('Milk 2,50')];
+		expect(shown(group, 'Milk 2,50')).toBe('2,50€');
+	});
+
+	it('gives no mark at all when the rows disagree', () => {
+		const group = [task('Bread €10'), task('Milk $2,50')];
+		expect(shown(group, 'Bread €10')).toBe('10,00');
 	});
 });
 
@@ -275,11 +360,13 @@ const arbMoney: fc.Arbitrary<Money> = fc.record({
 
 describe('properties', () => {
 	it('totals the same whatever order the rows are in', () => {
+		const read = (rows: Money[]) => ({ style: styleOf(rows), cents: sum(rows) });
+
 		fc.assert(
 			fc.property(fc.array(arbMoney, { maxLength: 20 }), (rows) => {
-				expect(total([...rows].reverse())).toStrictEqual(total(rows));
+				expect(read([...rows].reverse())).toStrictEqual(read(rows));
 				// And a rotation, which reverse alone would not catch on a palindrome.
-				expect(total([...rows.slice(1), ...rows.slice(0, 1)])).toStrictEqual(total(rows));
+				expect(read([...rows.slice(1), ...rows.slice(0, 1)])).toStrictEqual(read(rows));
 			}),
 			{ numRuns: 300 }
 		);

@@ -198,12 +198,17 @@ test('the rule under a title is as wide as the title, not the row', async ({ pag
 	const rule = page.locator('section svg.rule').first();
 
 	const text = await title.evaluate((el) => {
-		// The button fills the row for the tap target; the range measures the ink.
 		const range = document.createRange();
 		range.selectNodeContents(el);
 		return range.getBoundingClientRect().width;
 	});
-	const row = (await title.boundingBox())!.width;
+	/*
+	 * Measured against the header rather than the title button: the button is
+	 * only as wide as the name now, so that the collapse icon can sit against it
+	 * and the total can take the end of the row. The claim is unchanged — a pen
+	 * underlines the word, not the column.
+	 */
+	const row = (await page.locator('section .header').first().boundingBox())!.width;
 	const drawn = (await rule.boundingBox())!.width;
 
 	// A pen underlines the word, not the column.
