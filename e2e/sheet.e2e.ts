@@ -655,8 +655,9 @@ test('a task carried onto the new-group row lands in one that did not exist', as
 	await page.mouse.move(from.x + 30, from.y + 10, { steps: 4 });
 	await page.mouse.move(onto.x + 30, onto.y + onto.height / 2, { steps: 12 });
 
-	// The offer is made in the same hand as every other landing.
-	await expect(page.locator('.landing')).toBeVisible();
+	// The offer is made in the same hand as every other landing. The rule is
+	// what shows; its row takes no room, so the row itself has no box at all.
+	await expect(page.locator('.landing svg')).toBeVisible();
 
 	await page.mouse.up();
 
@@ -680,4 +681,45 @@ test('a task carried onto the new-group row lands in one that did not exist', as
 	// And it survives being put down.
 	await page.reload();
 	await expect(page.locator('section.group')).toHaveCount(2);
+});
+
+test('the landing rule is drawn in the gap, and never moves the list', async ({ page }) => {
+	/*
+	 * It used to be five pixels tall and in the flow, so every time the target
+	 * changed, every row past it moved five pixels — which is what the jerking
+	 * under the finger was. Worse, the rows it moved are the rows the next hit
+	 * test reads, so the drag was steering by a ruler it kept nudging.
+	 */
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	for (const text of ['One', 'Two', 'Three', 'Four']) {
+		await input.fill(text);
+		await input.press('Enter');
+	}
+	await page.keyboard.press('Escape');
+
+	const tops = () =>
+		page
+			.locator('[data-task]')
+			.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+
+	// The lifted row tilts, so its own box moves; the rest must not.
+	const before = (await tops()).slice(1);
+
+	const row = (await page.getByRole('button', { name: 'One', exact: true }).boundingBox())!;
+	await page.mouse.move(row.x + 30, row.y + row.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await page.mouse.move(row.x + 30, row.y + 8, { steps: 3 });
+	await page.mouse.move(row.x + 30, row.y + 120, { steps: 10 });
+
+	const landing = page.locator('.landing');
+	await expect(landing).toHaveCount(1);
+	await expect(landing.locator('svg')).toBeVisible();
+
+	// Drawn, but taking no room: the rule sits between two rows, not among them.
+	expect(await landing.evaluate((el) => (el as HTMLElement).offsetHeight)).toBe(0);
+	expect((await tops()).slice(1)).toStrictEqual(before);
+
+	await page.mouse.up();
 });

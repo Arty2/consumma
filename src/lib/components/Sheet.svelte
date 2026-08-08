@@ -386,11 +386,39 @@
 		padding: 0;
 	}
 
+	/*
+	 * Drawn in the gap between two rows rather than opening one.
+	 *
+	 * It used to be five pixels tall and in the flow, so every time the target
+	 * changed, every row past it moved five pixels — six of those in one slow
+	 * drag down a list of five, which is what the jerking under the finger
+	 * actually was. Worse, the rows it moved are the rows the next hit test
+	 * reads, so the drag was steering by a ruler it kept nudging.
+	 *
+	 * Zero height and an overflowing stroke: the mark is in the same place it
+	 * always was, and nothing below it knows the mark exists.
+	 */
 	.landing {
 		list-style: none;
-		height: 5px;
+		height: 0;
 		margin: 0;
 		overflow: visible;
+	}
+
+	.landing svg {
+		display: block;
+		/*
+		 * Half above the boundary and half below, so it straddles rather than
+		 * sitting on the row beneath.
+		 *
+		 * `translate` rather than a negative margin: the margin collapsed
+		 * straight through the empty row and moved the row itself, which put
+		 * two or three pixels of the same jerk back after taking five away.
+		 * A translate is paint only and nothing in the flow can feel it.
+		 */
+		translate: 0 -2.5px;
+		/* Never a thing the drag can hit-test against, only a thing it draws. */
+		pointer-events: none;
 	}
 
 	.over {
