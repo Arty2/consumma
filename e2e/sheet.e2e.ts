@@ -597,38 +597,87 @@ async function strand(page: Page, ...texts: string[]) {
 	await page.reload();
 }
 
-test('what has lost its group is ruled off rather than given a name', async ({ page }) => {
+test('what has lost its group is ruled off rather than headed', async ({ page }) => {
 	await strand(page, 'Stray');
 
 	/*
-	 * Loose ends is assembled on read, so there is nothing there to rename,
-	 * delete or carry — and a word set like every other title would offer all
-	 * three. Three strokes say "these belong under nothing" and offer none of it.
+	 * Loose ends only ever appears because two phones disagreed. Nothing under
+	 * it was put there on purpose, so there is nothing to name, rename, delete,
+	 * carry, collapse or add to — and a title row offers every one of those just
+	 * by looking like one. A perforation across the paper offers none.
 	 */
-	const heading = page.locator('section.group .title').last();
-	// The strokes only: the name beside them is there for screen readers.
-	await expect(heading.locator('[aria-hidden="true"]')).toHaveText('- - -');
-	expect(await heading.evaluate((el) => el.tagName)).toBe('P');
+	const line = page.getByRole('separator', { name: 'Loose ends' });
+	await expect(line).toBeVisible();
 
-	// Not a control, so not a tap that goes nowhere and not a stop on the way.
+	// Drawn and dashed, like the landing rule and the paper's own edges.
+	const path = line.locator('path');
+	await expect(path).toHaveClass(/drawn--dashed/);
+	expect(await path.evaluate((el) => getComputedStyle(el).strokeWidth)).toBe(
+		await page.evaluate(
+			() => getComputedStyle(document.documentElement).getPropertyValue('--stroke').trim() + 'px'
+		)
+	);
+
+	// Right across the paper, not the width of a word — the rules are not.
+	const across = (await line.boundingBox())!.width;
+	const sheet = (await page.locator('main').boundingBox())!.width;
+	expect(across).toBeCloseTo(sheet, 0);
+
+	// None of the things a heading offers.
 	await expect(page.getByRole('button', { name: 'Loose ends' })).toHaveCount(0);
-
-	// Still called what it is, for anyone who cannot see the strokes.
-	await expect(page.getByText('Loose ends')).toHaveCount(1);
-
-	/*
-	 * And no rule. The rule is what a title is written on, and underlining these
-	 * would dress the one heading that cannot be edited as the one most asking
-	 * to be.
-	 */
+	await expect(page.getByRole('button', { name: 'Add a task' })).toHaveCount(1);
+	await expect(page.getByRole('button', { name: /^(Collapse|Expand) group/ })).toHaveCount(1);
 	await expect(page.locator('section.group svg.rule')).toHaveCount(1);
 
-	// It still folds shut, and the tasks under it are real tasks.
-	await expect(task(page, 'Stray')).toBeVisible();
-	await page
+	/*
+	 * And the way to make a group belongs above the line, among the ones anyone
+	 * made. Under it, it would read as a way to name what is already there.
+	 */
+	const order = await page
+		.locator('section.group, .new-group')
+		.evaluateAll((els) => els.map((el) => (el.className.includes('new-group') ? 'new' : 'group')));
+	expect(order).toStrictEqual(['group', 'new', 'group']);
+});
+
+test('a task carried onto the new-group row lands in one that did not exist', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Olives');
+	await expect(page.locator('section.group')).toHaveCount(1);
+
+	const row = page.getByRole('button', { name: 'Olives', exact: true });
+	const from = (await row.boundingBox())!;
+	const onto = (await page.locator('.new-group').boundingBox())!;
+
+	await page.mouse.move(from.x + 30, from.y + from.height / 2);
+	await page.mouse.down();
+	// Long enough to lift: a shorter press is a tap and a moved one is a scroll.
+	await page.waitForTimeout(600);
+	await page.mouse.move(from.x + 30, from.y + 10, { steps: 4 });
+	await page.mouse.move(onto.x + 30, onto.y + onto.height / 2, { steps: 12 });
+
+	// The offer is made in the same hand as every other landing.
+	await expect(page.locator('.landing')).toBeVisible();
+
+	await page.mouse.up();
+
+	/*
+	 * It arrives unnamed, showing the ellipsis an untitled group always shows.
+	 * Carrying a task somewhere new is one decision; being made to name the
+	 * place before the finger comes up would be a second.
+	 */
+	await expect(page.locator('section.group')).toHaveCount(2);
+	await expect(page.getByRole('button', { name: 'Untitled group' })).toBeVisible();
+
+	const perGroup = await page
 		.locator('section.group')
-		.last()
-		.getByRole('button', { name: 'Collapse group' })
-		.click();
-	await expect(task(page, 'Stray')).toHaveCount(0);
+		.evaluateAll((els) =>
+			els.map((el) =>
+				[...el.querySelectorAll('[data-task] .text')].map((t) => t.textContent!.trim())
+			)
+		);
+	expect(perGroup).toStrictEqual([['Bread'], ['Olives']]);
+
+	// And it survives being put down.
+	await page.reload();
+	await expect(page.locator('section.group')).toHaveCount(2);
 });

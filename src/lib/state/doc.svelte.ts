@@ -151,23 +151,6 @@ export class Sheet {
 			: null;
 	}
 
-	/**
-	 * The same again, placed after a given order rather than at an index.
-	 *
-	 * Loose ends needs this. Its tasks are gathered from across the document
-	 * and can carry several dead group ids between them, so `liveTasks` for any
-	 * one of those ids is not the list on screen and an index into it means
-	 * nothing — only the tasks under the heading know where the end of it is.
-	 */
-	addTaskAfter(groupId: string, text: string, after: string | null): string | null {
-		const id = newId();
-		const order = between(after, null);
-
-		return this.#apply((doc, ctx) => ops.addTask(doc, ctx, { id, groupId, text, order }))
-			? id
-			: null;
-	}
-
 	editTask(id: string, text: string): void {
 		this.#apply((doc, ctx) => ops.editTask(doc, ctx, id, text));
 	}

@@ -6,10 +6,9 @@
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import type { State } from '$lib/doc/types';
-	import type { ViewGroup } from '$lib/doc/view';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
-	import { drag, type DropTarget } from '$lib/dnd/drag.svelte';
+	import { drag, NEW_GROUP, type DropTarget } from '$lib/dnd/drag.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -78,47 +77,14 @@
 	}
 
 	/**
-	 * The group id a new task is stored under.
-	 *
-	 * Loose ends has none of its own: `LOOSE_ENDS_ID` is a view constant, and
-	 * `ID_PATTERN` refuses it, so storing a task under it would fail validation
-	 * on the next read and take the whole document down with it. What the tasks
-	 * already under that heading point at is a real id — the group they lost —
-	 * and a new one joins them there rather than inventing a second nowhere.
-	 */
-	function groupIdFor(group: ViewGroup): string | null {
-		if (!group.synthetic) return group.id;
-		return group.tasks[0]?.groupId ?? null;
-	}
-
-	/** The add row at the end of a group, Loose ends included. */
-	function add(group: ViewGroup, text: string): boolean {
-		const groupId = groupIdFor(group);
-		if (groupId === null) return false;
-
-		return group.synthetic
-			? sheet.addTaskAfter(groupId, text, group.tasks.at(-1)?.order ?? null) !== null
-			: sheet.addTask(groupId, text) !== null;
-	}
-
-	/**
 	 * Puts a task in at a position rather than on the end, and moves the open
 	 * row down past it so a run of Enters reads top to bottom.
 	 */
-	function insert(group: ViewGroup, index: number, text: string): boolean {
-		const groupId = groupIdFor(group);
-		if (groupId === null) return false;
-
-		/*
-		 * Within Loose ends an index means nothing — see addTaskAfter — so it
-		 * goes after the task it was opened beneath.
-		 */
-		const id = group.synthetic
-			? sheet.addTaskAfter(groupId, text, group.tasks[index - 1]?.order ?? null)
-			: sheet.addTaskAt(groupId, index, text);
+	function insert(groupId: string, index: number, text: string): boolean {
+		const id = sheet.addTaskAt(groupId, index, text);
 		if (id === null) return false;
 
-		inserting = { groupId: group.id, index: index + 1 };
+		inserting = { groupId, index: index + 1 };
 		return true;
 	}
 
@@ -134,6 +100,27 @@
 
 	/** Where a drag let go. The neighbours are never restamped. */
 	function drop(taskId: string, target: DropTarget) {
+		/*
+		 * Let go on the row that offers a new group: the group is made on the
+		 * spot and the task is its first. It arrives unnamed, showing the same
+		 * ellipsis an untitled group always shows — carrying a task somewhere new
+		 * is one decision, and being made to name it before the finger comes up
+		 * would be a second.
+		 */
+		if (target.groupId === NEW_GROUP) {
+			if (!sheet.canAddGroup) {
+				ui.say(`That would go over ${LIMITS.groups} groups.`);
+				return;
+			}
+
+			const id = sheet.addGroup('');
+			if (id === null) return;
+
+			sheet.moveTask(taskId, id, sheet.orderAt(id, 0, taskId));
+			ui.announce('Moved to a new group.');
+			return;
+		}
+
 		// Loose ends is assembled on read and cannot hold a task.
 		if (sheet.groups.find((g) => g.id === target.groupId)?.synthetic) return;
 
@@ -191,106 +178,13 @@
 	}
 </script>
 
-<!-- Measures the width the landing rule is drawn at. -->
-<svg class="measure" bind:clientWidth={landingWidth} aria-hidden="true"></svg>
-
-<div class="sheet">
-	{#each sheet.groups as group, groupIndex (group.id)}
-		{#if drag.isGroupLanding(groupIndex)}
-			<div class="landing" aria-hidden="true">
-				<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
-					<path d={landing} class="drawn drawn--dashed" />
-				</svg>
-			</div>
-		{/if}
-
-		<section class="group" data-group={group.id}>
-			<!-- Every group gets a header, so one with no title is still nameable. -->
-			<GroupHeader
-				title={group.title}
-				seed={group.id}
-				collapsed={folded || ui.isCollapsed(group.id)}
-				count={group.tasks.length}
-				finished={group.tasks.every((task) => task.state === 'done')}
-				synthetic={group.synthetic}
-				ontoggle={() => ui.toggleCollapsed(group.id)}
-				onrename={(title) => sheet.renameGroup(group.id, title)}
-				ondelete={() => removeGroup(group.id, group.title)}
-				onaddtask={() => (inserting = { groupId: group.id, index: 0 })}
-				onreorder={(index) => sheet.moveGroup(group.id, sheet.groupOrderAt(index, group.id))}
-			/>
-
-			{#if !folded && !ui.isCollapsed(group.id)}
-				<ul class="tasks">
-					{#each group.tasks as task, taskIndex (task.id)}
-						{#if inserting?.groupId === group.id && inserting.index === taskIndex}
-							<AddRow
-								seed={`${group.id}-at${taskIndex}`}
-								disabled={!sheet.canAddTask}
-								opened
-								onadd={(text) => insert(group, taskIndex, text)}
-								onclose={() => (inserting = null)}
-							/>
-						{/if}
-
-						{#if drag.isLanding(group.id, taskIndex)}
-							<li class="landing" aria-hidden="true">
-								<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
-									<path d={landing} class="drawn drawn--dashed" />
-								</svg>
-							</li>
-						{/if}
-
-						<TaskRow
-							{task}
-							groupId={group.id}
-							onstate={(state) => setState(task.id, state)}
-							onedit={(text) => sheet.editTask(task.id, text)}
-							ondelete={() => remove(task.id)}
-							onsplit={() => (inserting = { groupId: group.id, index: taskIndex + 1 })}
-							onmove={(direction) => move(groupIndex, taskIndex, direction)}
-							ondrop={(target) => drop(task.id, target)}
-							onEnterGroup={(id) => ui.expand(id)}
-						/>
-					{/each}
-
-					{#if drag.isLanding(group.id, group.tasks.length)}
-						<li class="landing" aria-hidden="true">
-							<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
-								<path d={landing} class="drawn drawn--dashed" />
-							</svg>
-						</li>
-					{/if}
-
-					{#if inserting?.groupId === group.id && inserting.index === group.tasks.length}
-						<AddRow
-							seed={`${group.id}-end`}
-							disabled={!sheet.canAddTask}
-							opened
-							onadd={(text) => insert(group, group.tasks.length, text)}
-							onclose={() => (inserting = null)}
-						/>
-					{/if}
-
-					<!--
-						Every group ends with one, Loose ends included. It is assembled
-						on read rather than stored, but it is still a heading with tasks
-						under it and the last thing on the sheet — leaving it the only
-						one with no way to add put a dead end at the bottom of the page,
-						which is where a list is most likely to be added to.
-					-->
-					<AddRow
-						seed={group.id}
-						disabled={!sheet.canAddTask}
-						{lone}
-						onadd={(text) => add(group, text)}
-					/>
-				</ul>
-			{/if}
-		</section>
-	{/each}
-
-	{#if drag.isGroupLanding(sheet.groups.length)}
+{#snippet newGroup()}
+	<!--
+		Also where a carried task can be let go: `data-newgroup` is what the drag
+		hit-tests for, and the dashed rule appears over it the way it does between
+		two rows, so the offer is made in the same hand as every other landing.
+	-->
+	{#if drag.isLanding(NEW_GROUP, 0)}
 		<div class="landing" aria-hidden="true">
 			<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
 				<path d={landing} class="drawn drawn--dashed" />
@@ -298,12 +192,8 @@
 		</div>
 	{/if}
 
-	{#if overLimit}
-		<p class="over">{sheet.taskCount} of {LIMITS.tasks} — clear some</p>
-	{/if}
-
 	<!-- The same glyph in two type sizes: one more task, or one more group. -->
-	<div class="new-group">
+	<div class="new-group" data-newgroup>
 		{#if newGroupOpen}
 			<!-- svelte-ignore a11y_autofocus -->
 			<input
@@ -331,6 +221,133 @@
 
 		<TextRule text={newGroupShown} seed="new-group" faint />
 	</div>
+{/snippet}
+
+<!-- Measures the width the landing rule is drawn at. -->
+<svg class="measure" bind:clientWidth={landingWidth} aria-hidden="true"></svg>
+
+<div class="sheet">
+	{#each sheet.groups as group, groupIndex (group.id)}
+		<!--
+			Loose ends is always last and is never something anyone made. The way to
+			make one belongs above it, among the groups it would sit beside — under
+			the line it would read as a way to name what is already there.
+		-->
+		{#if group.synthetic}
+			{@render newGroup()}
+		{/if}
+
+		{#if drag.isGroupLanding(groupIndex)}
+			<div class="landing" aria-hidden="true">
+				<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
+					<path d={landing} class="drawn drawn--dashed" />
+				</svg>
+			</div>
+		{/if}
+
+		<section class="group" data-group={group.id}>
+			<!-- Every group gets a header, so one with no title is still nameable. -->
+			<GroupHeader
+				title={group.title}
+				seed={group.id}
+				collapsed={folded || ui.isCollapsed(group.id)}
+				count={group.tasks.length}
+				finished={group.tasks.every((task) => task.state === 'done')}
+				synthetic={group.synthetic}
+				ontoggle={() => ui.toggleCollapsed(group.id)}
+				onrename={(title) => sheet.renameGroup(group.id, title)}
+				ondelete={() => removeGroup(group.id, group.title)}
+				onaddtask={() => (inserting = { groupId: group.id, index: 0 })}
+				onreorder={(index) => sheet.moveGroup(group.id, sheet.groupOrderAt(index, group.id))}
+			/>
+
+			{#if !folded && !ui.isCollapsed(group.id)}
+				<ul class="tasks">
+					{#each group.tasks as task, taskIndex (task.id)}
+						{#if !group.synthetic && inserting?.groupId === group.id && inserting.index === taskIndex}
+							<AddRow
+								seed={`${group.id}-at${taskIndex}`}
+								disabled={!sheet.canAddTask}
+								opened
+								onadd={(text) => insert(group.id, taskIndex, text)}
+								onclose={() => (inserting = null)}
+							/>
+						{/if}
+
+						{#if drag.isLanding(group.id, taskIndex)}
+							<li class="landing" aria-hidden="true">
+								<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
+									<path d={landing} class="drawn drawn--dashed" />
+								</svg>
+							</li>
+						{/if}
+
+						<TaskRow
+							{task}
+							groupId={group.id}
+							onstate={(state) => setState(task.id, state)}
+							onedit={(text) => sheet.editTask(task.id, text)}
+							ondelete={() => remove(task.id)}
+							onsplit={() =>
+								group.synthetic || (inserting = { groupId: group.id, index: taskIndex + 1 })}
+							onmove={(direction) => move(groupIndex, taskIndex, direction)}
+							ondrop={(target) => drop(task.id, target)}
+							onEnterGroup={(id) => ui.expand(id)}
+						/>
+					{/each}
+
+					{#if drag.isLanding(group.id, group.tasks.length)}
+						<li class="landing" aria-hidden="true">
+							<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
+								<path d={landing} class="drawn drawn--dashed" />
+							</svg>
+						</li>
+					{/if}
+
+					{#if !group.synthetic && inserting?.groupId === group.id && inserting.index === group.tasks.length}
+						<AddRow
+							seed={`${group.id}-end`}
+							disabled={!sheet.canAddTask}
+							opened
+							onadd={(text) => insert(group.id, group.tasks.length, text)}
+							onclose={() => (inserting = null)}
+						/>
+					{/if}
+
+					<!--
+						Real groups only. Nothing under Loose ends was put there on
+						purpose — it is where two phones disagreeing leaves a task — so
+						offering to write a new one into it would be offering to file
+						something under the fact that a group went missing.
+					-->
+					{#if !group.synthetic}
+						<AddRow
+							seed={group.id}
+							disabled={!sheet.canAddTask}
+							{lone}
+							onadd={(text) => sheet.addTask(group.id, text) !== null}
+						/>
+					{/if}
+				</ul>
+			{/if}
+		</section>
+	{/each}
+
+	{#if drag.isGroupLanding(sheet.groups.length)}
+		<div class="landing" aria-hidden="true">
+			<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
+				<path d={landing} class="drawn drawn--dashed" />
+			</svg>
+		</div>
+	{/if}
+
+	{#if !sheet.groups.some((group) => group.synthetic)}
+		{@render newGroup()}
+	{/if}
+
+	{#if overLimit}
+		<p class="over">{sheet.taskCount} of {LIMITS.tasks} — clear some</p>
+	{/if}
 </div>
 
 <p class="sr-only" role="status" aria-live="polite">{ui.announcement}</p>

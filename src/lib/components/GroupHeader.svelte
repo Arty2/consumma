@@ -3,7 +3,7 @@
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handCross } from '$lib/draw/hand';
+	import { handCross, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
 	import { taken, tapped } from '$lib/feel';
@@ -47,7 +47,18 @@
 	/** Set for the length of the pop, so the group leaves rather than vanishes. */
 	let going = $state(false);
 
+	let width = $state(0);
+
 	const lifted = $derived(drag.isLiftedGroup(seed));
+
+	/*
+	 * Measured rather than stretched, like every other drawn line here: a rule
+	 * generated once and scaled to fit comes out with an uneven weight, because a
+	 * stroke under an anisotropic transform is thinner along the squashed axis.
+	 */
+	const perforation = $derived(
+		width > 0 ? handLine(width, { seed: seedFrom(`perf${seed}`), wobble: 1.2, y: 2 }) : ''
+	);
 	const cross = $derived(handCross(20, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
 
 	/** What the rule is drawn under: the title, or the title being typed. */
@@ -114,61 +125,67 @@
 	}
 </script>
 
-<div class="header" class:lifted class:going>
-	{#if lifted}
-		<!-- No shadow is available, so the lift is a dashed outline and a tilt. -->
-		<HandRect seed={`liftgroup${seed}`} dashed wobble={1.2} />
-	{/if}
+{#if synthetic}
+	<!--
+		Not a heading — a perforation across the paper, between what has a heading
+		and what has lost one.
 
-	{#if editing}
-		<!-- svelte-ignore a11y_autofocus -->
-		<input
-			class="title caps"
-			type="text"
-			lang={langOf(draft)}
-			bind:value={draft}
-			maxlength={LIMITS.groupTitle}
-			aria-label="Group title"
-			autofocus
-			onblur={commit}
-			{onkeydown}
-		/>
+		Loose ends only ever appears because two phones disagreed: a group deleted
+		on one while a task was moved into it on the other. Nothing under it was put
+		there on purpose, so there is nothing here to name, rename, delete, carry,
+		collapse or add to — and every one of those is something a title row offers
+		just by looking like one. A line offers none of them.
 
-		<!--
+		Drawn like every other line on the receipt and dashed like the landing rule,
+		full width across the paper rather than the width of a word. It is still
+		called what it is called, for anyone who cannot see it.
+	-->
+	<div class="perforation" role="separator" aria-label={title}>
+		<svg bind:clientWidth={width} height="5" aria-hidden="true">
+			{#if width > 0}
+				<path d={perforation} class="drawn drawn--dashed" />
+			{/if}
+		</svg>
+	</div>
+{:else}
+	<div class="header" class:lifted class:going>
+		{#if lifted}
+			<!-- No shadow is available, so the lift is a dashed outline and a tilt. -->
+			<HandRect seed={`liftgroup${seed}`} dashed wobble={1.2} />
+		{/if}
+
+		{#if editing}
+			<!-- svelte-ignore a11y_autofocus -->
+			<input
+				class="title caps"
+				type="text"
+				lang={langOf(draft)}
+				bind:value={draft}
+				maxlength={LIMITS.groupTitle}
+				aria-label="Group title"
+				autofocus
+				onblur={commit}
+				{onkeydown}
+			/>
+
+			<!--
 			While the name is being edited, the icon's place is taken by the way to
 			get rid of the group. It is the same 44px square, so nothing moves.
-		-->
-		<button
-			class="icon"
-			class:nothing={!finished}
-			type="button"
-			disabled={!finished}
-			onclick={remove}
-			onmousedown={(event) => event.preventDefault()}
-			aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
-			title={finished ? 'Delete group' : 'Finish its tasks first'}
-		>
-			<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
-				<path d={cross} class="drawn" />
-			</svg>
-		</button>
-	{:else}
-		{#if synthetic}
-			<!--
-				Not a name — a rule between what has a heading and what has lost one.
-				Loose ends is assembled on read, so there is nothing here to rename,
-				delete or carry, and a word set like every other title would offer all
-				three. Three strokes say "these belong under nothing" and offer none
-				of it, which is also why it is not a button: a control that cannot do
-				anything is a tap that goes nowhere and a stop on the way to one.
-
-				The name is still what it is called, for anyone who cannot see the
-				strokes and for what a move is announced as.
 			-->
-			<p class="title caps loose">
-				<span class="sr-only">{title}</span>
-				<span aria-hidden="true">- - -</span>
-			</p>
+			<button
+				class="icon"
+				class:nothing={!finished}
+				type="button"
+				disabled={!finished}
+				onclick={remove}
+				onmousedown={(event) => event.preventDefault()}
+				aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
+				title={finished ? 'Delete group' : 'Finish its tasks first'}
+			>
+				<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+					<path d={cross} class="drawn" />
+				</svg>
+			</button>
 		{:else}
 			<!--
 				The name, and the way to change it. A long press picks the group up
@@ -186,40 +203,47 @@
 			>
 				{title === '' ? '…' : title}
 			</button>
-		{/if}
 
-		<!--
+			<!--
 			Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
 			[…], the same ellipsis an untitled group and the add row use for "there
 			is more here".
 
 			Graphe has no brackets and falls back for them, deliberately. Do not
 			swap in characters it does have.
-		-->
-		<button
-			class="icon"
-			type="button"
-			onclick={ontoggle}
-			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
-		>
-			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
-		</button>
-	{/if}
-</div>
+			-->
+			<button
+				class="icon"
+				type="button"
+				onclick={ontoggle}
+				aria-expanded={!collapsed}
+				aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+			>
+				<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
+			</button>
+		{/if}
+	</div>
 
-<!--
-	Drawn rather than a border, and only as wide as the title.
-
-	Loose ends has none. The rule is what a title is written on, and this is not
-	a title anyone wrote — underlining the strokes would dress the one heading
-	that cannot be edited as the one thing on the sheet most asking to be.
--->
-{#if !synthetic}
 	<TextRule text={shown} {seed} />
 {/if}
 
 <style>
+	/*
+	 * Full bleed: the sheet's own side padding is taken back off, so the line
+	 * runs to the drawn edges of the paper the way a perforation does, rather
+	 * than stopping short of them like a word would.
+	 */
+	.perforation {
+		margin: 0.7rem -1.25rem 0.9rem;
+	}
+
+	.perforation svg {
+		display: block;
+		width: 100%;
+		height: 5px;
+		overflow: visible;
+	}
+
 	.header {
 		position: relative;
 		display: flex;
@@ -290,18 +314,6 @@
 
 	.untitled {
 		opacity: var(--faint);
-	}
-
-	/*
-	 * A `p` where the others are buttons, so it needs the margin taken off and
-	 * the row's own centring rather than a line box of its own.
-	 */
-	.loose {
-		margin: 0;
-		display: flex;
-		align-items: center;
-		min-height: var(--touch);
-		cursor: default;
 	}
 
 	.icon {
