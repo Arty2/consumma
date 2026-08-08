@@ -301,12 +301,6 @@ describe('a group', () => {
 		const mixed = [task('Bread 10'), task('Milk 2,50', 'done')];
 		expect(figures(mixed).total).toBe('10,00');
 	});
-
-	it('knows whether to keep space for a count', () => {
-		expect(figures([task('Bread'), task('2x Milk')]).counts).toBe(true);
-		expect(figures([task('Bread'), task('Milk 5,00')]).counts).toBe(false);
-		expect(figures([]).counts).toBe(false);
-	});
 });
 
 describe('writing a price out the group’s way', () => {

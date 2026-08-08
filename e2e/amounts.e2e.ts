@@ -215,7 +215,7 @@ test('the figures are set apart, and the words are not', async ({ page }) => {
 	expect(words).toContain('Graphe');
 });
 
-test('the prices end level, and the names begin level', async ({ page }) => {
+test('the prices end level, and the counts are not a column', async ({ page }) => {
 	await theList(page);
 
 	const edges = await page.evaluate(() => {
@@ -223,17 +223,26 @@ test('the prices end level, and the names begin level', async ({ page }) => {
 		return rows
 			.filter((row) => row.querySelector('.cost'))
 			.map((row) => ({
-				name: row.querySelector('.name')!.getBoundingClientRect().left,
-				price: row.querySelector('.cost')!.getBoundingClientRect().right
+				words: row.querySelector('.name')!.textContent,
+				name: Math.round(row.querySelector('.name')!.getBoundingClientRect().left),
+				price: Math.round(row.querySelector('.cost')!.getBoundingClientRect().right)
 			}));
 	});
 
 	expect(edges.length).toBe(4);
-	for (const edge of edges) {
-		// "Onions" has no count in front of it and still starts where the rest do.
-		expect(Math.abs(edge.name - edges[0].name)).toBeLessThan(1);
-		expect(Math.abs(edge.price - edges[0].price)).toBeLessThan(1);
-	}
+
+	// One column, at the right, and only one.
+	for (const edge of edges) expect(edge.price).toBe(edges[0].price);
+
+	/*
+	 * "Onions" has no count in front of it, so it begins further left than the
+	 * rows that do. A count is a word standing in for a word, not a column —
+	 * keeping space for one on every row indents half a list to line up numbers
+	 * most of it does not have.
+	 */
+	const onions = edges.find((edge) => edge.words === 'Onions')!;
+	const tomatos = edges.find((edge) => edge.words === 'Tomatos')!;
+	expect(onions.name).toBeLessThan(tomatos.name);
 });
 
 test('what is read is not what is stored', async ({ page, context }) => {

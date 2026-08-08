@@ -230,8 +230,6 @@ export type Figures = {
 	style: Style | null;
 	/** What is still to buy, written out, or nothing when there is nothing. */
 	total: string | null;
-	/** Whether any row leads with a count, so every row keeps room for one. */
-	counts: boolean;
 };
 
 /**
@@ -249,13 +247,9 @@ export type Figures = {
 export function figures(tasks: readonly Pick<Task, 'text' | 'state'>[]): Figures {
 	const all: Money[] = [];
 	const left: Money[] = [];
-	let counts = false;
 
 	for (const task of tasks) {
-		const reading = amountsIn(task.text);
-		if (reading.amount !== null) counts = true;
-
-		const row = line(reading);
+		const row = line(amountsIn(task.text));
 		if (row === null) continue;
 
 		all.push(row);
@@ -266,7 +260,6 @@ export function figures(tasks: readonly Pick<Task, 'text' | 'state'>[]): Figures
 
 	return {
 		style,
-		total: style === null || left.length === 0 ? null : format(sum(left), style),
-		counts
+		total: style === null || left.length === 0 ? null : format(sum(left), style)
 	};
 }

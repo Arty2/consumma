@@ -232,7 +232,6 @@
 						<TaskRow
 							{task}
 							groupId={group.id}
-							reserve={fig.counts}
 							style={fig.style}
 							open={opening === task.id}
 							onstate={(state) => setState(task.id, state)}

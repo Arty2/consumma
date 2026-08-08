@@ -14,8 +14,6 @@
 	type Props = {
 		task: Task;
 		groupId: string;
-		/** Some task in the group leads with a count, so every row keeps room for one. */
-		reserve: boolean;
 		/** How this group writes its numbers, so this row writes them the same way. */
 		style: Style | null;
 		/** Asked for by the sheet: open this row's editor, caret at the end. */
@@ -36,7 +34,6 @@
 	let {
 		task,
 		groupId,
-		reserve,
 		style,
 		open,
 		onstate,
@@ -62,12 +59,17 @@
 	 * The count at the front and the price at the back, read on the way to the
 	 * screen and never written down — the text is one string and stays one.
 	 *
-	 * A row with neither, in a group with neither, is left exactly as it was: a
-	 * text node in a button. Only a row that has something to line up becomes
-	 * three cells, so nothing about an ordinary list moves.
+	 * A row with neither is left exactly as it was: a text node in a button.
+	 * Only a row that has something of its own to set apart becomes cells, so
+	 * nothing about an ordinary list moves.
+	 *
+	 * The count is not a column. It sits in front of the words like the word it
+	 * stands in for, and a row without one starts where its words start —
+	 * reserving the space on every row indented half a list to line up numbers
+	 * most of it does not have.
 	 */
 	const reading = $derived(amountsIn(task.text));
-	const shaped = $derived(reserve || reading.amount !== null || reading.cost !== null);
+	const shaped = $derived(reading.amount !== null || reading.cost !== null);
 
 	/*
 	 * Written out the way the group writes numbers rather than the way this line
@@ -213,9 +215,8 @@
 			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}
 		>
 			{#if shaped}
-				{#if reserve || count !== null}
-					<!-- Empty on a row that has no count: the space is what lines the names up. -->
-					<span class="num amount">{count ?? ''}</span>
+				{#if count !== null}
+					<span class="num amount">{count}</span>
 				{/if}
 				<span class="name">{reading.name}</span>
 				{#if cost !== null}
@@ -333,10 +334,9 @@
 		overflow-wrap: break-word;
 	}
 
-	/* Wide enough for a count and its x, so the names start at one place. */
+	/* As wide as the count is, and no wider: it is a word, not a column. */
 	.amount {
 		flex: 0 0 auto;
-		min-width: 2.5ch;
 	}
 
 	/* Last in the row, so the prices end level down the right-hand edge. */

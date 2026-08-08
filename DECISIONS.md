@@ -695,6 +695,13 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     The style is taken from every priced row, done ones included, so ticking
     the only price with decimals does not rewrite the column above it.
 
+    **Only the prices are a column.** The counts were given one too at first —
+    a reserved slot on every row of a group, empty where a row had no count, so
+    the names started level. It lines four numbers up at the cost of indenting
+    every row that has none, which on an ordinary list is most of them. A count
+    reads as the word it stands in for and belongs in front of the words; the
+    prices are what a column is for, because reading down them is the point.
+
     This is a change of position and worth saying so: the row used to show the
     price exactly as typed. What is inviolate is the text, not the rendering —
     `aria-label`, the markdown export and merge still see every character that
