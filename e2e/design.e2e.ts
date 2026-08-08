@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fromMenu, openMenu } from './menu';
 
 /*
@@ -309,6 +309,48 @@ test('one ellipsis, set one way, wherever it stands for something not there yet'
 
 	await expect(page.getByRole('button', { name: 'Untitled group' })).toHaveText('…');
 	expect(await style('.title.untitled')).toStrictEqual(addTask);
+});
+
+test('the empty box shows on a bare sheet, and is kept back once there is a list', async ({
+	page
+}) => {
+	const box = page.locator('.tasks li .box path');
+
+	/*
+	 * Read as a number, not as the string it was written as: the build minifies
+	 * the stylesheet, so the custom property comes back as `.45` where a
+	 * computed opacity is always `0.45`.
+	 */
+	const faint = Number(
+		await page.evaluate(() =>
+			getComputedStyle(document.documentElement).getPropertyValue('--faint')
+		)
+	);
+	const opacity = (locator: Locator) =>
+		locator.evaluate((el) => Number(getComputedStyle(el).opacity));
+
+	/*
+	 * Nothing written yet, so this is the only row on the sheet. There is no
+	 * list for it to sit at the end of and be counted as part of, and it is the
+	 * one thing here saying what a task on this sheet looks like.
+	 */
+	await expect(box).toHaveCount(1);
+	expect(await opacity(box)).toBeCloseTo(faint, 5);
+
+	// As faint as the ellipsis beside it: the two are one mark.
+	expect(await opacity(page.locator('.tasks li button.text'))).toBeCloseTo(faint, 5);
+
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	/*
+	 * Now there is a list, and an empty square at the end of one reads as one
+	 * more thing to do rather than as room for one.
+	 */
+	expect(await opacity(page.locator('.tasks li').last().locator('.box path'))).toBe(0);
 });
 
 test('a group title has the air under it that the tasks have between them', async ({ page }) => {
