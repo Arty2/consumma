@@ -586,9 +586,17 @@ Numbers in brackets are the section of the build plan a decision came from.
     22px it read as a ring with a nick in it and a tick inside.
 
     A quarter of the circle is open now, which is what says "came round" rather
-    than "closed", and the head is two strokes a third of a turn back from the
-    tangent. The pen starts bottom right and finishes top right: ending at the
-    far right instead put a barb outside the box, which the bounds test caught.
+    than "closed", and the head is two strokes off the tangent at the end of the
+    stroke — computed from the direction of travel rather than from fixed
+    offsets, which is what was wrong with it.
+
+    They open wide, nearly across the end of the stroke. A tight arrowhead is
+    what an arrow has room for at a size you can see; at 22px the barbs close up
+    against the ring and it reads as a blob, where a flat one stays two strokes
+    and a corner.
+
+    The pen starts bottom right and finishes top right: ending at the far right
+    instead put a barb outside the box, which the bounds test caught.
 
 ## Corrections to the build plan
 

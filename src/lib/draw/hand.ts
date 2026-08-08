@@ -569,10 +569,14 @@ export function handRefresh(size: number, options: HandOptions): string {
 	 */
 	const tip = points[points.length - 1];
 	const tangent = end + Math.PI / 2;
-	const head = size * 0.24;
-	// A third of a turn back from the way it is going, either side. Wider than
-	// that and the head flattens into a line across the end of the stroke.
-	const spread = Math.PI * 0.82;
+	const head = size * 0.2;
+	/*
+	 * Wide, nearly across the end of the stroke rather than tucked back along
+	 * it. A tight head is what an arrow has room for at a size you can see; at
+	 * 22px the two barbs close up against the ring and the whole thing reads as
+	 * a blob, where a flat one stays two strokes and a corner.
+	 */
+	const spread = Math.PI * 0.72;
 
 	const barb = handPath(
 		[
