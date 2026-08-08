@@ -30,6 +30,8 @@ export type Money = {
 export type Reading = {
 	/** The leading count, exactly as typed — `2x`, `3`, `1.5x` — or nothing. */
 	amount: string | null;
+	/** The same count as a number, so the price can be taken that many times. */
+	count: number | null;
 	/** What is left in the middle. Never empty: it is the task. */
 	name: string;
 	/** The trailing price, exactly as typed — `5,08`, `€1.20` — or nothing. */
@@ -105,6 +107,10 @@ export function amountsIn(text: string): Reading {
 	const amount = lead ? lead[1] : null;
 	const rest = lead ? text.slice(lead[0].length) : text;
 
+	// The count reads by the same rules as the price, minus its x.
+	const counted = amount === null ? null : readNumber(amount.replace(/\s?[x×]$/, ''));
+	const count = counted === null ? null : counted.cents / 100;
+
 	const tail = COST.exec(rest);
 	const name = tail ? rest.slice(0, tail.index).trim() : rest.trim();
 
@@ -116,6 +122,7 @@ export function amountsIn(text: string): Reading {
 			const mark = tail[1] || tail[3];
 			return {
 				amount,
+				count,
 				name,
 				cost: tail[0].trim(),
 				money: { ...figure, currency: mark === '' ? null : (mark as Currency) }
@@ -123,7 +130,25 @@ export function amountsIn(text: string): Reading {
 		}
 	}
 
-	return { amount, name: rest.trim(), cost: null, money: null };
+	return { amount, count, name: rest.trim(), cost: null, money: null };
+}
+
+/**
+ * What one row comes to: the price taken as many times as the count says, so
+ * `2x Tomatos 5,08` is 10,16 and not 5,08.
+ *
+ * The price stays on the row exactly as it was typed — it is what one of the
+ * thing costs, which is what a person wrote down and what they will check
+ * against a shelf. The multiplying happens here, on the way to the total.
+ *
+ * Rounded to the cent, because a count can have a fraction in it: one and a
+ * half of something at 5,05 is 7,58 and there is no half cent to give back.
+ */
+export function line(reading: Reading): Money | null {
+	if (reading.money === null) return null;
+	if (reading.count === null) return reading.money;
+
+	return { ...reading.money, cents: Math.round(reading.money.cents * reading.count) };
 }
 
 /**
@@ -176,14 +201,17 @@ export function format(money: Money): string {
  *
  * Done does not count — it is bought, it is not money still to spend. Half
  * counts in full: half a task is one still on the list.
+ *
+ * Each row is counted times price, so three potatoes at 20,00 is 60,00. The
+ * rows themselves still show what one costs.
  */
 export function groupTotal(tasks: readonly Pick<Task, 'text' | 'state'>[]): string | null {
 	const counted: Money[] = [];
 
 	for (const task of tasks) {
 		if (task.state === 'done') continue;
-		const { money } = amountsIn(task.text);
-		if (money) counted.push(money);
+		const row = line(amountsIn(task.text));
+		if (row) counted.push(row);
 	}
 
 	const sum = total(counted);

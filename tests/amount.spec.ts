@@ -5,6 +5,7 @@ import {
 	format,
 	groupTotal,
 	hasAmounts,
+	line,
 	total,
 	type Money
 } from '../src/lib/doc/amount';
@@ -131,6 +132,7 @@ describe('a task with both', () => {
 	it('splits into count, name and price', () => {
 		expect(amountsIn('2x Tomatos 20.00')).toStrictEqual({
 			amount: '2x',
+			count: 2,
 			name: 'Tomatos',
 			cost: '20.00',
 			money: { cents: 2000, separator: '.', decimals: 2, currency: null }
@@ -140,10 +142,40 @@ describe('a task with both', () => {
 	it('leaves a task with neither alone', () => {
 		expect(amountsIn('Bread')).toStrictEqual({
 			amount: null,
+			count: null,
 			name: 'Bread',
 			cost: null,
 			money: null
 		});
+	});
+});
+
+describe('what a row comes to', () => {
+	const cents = (text: string) => line(amountsIn(text))?.cents ?? null;
+
+	it('takes the price as many times as the count says', () => {
+		expect(cents('2x Tomatos 5,08')).toBe(1016);
+		expect(cents('3 Potatos 20.00')).toBe(6000);
+	});
+
+	it('is the price itself when there is no count', () => {
+		expect(cents('Onions 5,90')).toBe(590);
+	});
+
+	it('is nothing when there is no price', () => {
+		expect(line(amountsIn('2x Tomatos'))).toBeNull();
+		expect(line(amountsIn('Bread'))).toBeNull();
+	});
+
+	it('rounds a fractional count to the cent', () => {
+		// One and a half at 5,05 is 7,575, and there is no half cent to give back.
+		expect(cents('1.5x Cheese 5,05')).toBe(758);
+		expect(cents('1.5x Milk 2,00')).toBe(300);
+	});
+
+	it('leaves the price on the row exactly as it was typed', () => {
+		// The row says what one costs; the multiplying is for the total.
+		expect(amountsIn('2x Tomatos 5,08').cost).toBe('5,08');
 	});
 });
 
@@ -190,7 +222,8 @@ describe('the total', () => {
 describe('a group', () => {
 	const task = (text: string, state: State = 'todo') => ({ text, state });
 
-	it('totals the sheet from the note', () => {
+	it('totals the sheet from the note, counts and all', () => {
+		// 2 × 5,08 + 3 × 20,00 + 5,90, with the leeks already in the basket.
 		expect(
 			groupTotal([
 				task('2x Tomatos 5,08'),
@@ -198,7 +231,7 @@ describe('a group', () => {
 				task('Onions 5,90'),
 				task('5 Leeks 10', 'done')
 			])
-		).toBe('30,98');
+		).toBe('76,06');
 	});
 
 	it('counts half in full and done not at all', () => {
@@ -206,6 +239,12 @@ describe('a group', () => {
 		expect(groupTotal(rows)).toBe('30');
 		expect(groupTotal([task('Bread 10'), task('Milk 20', 'half')])).toBe('30');
 		expect(groupTotal([task('Bread 10'), task('Milk 20', 'done')])).toBe('10');
+	});
+
+	it('drops the whole line when a counted row is done', () => {
+		// Not 4 × 5,00 less one: done takes its count with it.
+		expect(groupTotal([task('4x Bread 5,00'), task('2x Milk 1,50')])).toBe('23,00');
+		expect(groupTotal([task('4x Bread 5,00', 'done'), task('2x Milk 1,50')])).toBe('3,00');
 	});
 
 	it('shows nothing when there is nothing to total', () => {

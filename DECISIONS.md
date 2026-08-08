@@ -676,9 +676,19 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     held in integer minor units, because ten prices at `0,10` have to come to
     `1,00` and floats do not.
 
+    **A row counts as count × price, and the row still shows the price.** Three
+    potatoes at 20,00 is 60,00 in the total, and the row goes on reading
+    `3 POTATOS 20.00` — because that is what was written down and what gets
+    checked against a shelf edge. Showing the line total on the row instead
+    would mean the sheet displaying a number nobody typed, next to a checkbox,
+    in a list whose whole premise is that the text is the text. The total is the
+    one place a derived number belongs, so it is the only place one appears.
+
     **Done does not count; half counts in full.** The total is what is still to
-    buy, so a ticked task is already in the basket. Half is not half the money —
-    it is a task still on the list, and the tri-state was never a progress bar.
+    buy, so a ticked task is already in the basket — and it takes its count with
+    it, so four loaves ticked removes four loaves, not one. Half is not half the
+    money: it is a task still on the list, and the tri-state was never a
+    progress bar.
 
     **The total sits on the group header**, between the title and the `[…]`,
     because a group is what a total belongs to and the header is the one row

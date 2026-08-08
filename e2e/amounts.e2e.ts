@@ -7,8 +7,8 @@ import { fromMenu } from './menu';
  * back, a column that lines up, and a total on the group's own header that
  * says what is still to buy.
  *
- * The list is the one from the note: 5,08 + 20.00 + 5,90 with the leeks
- * already in the basket, which comes to 30,98.
+ * The list is the one from the note, counted: 2 × 5,08 + 3 × 20,00 + 5,90 with
+ * the leeks already in the basket, which comes to 76,06.
  */
 
 async function addTask(page: Page, text: string) {
@@ -44,12 +44,25 @@ test.beforeEach(async ({ page }) => {
 test('the group header says what the list still comes to', async ({ page }) => {
 	await theList(page);
 
-	// Everything is still to buy.
-	await expect(total(page)).toHaveText('40,98');
+	// Everything is still to buy, and five leeks cost five times ten.
+	await expect(total(page)).toHaveText('126,06');
 
-	// The leeks go in the basket. Done is bought, so it stops counting.
+	// The leeks go in the basket. Done is bought, so the whole line stops
+	// counting — its count goes with it.
 	await task(page, '5 Leeks 10').click();
-	await expect(total(page)).toHaveText('30,98');
+	await expect(total(page)).toHaveText('76,06');
+});
+
+test('a count multiplies the price, and the row still shows what one costs', async ({ page }) => {
+	await addTask(page, '2x Tomatos 5,08');
+	await expect(total(page)).toHaveText('10,16');
+
+	const row = page.getByRole('button', { name: '2x Tomatos 5,08', exact: true });
+	await expect(row.locator('.cost')).toHaveText('5,08');
+
+	// No count is one of the thing, not none of it.
+	await addTask(page, 'Onions 5,90');
+	await expect(total(page)).toHaveText('16,06');
 });
 
 test('half counts in full, because half a task is still on the list', async ({ page }) => {
@@ -81,12 +94,12 @@ test('the total stays when the group is collapsed or being renamed', async ({ pa
 
 	await page.getByRole('button', { name: 'Collapse group' }).click();
 	await expect(page.getByRole('button', { name: 'Expand group' })).toBeVisible();
-	await expect(total(page)).toHaveText('40,98');
+	await expect(total(page)).toHaveText('126,06');
 
 	await page.getByRole('button', { name: 'Expand group' }).click();
 	await page.getByRole('button', { name: 'My list' }).click();
 	await expect(page.getByRole('textbox', { name: 'Group title' })).toBeVisible();
-	await expect(total(page)).toHaveText('40,98');
+	await expect(total(page)).toHaveText('126,06');
 });
 
 test('the figures are set apart, and the words are not', async ({ page }) => {
@@ -157,7 +170,7 @@ test('a long name with a price does not push the sheet sideways', async ({ page 
 	await page.setViewportSize({ width: 320, height: 720 });
 	await addTask(page, '12x Something rather long that has to wrap on a phone 1.234,56');
 
-	await expect(total(page)).toHaveText('1234,56');
+	await expect(total(page)).toHaveText('14814,72');
 	expect(
 		await page.evaluate(
 			() => document.documentElement.scrollWidth > document.documentElement.clientWidth
