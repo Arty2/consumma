@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import HandRect from './HandRect.svelte';
 	import Modal from './Modal.svelte';
 	import { fromMarkdown, looksStructured, type Parsed } from '$lib/markdown/from';
 
@@ -72,6 +73,19 @@
 			{groups === 1 ? 'group' : 'groups'}?
 		</p>
 
+		<!-- Boxed and centred, the same as every other pair of actions. -->
+		<div class="choices">
+			<!-- Add is the default, and is what pressing IMPORT implies. -->
+			<button type="button" class="caps boxed" onclick={() => onapply(parsed!, 'add')}>
+				<HandRect seed="btnadd" wobble={1.4} radius={3} />
+				Add
+			</button>
+			<button type="button" class="caps boxed" onclick={() => onapply(parsed!, 'replace')}>
+				<HandRect seed="btnreplace" wobble={1.4} radius={3} />
+				Replace everything
+			</button>
+		</div>
+
 		<!--
 			What it will be, not what was pasted. A line without a bullet becomes a
 			task, so the only honest preview is the parsed list read back in the
@@ -88,15 +102,6 @@
 					<p class="line">- {marker(task.state)} {task.text}</p>
 				{/each}
 			{/each}
-		</div>
-
-		<div class="choices">
-			<!-- Add is the default, and is what pressing IMPORT implies. -->
-			<button type="button" class="caps" onclick={() => onapply(parsed!, 'add')}>Add</button>
-			<span aria-hidden="true">•</span>
-			<button type="button" class="caps" onclick={() => onapply(parsed!, 'replace')}>
-				Replace everything
-			</button>
 		</div>
 	{/if}
 </Modal>
@@ -128,7 +133,6 @@
 	.preview {
 		max-height: 40vh;
 		overflow-y: auto;
-		margin-bottom: 1.5rem;
 		padding: 0.75rem;
 		border: 1px dashed var(--ink);
 	}
@@ -151,12 +155,9 @@
 	.choices {
 		display: flex;
 		align-items: center;
+		justify-content: center;
 		flex-wrap: wrap;
-		gap: 0.75rem;
-		margin-top: 2rem;
-	}
-
-	.choices button {
-		min-height: var(--touch);
+		gap: 1rem;
+		margin-bottom: 1.5rem;
 	}
 </style>

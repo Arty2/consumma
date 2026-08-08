@@ -535,24 +535,57 @@ export function handVertical(
 export function handRefresh(size: number, options: HandOptions): string {
 	const r = size * 0.34;
 	const c = size / 2;
-	// Most of the way round, leaving a gap the arrowhead sits in.
-	const from = -Math.PI * 0.35;
-	const to = Math.PI * 1.5;
+
+	/*
+	 * A wide gap, and the head built from the direction of travel.
+	 *
+	 * It used to close to within twenty-seven degrees and carry a barb made of
+	 * fixed offsets that had nothing to do with where the stroke was going — so
+	 * at 22px it read as a ring with a nick out of it and a tick inside. A
+	 * quarter of the circle is open now, which is what says "came round" rather
+	 * than "closed".
+	 *
+	 * The pen starts at the bottom right, sweeps three quarters the long way
+	 * round, and finishes at the top right. That places the head where there is
+	 * room for it: ending at the far right instead put a barb past the edge of
+	 * the box.
+	 */
+	const start = -Math.PI * 1.75;
+	const end = -Math.PI * 0.25;
 
 	const points: Pt[] = [];
-	const steps = 10;
+	const steps = 12;
 	for (let i = 0; i <= steps; i++) {
-		const a = from + ((to - from) * i) / steps;
+		const a = start + ((end - start) * i) / steps;
 		points.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r });
 	}
 
 	const ring = handPath(points, options);
 
-	// The head sits on the open end, pointing the way the stroke was travelling.
-	const tip = points[0];
-	const head = size * 0.2;
+	/*
+	 * Two strokes off the end, opening back along the way the pen came. The
+	 * tangent at that point is a quarter turn past the angle itself, because
+	 * the stroke travels along the circle rather than out from its middle.
+	 */
+	const tip = points[points.length - 1];
+	const tangent = end + Math.PI / 2;
+	const head = size * 0.24;
+	// A third of a turn back from the way it is going, either side. Wider than
+	// that and the head flattens into a line across the end of the stroke.
+	const spread = Math.PI * 0.82;
+
 	const barb = handPath(
-		[{ x: tip.x - head, y: tip.y - head * 0.35 }, tip, { x: tip.x - head * 0.15, y: tip.y + head }],
+		[
+			{
+				x: tip.x + Math.cos(tangent + spread) * head,
+				y: tip.y + Math.sin(tangent + spread) * head
+			},
+			tip,
+			{
+				x: tip.x + Math.cos(tangent - spread) * head,
+				y: tip.y + Math.sin(tangent - spread) * head
+			}
+		],
 		{ ...options, seed: options.seed + 271 }
 	);
 
