@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { State } from '$lib/doc/types';
 	import { longPress } from '$lib/dnd/longpress';
+	import { finished, tapped } from '$lib/feel';
 	import { handCheck, handCheckBack, handRect, handSparkle } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 
@@ -69,6 +70,9 @@
 		if (next === 'done' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			celebrating = true;
 		}
+
+		if (next === 'done') finished();
+		else tapped();
 
 		onchange(next);
 	}

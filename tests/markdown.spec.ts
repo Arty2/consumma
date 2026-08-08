@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyImport } from '../src/lib/markdown/apply';
-import { fromMarkdown } from '../src/lib/markdown/from';
+import { fromMarkdown, looksStructured } from '../src/lib/markdown/from';
 import { toMarkdown } from '../src/lib/markdown/to';
 import { addGroup, addTask, liveGroups, liveTasks, setTaskState } from '../src/lib/doc/ops';
 import { createClock, type Ctx } from '../src/lib/doc/stamp';
@@ -121,10 +121,61 @@ describe('import', () => {
 		expect(parsed!.groups[0].tasks.map((t) => t.text)).toStrictEqual(['one', 'nested', 'two']);
 	});
 
-	it('refuses anything that is not a task list', () => {
-		expect(fromMarkdown('just some prose\n\nand more of it')).toBeNull();
+	it('takes plain lines as tasks, bullet or no bullet', () => {
+		/*
+		 * Most lists people have lying about are lines of words in a note.
+		 * Requiring a dash in front of each one is asking them to do the import
+		 * by hand first.
+		 *
+		 * The cost is that pasting prose makes tasks out of sentences — which is
+		 * why the modal shows what it is about to do before it does it.
+		 */
+		const parsed = fromMarkdown('Bread\nCoffee\n\nMilk');
+
+		expect(parsed!.tasks).toBe(3);
+		expect(parsed!.groups[0].tasks.map((t) => t.text)).toStrictEqual(['Bread', 'Coffee', 'Milk']);
+		expect(parsed!.groups[0].tasks.every((t) => t.state === 'todo')).toBe(true);
+	});
+
+	it('keeps its markers when the lines are bare', () => {
+		const parsed = fromMarkdown('Bread\n[x] Coffee\n[~] Milk');
+
+		expect(parsed!.groups[0].tasks.map((t) => t.state)).toStrictEqual(['todo', 'done', 'half']);
+	});
+
+	it('skips rules and fenced code rather than making tasks of them', () => {
+		const parsed = fromMarkdown('Bread\n\n---\n\n```\nconst x = 1;\n```\n\nMilk');
+
+		expect(parsed!.groups[0].tasks.map((t) => t.text)).toStrictEqual(['Bread', 'Milk']);
+	});
+
+	it('refuses an empty paste and a heading with nothing under it', () => {
 		expect(fromMarkdown('')).toBeNull();
+		expect(fromMarkdown('   \n\n  ')).toBeNull();
 		expect(fromMarkdown('## A heading and nothing else')).toBeNull();
+	});
+
+	it('refuses a data file or a web page', () => {
+		/*
+		 * Both would come in as a heap of tasks made of punctuation, and undoing
+		 * that is one tap per line.
+		 */
+		expect(looksStructured('{"tasks":[{"text":"Bread"}]}')).toBe('json');
+		expect(looksStructured('[1, 2, 3]')).toBe('json');
+		expect(looksStructured('<ul><li>Bread</li><li>Milk</li></ul>')).toBe('html');
+		expect(looksStructured('<!doctype html>')).toBe('html');
+
+		expect(fromMarkdown('{"tasks":[{"text":"Bread"}]}')).toBeNull();
+		expect(fromMarkdown('<ul><li>Bread</li><li>Milk</li></ul>')).toBeNull();
+	});
+
+	it('lets a checklist through that merely starts with a bracket', () => {
+		// `[ ] Bread` opens with a bracket and is not JSON; it is the whole point.
+		expect(looksStructured('[ ] Bread\n[x] Milk')).toBeNull();
+		expect(fromMarkdown('[ ] Bread\n[x] Milk')!.tasks).toBe(2);
+
+		// And one stray angle bracket in a sentence is not a web page.
+		expect(looksStructured('Ask Bob <- he knows')).toBeNull();
 	});
 });
 

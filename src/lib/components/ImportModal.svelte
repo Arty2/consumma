@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import Modal from './Modal.svelte';
-	import { fromMarkdown, type Parsed } from '$lib/markdown/from';
+	import { fromMarkdown, looksStructured, type Parsed } from '$lib/markdown/from';
 
 	type Props = {
 		/** Whatever the clipboard gave us, or null if it refused. */
@@ -26,6 +26,26 @@
 	}
 
 	const groups = $derived(parsed?.groups.length ?? 0);
+
+	/*
+	 * Why it was turned away, when it was. A data file and a web page both come
+	 * out of a line-by-line read as a heap of punctuation, so they are refused
+	 * rather than imported — and saying which it was is the difference between
+	 * a rule and a shrug.
+	 */
+	const structured = $derived(looksStructured(text));
+	const refusal = $derived(
+		structured === 'json'
+			? 'That looks like a data file, not a list.'
+			: structured === 'html'
+				? 'That looks like a web page, not a list.'
+				: 'That doesn’t look like a task list.'
+	);
+
+	/** What each line will become, in the notation it will be exported in. */
+	function marker(state: string): string {
+		return state === 'done' ? '[x]' : state === 'half' ? '[~]' : '[ ]';
+	}
 </script>
 
 <Modal title="Import" seed="import" {onclose}>
@@ -35,7 +55,7 @@
 			pasting by hand is a first-class path rather than a fallback nobody
 			maintains.
 		-->
-		<p>Paste a markdown checklist.</p>
+		<p>Paste a list — one thing per line, or a markdown checklist.</p>
 
 		<label>
 			<span class="sr-only">Markdown to import</span>
@@ -43,7 +63,7 @@
 		</label>
 
 		{#if tried && text.trim() !== ''}
-			<p role="alert">That doesn’t look like a task list.</p>
+			<p role="alert">{refusal}</p>
 		{/if}
 	{:else}
 		<p class="summary">
@@ -51,6 +71,24 @@
 			{parsed.tasks === 1 ? 'task' : 'tasks'} in {groups}
 			{groups === 1 ? 'group' : 'groups'}?
 		</p>
+
+		<!--
+			What it will be, not what was pasted. A line without a bullet becomes a
+			task, so the only honest preview is the parsed list read back in the
+			notation it would be exported in.
+
+			Written as text, never as markup: nothing in this app renders HTML.
+		-->
+		<div class="preview" aria-label="What will be added">
+			{#each parsed.groups as group (group.title)}
+				{#if group.title !== ''}
+					<p class="heading">## {group.title}</p>
+				{/if}
+				{#each group.tasks as task (task.text)}
+					<p class="line">- {marker(task.state)} {task.text}</p>
+				{/each}
+			{/each}
+		</div>
 
 		<div class="choices">
 			<!-- Add is the default, and is what pressing IMPORT implies. -->
@@ -81,6 +119,33 @@
 		font-family: var(--hand);
 		font-size: var(--size-body);
 		resize: vertical;
+	}
+
+	/*
+	 * Monospaced would be a second typeface; this is the one hand, small, in a
+	 * box that scrolls rather than pushing the buttons off the panel.
+	 */
+	.preview {
+		max-height: 40vh;
+		overflow-y: auto;
+		margin-bottom: 1.5rem;
+		padding: 0.75rem;
+		border: 1px dashed var(--ink);
+	}
+
+	.preview p {
+		margin: 0;
+		font-size: var(--size-body);
+		line-height: 1.5;
+		overflow-wrap: anywhere;
+	}
+
+	.preview .heading {
+		margin-top: 0.75rem;
+	}
+
+	.preview .heading:first-child {
+		margin-top: 0;
 	}
 
 	.choices {

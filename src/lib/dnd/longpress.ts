@@ -1,4 +1,5 @@
 import type { Action } from 'svelte/action';
+import { tapped } from '$lib/feel';
 
 export type LongPressOptions = {
 	/** Fired the moment the threshold passes, under the finger. */
@@ -12,14 +13,8 @@ export type LongPressOptions = {
 
 export const LONG_PRESS_MS = 450;
 
-/** 10ms, so the state changes under the finger rather than on release. */
-export function buzz(ms = 10): void {
-	try {
-		navigator.vibrate?.(ms);
-	} catch {
-		// Not available, or blocked. The gesture still works.
-	}
-}
+/** The lift, under the finger. Re-exported so the drag keeps one import. */
+export { tapped as buzz };
 
 /**
  * Long-press on the checkbox sets half done; long-press on the row text starts
@@ -48,7 +43,7 @@ export const longPress: Action<HTMLElement, LongPressOptions> = (node, initial) 
 		timer = setTimeout(() => {
 			fired = true;
 			timer = null;
-			buzz();
+			tapped();
 			options.onpress();
 		}, options.ms ?? LONG_PRESS_MS);
 	}

@@ -6,6 +6,7 @@
 	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
+	import { taken, tapped } from '$lib/feel';
 
 	type Props = {
 		title: string;
@@ -40,6 +41,8 @@
 
 	let editing = $state(false);
 	let draft = $state('');
+	/** Set for the length of the pop, so the group leaves rather than vanishes. */
+	let going = $state(false);
 
 	const lifted = $derived(drag.isLiftedGroup(seed));
 	const cross = $derived(handCross(20, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
@@ -65,7 +68,10 @@
 
 	function commit() {
 		editing = false;
-		if (draft.trim() !== title) onrename(draft.trim());
+		if (draft.trim() !== title) {
+			onrename(draft.trim());
+			tapped();
+		}
 	}
 
 	function onkeydown(event: KeyboardEvent) {
@@ -86,14 +92,26 @@
 	 * is nothing in it anyone is still waiting on. An empty group counts as
 	 * finished — there is nothing to lose.
 	 */
+	const POP_MS = 180;
+
 	function remove() {
 		if (!finished) return;
 		editing = false;
-		ondelete();
+		taken();
+
+		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			ondelete();
+			return;
+		}
+
+		// The whole group goes out with it, so the pop is on the header and the
+		// delete waits for it — see TaskRow, which does the same on one row.
+		going = true;
+		setTimeout(ondelete, POP_MS);
 	}
 </script>
 
-<div class="header" class:lifted>
+<div class="header" class:lifted class:going>
 	{#if lifted}
 		<!-- No shadow is available, so the lift is a dashed outline and a tilt. -->
 		<HandRect seed={`liftgroup${seed}`} dashed wobble={1.2} />
@@ -185,9 +203,34 @@
 		transform: rotate(1.5deg);
 	}
 
+	/* Out, not away — the same swell a task leaves on. */
+	.going {
+		animation: pop 180ms ease-in forwards;
+		pointer-events: none;
+	}
+
+	@keyframes pop {
+		from {
+			opacity: 1;
+			scale: 1;
+		}
+		40% {
+			opacity: 1;
+			scale: 1.04;
+		}
+		to {
+			opacity: 0;
+			scale: 0.9;
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.lifted {
 			transform: none;
+		}
+
+		.going {
+			animation: none;
 		}
 	}
 

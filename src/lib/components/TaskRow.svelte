@@ -8,6 +8,7 @@
 	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
+	import { taken } from '$lib/feel';
 
 	type Props = {
 		task: Task;
@@ -68,6 +69,8 @@
 	const POP_MS = 180;
 
 	function pop() {
+		taken();
+
 		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			ondelete();
 			return;

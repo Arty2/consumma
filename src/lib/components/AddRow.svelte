@@ -3,6 +3,7 @@
 	import { LIMITS } from '$lib/doc/limits';
 	import { handRect } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { tapped } from '$lib/feel';
 
 	type Props = {
 		/** Returns true if the task was created, so the row can stay open. */
@@ -21,12 +22,12 @@
 		handRect(SIZE, SIZE, { seed: seedFrom(`add${seed}`), wobble: 1.3, overshoot: 2.2 })
 	);
 
-	let tapped = $state(false);
+	let byTap = $state(false);
 	let draft = $state('');
 	let input = $state<HTMLInputElement | null>(null);
 
 	/** Open because it was tapped, or because the parent put it here open. */
-	const open = $derived(tapped || opened);
+	const open = $derived(byTap || opened);
 
 	// Placed already open rather than tapped: take the caret with it.
 	$effect(() => {
@@ -43,7 +44,7 @@
 
 	function start() {
 		if (disabled) return;
-		tapped = true;
+		byTap = true;
 		queueMicrotask(() => input?.focus());
 	}
 
@@ -52,15 +53,18 @@
 
 		if (text === '') {
 			// Enter on an empty box does nothing.
-			tapped = false;
+			byTap = false;
 			onclose?.();
 			return;
 		}
 
-		if (onadd(text)) draft = '';
+		if (onadd(text)) {
+			draft = '';
+			tapped();
+		}
 		if (keepOpen) queueMicrotask(() => input?.focus());
 		else {
-			tapped = false;
+			byTap = false;
 			onclose?.();
 		}
 	}
@@ -72,7 +76,7 @@
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			draft = '';
-			tapped = false;
+			byTap = false;
 			onclose?.();
 		}
 	}

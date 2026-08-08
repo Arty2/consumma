@@ -286,20 +286,44 @@ test('IMPORT skips duplicates and says so', async ({ page, context }) => {
 	await expect(page.getByRole('checkbox')).toHaveCount(2);
 });
 
-test('IMPORT refuses something that is not a task list, and changes nothing', async ({
-	page,
-	context
-}) => {
+test('IMPORT refuses a data file and a web page, and says which', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 	await addTask(page, 'Bread');
-	await page.evaluate(() => navigator.clipboard.writeText('just some prose, honestly'));
+	await page.evaluate(() => navigator.clipboard.writeText('{"tasks":[{"text":"Bread"}]}'));
 
 	await fromMenu(page, 'Import');
-	await expect(page.getByText('That doesn’t look like a task list.')).toBeVisible();
+	await expect(page.getByText('That looks like a data file, not a list.')).toBeVisible();
+
+	// A web page is named too, rather than both getting the same shrug.
+	const field = page.getByRole('textbox', { name: 'Markdown to import' });
+	await field.fill('<ul><li>Bread</li><li>Milk</li></ul>');
+	await expect(page.getByText('That looks like a web page, not a list.')).toBeVisible();
 
 	await page.getByRole('button', { name: 'Close' }).click();
 	await expect(page.getByRole('checkbox')).toHaveCount(1);
+});
+
+test('IMPORT takes plain lines, and shows what it will make of them', async ({ page, context }) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	// A list as most people have one: lines in a note, no bullets anywhere.
+	await page.evaluate(() => navigator.clipboard.writeText('Bread\nCoffee\nMilk'));
+	await fromMenu(page, 'Import');
+
+	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
+
+	/*
+	 * The preview is what it will become rather than what was pasted — a line
+	 * with no bullet becomes a task, and the only honest way to say so is to
+	 * read the parsed list back.
+	 */
+	const preview = page.getByLabel('What will be added');
+	await expect(preview).toContainText('- [ ] Bread');
+	await expect(preview).toContainText('- [ ] Milk');
+
+	await page.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(3);
 });
 
 test('CLEAR asks first, then clears, and the undo still works', async ({ page }) => {

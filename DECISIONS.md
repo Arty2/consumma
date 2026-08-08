@@ -539,28 +539,61 @@ Numbers in brackets are the section of the build plan a decision came from.
     written: the fold is a view of the drag, not a change to what is collapsed,
     and collapsed state is local and stays that way.
 
+64. **A bare line is a task.** Most lists people already have are lines of words
+    in a note, and asking them to put a dash in front of each one is asking them
+    to do the import by hand first. Bullets, markers, headings and fenced code
+    all still mean what they meant; a line that is none of those is a to-do.
+
+    The cost is that pasting prose makes tasks out of sentences. That is what
+    the preview is for.
+
+65. **Two things are refused outright, and named.** Something that parses as
+    JSON is a data file; something that opens with a tag, or is riddled with
+    them, is a web page. Read line by line either would arrive as a heap of
+    tasks made of punctuation, and undoing that is one tap per line.
+
+    A checklist may open with `[ ]`, which is a bracket and not JSON, and a
+    sentence may contain one stray `<`. Neither is turned away.
+
+66. **The import shows what it will do before it does it.** The parsed list,
+    read back in the notation it would be exported in — not the text that was
+    pasted. Once a line without a bullet becomes a task, the paste and the
+    result are different documents, and only the second one is the answer to
+    "what will this do".
+
+    Written as text, never as markup. Nothing in this app renders HTML.
+
+67. **Haptics are three lengths and live in one file.** A tap for something
+    done, dot-dot for something taken away, dot-dot-dash for something
+    finished — the last on the same beat the sparkle is drawn on.
+
+    Nothing longer, and nothing with a rhythm: a pattern elaborate enough to be
+    read as a message is a notification, and this app does not send those.
+    `navigator.vibrate` is absent on desktop and refused by iOS Safari, and both
+    are fine — it is the confirmation, never the message.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
 drift.
 
-64. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
+68. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
     still described reads coming straight from the CDN. §5 is right — it is what
     makes `connect-src 'self'` possible — so `PUBLIC_BLOB_BASE` and the
     `/api/room/[roomId]/version` route are both gone.
 
-65. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
+69. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
     persisted beside the client id. Without it, two edits from one device in the
     same millisecond collide on `(t, c)` and merge stops being commutative. The
     comparator also falls back to the value itself, which makes it total for any
     document, including a corrupt one.
 
-66. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
+70. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
     tombstone collection (`gc(doc, now)`) are separate functions applied by the
     sync and write paths. Folding either into merge would destroy the algebra
     the property tests check.
 
-67. **Every write is read back once.** Blob storage has no compare-and-set, so
+71. **Every write is read back once.** Blob storage has no compare-and-set, so
     two writers can both pass the version check and the second one's bytes win.
     The loser cannot tell from the version number — it was told 2, the server
     holds 2, and its next conditional read returns 304 forever. The
@@ -568,18 +601,18 @@ drift.
     `tests/sync.spec.ts` sets the race up deliberately; removing the read-back
     makes it fail.
 
-68. **The ETag is the document's own version**, not the blob's upload time and
+72. **The ETag is the document's own version**, not the blob's upload time and
     size. The latter answers a conditional read without fetching the body, but
     two writes in the same millisecond whose JSON is the same length produce an
     identical token, and the second is reported as unchanged. A saved fetch is
     not worth a lost edit.
 
-69. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
+73. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
 ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     optional, but it cannot be past the first write — a reader cannot tell a
     compressed payload from an uncompressed one.
 
-70. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
+74. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
     SvelteKit's own `#svelte-announcer` has a hardcoded `style` attribute we do
     not author and cannot switch off. `'unsafe-hashes'` permits that exact
     string and nothing else; it is not `'unsafe-inline'`. `trusted-types` names
@@ -587,7 +620,7 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `e2e/csp.e2e.ts` fails on any console error, so an upgrade that changes the
     string breaks CI rather than the policy.
 
-71. **"Loose ends" has an id no document can hold**, and that is deliberate.
+75. **"Loose ends" has an id no document can hold**, and that is deliberate.
     `__loose__` fails the `/^[A-Za-z0-9]{1,24}$/` the validator enforces, which
     is what stops it ever being written to a document and then syncing to
     someone who has no such group. The cost is that anything which can name a
