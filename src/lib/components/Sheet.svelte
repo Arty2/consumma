@@ -16,7 +16,23 @@
 	let newGroupDraft = $state('');
 	let landingWidth = $state(0);
 
+	/**
+	 * Where an open, empty task row is sitting, if anywhere.
+	 *
+	 * Enter on a task puts one directly beneath it; Enter on a group title puts
+	 * one at the top of the group. There is never more than one, because there
+	 * is only one caret.
+	 */
+	let inserting = $state<{ groupId: string; index: number } | null>(null);
+
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
+
+	/*
+	 * Everything folds shut while a group is being carried, so the whole list is
+	 * a handful of titles and there is somewhere visible to put it down. Nothing
+	 * is written: this is a view of the drag, not a change to what is collapsed.
+	 */
+	const folded = $derived(drag.groupId !== null);
 
 	/** The placeholder is a title one step earlier, so its rule follows it. */
 	const newGroupShown = $derived(newGroupOpen ? newGroupDraft : '…');
@@ -34,11 +50,30 @@
 	 * still waiting on goes with it — but the tasks do go, so it says how many.
 	 */
 	function removeGroup(id: string, title: string) {
-		const group = sheet.groups.find((g) => g.id === id);
-		const count = group?.tasks.length ?? 0;
+		const gone = sheet.deleteGroup(id);
+		if (!gone) return;
 
-		sheet.deleteGroup(id);
-		ui.say(count === 0 ? `Removed ${label(title)}.` : `Removed ${label(title)} and ${count} done.`);
+		const count = gone.tasks.length;
+		const what = count === 0 ? label(title) : `${label(title)} and ${count} done`;
+
+		// The confirm stops nothing here — the header only offers it on a finished
+		// group — so the undo is what covers a change of mind.
+		ui.say(`Removed ${what}.`, () => {
+			sheet.restoreGroup(gone);
+			ui.dismiss();
+		});
+	}
+
+	/**
+	 * Puts a task in at a position rather than on the end, and moves the open
+	 * row down past it so a run of Enters reads top to bottom.
+	 */
+	function insert(groupId: string, index: number, text: string): boolean {
+		const id = sheet.addTaskAt(groupId, index, text);
+		if (id === null) return false;
+
+		inserting = { groupId, index: index + 1 };
+		return true;
 	}
 
 	function remove(id: string) {
@@ -128,19 +163,30 @@
 			<GroupHeader
 				title={group.title}
 				seed={group.id}
-				collapsed={ui.isCollapsed(group.id)}
+				collapsed={folded || ui.isCollapsed(group.id)}
 				count={group.tasks.length}
 				finished={group.tasks.every((task) => task.state === 'done')}
 				editable={!group.synthetic}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
 				onrename={(title) => sheet.renameGroup(group.id, title)}
 				ondelete={() => removeGroup(group.id, group.title)}
+				onaddtask={() => (inserting = { groupId: group.id, index: 0 })}
 				onreorder={(index) => sheet.moveGroup(group.id, sheet.groupOrderAt(index, group.id))}
 			/>
 
-			{#if !ui.isCollapsed(group.id)}
+			{#if !folded && !ui.isCollapsed(group.id)}
 				<ul class="tasks">
 					{#each group.tasks as task, taskIndex (task.id)}
+						{#if inserting?.groupId === group.id && inserting.index === taskIndex}
+							<AddRow
+								seed={`${group.id}-at${taskIndex}`}
+								disabled={!sheet.canAddTask}
+								opened
+								onadd={(text) => insert(group.id, taskIndex, text)}
+								onclose={() => (inserting = null)}
+							/>
+						{/if}
+
 						{#if drag.isLanding(group.id, taskIndex)}
 							<li class="landing" aria-hidden="true">
 								<svg viewBox="0 0 {landingWidth} 5" width={landingWidth} height="5">
@@ -155,6 +201,7 @@
 							onstate={(state) => setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
+							onsplit={() => (inserting = { groupId: group.id, index: taskIndex + 1 })}
 							onmove={(direction) => move(groupIndex, taskIndex, direction)}
 							ondrop={(target) => drop(task.id, target)}
 							onEnterGroup={(id) => ui.expand(id)}
@@ -167,6 +214,16 @@
 								<path d={landing} class="drawn drawn--dashed" />
 							</svg>
 						</li>
+					{/if}
+
+					{#if inserting?.groupId === group.id && inserting.index === group.tasks.length}
+						<AddRow
+							seed={`${group.id}-end`}
+							disabled={!sheet.canAddTask}
+							opened
+							onadd={(text) => insert(group.id, group.tasks.length, text)}
+							onclose={() => (inserting = null)}
+						/>
 					{/if}
 
 					{#if !group.synthetic}

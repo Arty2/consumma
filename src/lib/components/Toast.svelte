@@ -36,4 +36,14 @@
 		padding: 0.5rem 1rem;
 		background: var(--paper);
 	}
+
+	/*
+	 * The words sit on the middle of the box rather than the middle of their own
+	 * line. Graphe's capitals ride high in their line box, so centring the box
+	 * on the row left them above it — the same correction every drawn thing
+	 * beside capitals makes, in the other direction.
+	 */
+	.toast :global(svg.rect) {
+		translate: 0 calc(-1 * var(--cap-lift));
+	}
 </style>

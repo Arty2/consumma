@@ -20,6 +20,9 @@ linter cannot. CI runs it first, before anything else.
 - Merge logic in src/lib/doc/merge.ts is pure and must stay commutative, associative, idempotent. It takes no clock — skew clamping and tombstone GC are separate functions applied by the sync and write paths.
 - Collapsed state is local, never synced.
 - CLEAR sweeps done tasks only. DELETE is local-only and never calls the server. Undo re-stamps forward, never rewinds.
+- Enter means "and the next one": on a task it commits and opens a fresh row directly beneath, on a group title it commits and opens one at the top of the group. Both commit in the keydown rather than through blur, or the blur closes the row that just opened.
+- Deleting a group takes its tasks with it. A group is only a name and an order — marking it deleted alone leaves its tasks orphaned into Loose ends, which is how emptying a finished group poured its done tasks back onto the sheet under another heading. Undo puts the group back and then the tasks.
+- Animation is opacity and scale only, never a colour or a shadow, and every one asks `prefers-reduced-motion` in JS rather than hiding itself in CSS — a flourish cleared by its own `animationend` never clears if it has no animation to end.
 - Three long-presses, separated by hit area: on the checkbox it sets half, on the row text it lifts the task, on the group title it lifts the whole group. Never merge them. The click that follows a drop is swallowed, or the button under the finger opens.
 - The group header is three controls and each does one thing: the title renames, the icon collapses, and while renaming the icon's place is taken by a delete that is only enabled once every task in the group is done. Tapping a title must never collapse it.
 - A task offers its ✕ only when it is done. Not on hover, not on focus — a live delete beside every row a finger passes over, left behind after an un-tick.

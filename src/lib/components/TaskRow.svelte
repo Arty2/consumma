@@ -15,15 +15,20 @@
 		onstate: (state: State) => void;
 		onedit: (text: string) => void;
 		ondelete: () => void;
+		/** Enter leaves the task and opens a fresh one directly beneath it. */
+		onsplit: () => void;
 		onmove: (direction: -1 | 1) => void;
 		ondrop: (target: DropTarget) => void;
 		onEnterGroup: (groupId: string) => void;
 	};
 
-	let { task, groupId, onstate, onedit, ondelete, onmove, ondrop, onEnterGroup }: Props = $props();
+	let { task, groupId, onstate, onedit, ondelete, onsplit, onmove, ondrop, onEnterGroup }: Props =
+		$props();
 
 	let editing = $state(false);
 	let draft = $state('');
+	/** Set for the length of the pop, so the row leaves rather than vanishes. */
+	let going = $state(false);
 
 	const lifted = $derived(drag.isLifted(task.id));
 	const remaining = $derived(LIMITS.taskText - length(draft));
@@ -44,11 +49,32 @@
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			(event.currentTarget as HTMLInputElement).blur();
+			// Commit first: the blur handler would otherwise fire after the new row
+			// is asked for and close it again.
+			commit();
+			onsplit();
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			editing = false;
 		}
+	}
+
+	/*
+	 * A tick is the end of something, so the row goes out with a small pop
+	 * rather than simply ceasing to be there. The delete waits for the animation
+	 * so the row is still on the sheet while it plays; reduced motion skips
+	 * straight to the deletion.
+	 */
+	const POP_MS = 180;
+
+	function pop() {
+		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			ondelete();
+			return;
+		}
+
+		going = true;
+		setTimeout(ondelete, POP_MS);
 	}
 
 	function onrowkeydown(event: KeyboardEvent) {
@@ -64,7 +90,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<li class="row" class:lifted data-task={task.id} onkeydown={onrowkeydown}>
+<li class="row" class:lifted class:going data-task={task.id} onkeydown={onrowkeydown}>
 	{#if lifted}
 		<!-- No shadow is available, so the lift is a dashed outline and a tilt. -->
 		<HandRect seed={`lift${task.id}`} dashed wobble={1.2} />
@@ -113,7 +139,7 @@
 		Removing something is for things that are finished with.
 	-->
 	{#if task.state === 'done' && !editing && !drag.dragging}
-		<button class="remove" type="button" onclick={ondelete} aria-label="Delete task">
+		<button class="remove" type="button" onclick={pop} aria-label="Delete task">
 			<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
 				<path d={cross} class="drawn" />
 			</svg>
@@ -136,9 +162,34 @@
 		transform: rotate(1.5deg);
 	}
 
+	/* Out, not away: a short swell and then nothing. */
+	.going {
+		animation: pop 180ms ease-in forwards;
+		pointer-events: none;
+	}
+
+	@keyframes pop {
+		from {
+			opacity: 1;
+			scale: 1;
+		}
+		40% {
+			opacity: 1;
+			scale: 1.04;
+		}
+		to {
+			opacity: 0;
+			scale: 0.9;
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.lifted {
 			transform: none;
+		}
+
+		.going {
+			animation: none;
 		}
 	}
 

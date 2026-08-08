@@ -9,18 +9,29 @@
 		onadd: (text: string) => boolean;
 		seed: string;
 		disabled?: boolean;
+		/** Opened by the parent: Enter on a task puts one of these beneath it. */
+		opened?: boolean;
+		onclose?: () => void;
 	};
 
-	let { onadd, seed, disabled = false }: Props = $props();
+	let { onadd, seed, disabled = false, opened = false, onclose }: Props = $props();
 
 	const SIZE = 22;
 	const box = $derived(
 		handRect(SIZE, SIZE, { seed: seedFrom(`add${seed}`), wobble: 1.3, overshoot: 2.2 })
 	);
 
-	let open = $state(false);
+	let tapped = $state(false);
 	let draft = $state('');
 	let input = $state<HTMLInputElement | null>(null);
+
+	/** Open because it was tapped, or because the parent put it here open. */
+	const open = $derived(tapped || opened);
+
+	// Placed already open rather than tapped: take the caret with it.
+	$effect(() => {
+		if (opened) queueMicrotask(() => input?.focus());
+	});
 
 	/*
 	 * An empty checkbox followed by an ellipsis. Not a button, not a plus — the
@@ -32,7 +43,7 @@
 
 	function start() {
 		if (disabled) return;
-		open = true;
+		tapped = true;
 		queueMicrotask(() => input?.focus());
 	}
 
@@ -41,13 +52,17 @@
 
 		if (text === '') {
 			// Enter on an empty box does nothing.
-			open = false;
+			tapped = false;
+			onclose?.();
 			return;
 		}
 
 		if (onadd(text)) draft = '';
 		if (keepOpen) queueMicrotask(() => input?.focus());
-		else open = false;
+		else {
+			tapped = false;
+			onclose?.();
+		}
 	}
 
 	function onkeydown(event: KeyboardEvent) {
@@ -57,7 +72,8 @@
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			draft = '';
-			open = false;
+			tapped = false;
+			onclose?.();
 		}
 	}
 </script>
@@ -73,7 +89,7 @@
 	-->
 	<button class="box" type="button" tabindex="-1" aria-hidden="true" {disabled} onclick={start}>
 		<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE}>
-			<path d={box} class="drawn ghost" />
+			<path d={box} class="drawn" class:ghost={!open} class:pending={open} />
 		</svg>
 	</button>
 
@@ -135,15 +151,23 @@
 	}
 
 	/*
-	 * Drawn but not shown. The row is still 44px of tappable box beside the
-	 * ellipsis — an empty square at the end of a list read as one more thing to
-	 * do rather than as room for one.
+	 * Drawn but not shown, until there is something being written in it.
 	 *
-	 * Its own rule rather than a change to --faint: everything else that is
-	 * faint is meant to be seen.
+	 * An empty square at the end of a list read as one more thing to do rather
+	 * than as room for one — but once the row is open it is the box that task is
+	 * about to get, and it should be there to see. Faint, like everything else
+	 * that is not quite real yet.
+	 *
+	 * Its own rule rather than a change to --faint, which is a value and not a
+	 * switch.
 	 */
 	.ghost {
 		opacity: 0;
+	}
+
+	/* Open: the box that task is about to get, as faint as the words in it. */
+	.pending {
+		opacity: var(--faint);
 	}
 
 	.text {

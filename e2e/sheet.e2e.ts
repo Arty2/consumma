@@ -440,3 +440,135 @@ test('dropping a task does not open it for editing', async ({ page }) => {
 			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
 	expect(await order()).toStrictEqual(['Coffee', 'Bread']);
 });
+
+test('Enter on a task opens a fresh one directly beneath it', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
+
+	const order = () =>
+		page
+			.getByRole('checkbox')
+			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+
+	// Editing the first one and pressing Enter leaves it and opens a row below.
+	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	// The edit field is the only textbox on the sheet while it is open.
+	await page.getByRole('textbox').first().press('Enter');
+
+	const fresh = page.getByRole('textbox', { name: 'New task' });
+	await expect(fresh).toBeFocused();
+
+	await fresh.fill('Butter');
+	await fresh.press('Enter');
+
+	// Between the two, not on the end — and the next one carries on below it.
+	expect(await order()).toStrictEqual(['Bread', 'Butter', 'Milk']);
+
+	await fresh.fill('Jam');
+	await fresh.press('Enter');
+	expect(await order()).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
+
+	await page.keyboard.press('Escape');
+	await page.reload();
+	expect(await order()).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
+});
+
+test('Enter on a group title opens a task inside the group', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'My list' }).click();
+	const title = page.getByRole('textbox', { name: 'Group title' });
+	await title.fill('Market');
+	await title.press('Enter');
+
+	// The name is committed, and the caret has moved into a task at the top.
+	await expect(page.getByRole('button', { name: 'Market' })).toBeVisible();
+
+	const fresh = page.getByRole('textbox', { name: 'New task' });
+	await expect(fresh).toBeFocused();
+	await fresh.fill('Milk');
+	await fresh.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const order = () =>
+		page
+			.getByRole('checkbox')
+			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+	expect(await order()).toStrictEqual(['Milk', 'Bread']);
+});
+
+test('a double tap sets half, and a single one still just ticks', async ({ page }) => {
+	await addTask(page, 'Bread');
+	const box = task(page, 'Bread');
+
+	// One tap is a tick, and stays one.
+	await box.click();
+	await expect(box).toHaveAttribute('aria-checked', 'true');
+	await page.waitForTimeout(400);
+
+	await box.click();
+	await expect(box).toHaveAttribute('aria-checked', 'false');
+	await page.waitForTimeout(400);
+
+	// Two inside the window land on half, whatever the first one did.
+	await box.dblclick();
+	await expect(box).toHaveAttribute('aria-checked', 'mixed');
+
+	await page.reload();
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'mixed');
+});
+
+test('removing a group offers it back, with everything that was in it', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
+	await task(page, 'Bread').click();
+	await task(page, 'Milk').click();
+
+	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'Delete group' }).click();
+
+	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);
+	await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+
+	// The group, its name, and both tasks — not a pile under Loose ends.
+	await expect(page.getByRole('button', { name: 'My list' })).toBeVisible();
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+	await expect(page.getByText('Loose ends')).toHaveCount(0);
+
+	await page.reload();
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+});
+
+test('carrying a group folds them all shut, and unfolds them after', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const name = page.getByRole('textbox', { name: 'New group' });
+	await name.fill('Market');
+	await name.press('Enter');
+	await addTask(page, 'Milk', 1);
+
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+
+	const title = page.getByRole('button', { name: 'Market' });
+	const from = (await title.boundingBox())!;
+
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+
+	/*
+	 * Everything folds while one is being carried, so the whole list is a
+	 * handful of titles and there is somewhere visible to put it down.
+	 */
+	await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+	await page.mouse.up();
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+
+	// And nothing about it was written down: the fold was a view of the drag.
+	await page.reload();
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+});

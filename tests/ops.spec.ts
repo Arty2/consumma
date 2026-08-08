@@ -10,6 +10,7 @@ import {
 	clearDone,
 	countTasks,
 	deleteGroup,
+	restoreGroup,
 	deleteTask,
 	editTask,
 	liveTasks,
@@ -190,26 +191,80 @@ describe('clear and undo', () => {
 	});
 });
 
-describe('view', () => {
-	it('surfaces tasks orphaned by a deleted group under Loose ends', () => {
+describe('deleteGroup', () => {
+	it('takes the tasks in it, rather than leaving them for Loose ends', () => {
+		/*
+		 * A group is only a name and an order. Marking it deleted on its own left
+		 * its tasks with a group id nobody knows, and `view` gathers those into
+		 * Loose ends — so emptying a finished group poured its done tasks back
+		 * onto the sheet under another heading.
+		 */
+		doc = addTask(doc, ctx, { id: 't1', groupId: 'g1', text: 'Bread' });
+		doc = addTask(doc, ctx, { id: 't2', groupId: 'g1', text: 'Milk' });
+
+		doc = deleteGroup(doc, ctx, 'g1');
+
+		expect(doc.groups.g1.deleted).toBe(true);
+		expect(doc.tasks.t1.deleted).toBe(true);
+		expect(doc.tasks.t2.deleted).toBe(true);
+		expect(view(doc)).toHaveLength(0);
+	});
+
+	it('leaves the tasks of another group alone', () => {
+		doc = addGroup(doc, ctx, { id: 'g2', title: 'Market' });
+		doc = addTask(doc, ctx, { id: 't1', groupId: 'g1', text: 'Bread' });
+		doc = addTask(doc, ctx, { id: 't2', groupId: 'g2', text: 'Milk' });
+
+		doc = deleteGroup(doc, ctx, 'g1');
+
+		expect(doc.tasks.t1.deleted).toBe(true);
+		expect(doc.tasks.t2.deleted).toBe(false);
+	});
+
+	it('is undone by putting the group and its tasks back', () => {
 		doc = addTask(doc, ctx, { id: 't1', groupId: 'g1', text: 'Bread' });
 		doc = deleteGroup(doc, ctx, 'g1');
 
-		const groups = view(doc);
+		doc = restoreTasks(restoreGroup(doc, ctx, 'g1'), ctx, [{ id: 't1', text: 'Bread' }]);
 
+		const groups = view(doc);
 		expect(groups).toHaveLength(1);
-		expect(groups[0].title).toBe(LOOSE_ENDS_TITLE);
-		expect(groups[0].synthetic).toBe(true);
 		expect(groups[0].tasks.map((t) => t.id)).toStrictEqual(['t1']);
 	});
 
-	it('does not mutate the document to fix an orphan', () => {
-		doc = addTask(doc, ctx, { id: 't1', groupId: 'g1', text: 'Bread' });
+	it('stamps forward, so undo never rewinds', () => {
 		doc = deleteGroup(doc, ctx, 'g1');
+		const gone = doc.groups.g1.stamps.deleted;
+
+		doc = restoreGroup(doc, ctx, 'g1');
+
+		expect(doc.groups.g1.stamps.deleted.t).toBeGreaterThan(gone.t);
+	});
+});
+
+describe('view', () => {
+	it('surfaces a task whose group is not here under Loose ends', () => {
+		/*
+		 * Deleting a group takes its tasks with it, so this is what merge
+		 * produces rather than what delete does: the other device made the task,
+		 * this one never heard of the group.
+		 */
+		doc = addTask(doc, ctx, { id: 't1', groupId: 'elsewhere', text: 'Bread' });
+
+		const groups = view(doc);
+
+		expect(groups).toHaveLength(2);
+		expect(groups[1].title).toBe(LOOSE_ENDS_TITLE);
+		expect(groups[1].synthetic).toBe(true);
+		expect(groups[1].tasks.map((t) => t.id)).toStrictEqual(['t1']);
+	});
+
+	it('does not mutate the document to fix an orphan', () => {
+		doc = addTask(doc, ctx, { id: 't1', groupId: 'elsewhere', text: 'Bread' });
 
 		view(doc);
 
-		expect(doc.tasks.t1.groupId).toBe('g1');
+		expect(doc.tasks.t1.groupId).toBe('elsewhere');
 	});
 
 	it('reports the sheet finished only when something was on it', () => {

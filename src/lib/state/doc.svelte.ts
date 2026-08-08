@@ -109,11 +109,26 @@ export class Sheet {
 	}
 
 	/**
-	 * Removes a group. The header only offers it once every task in the group is
-	 * done, so nothing anyone is still waiting on goes with it.
+	 * Removes a group and its tasks. The header only offers it once every task
+	 * in the group is done, so nothing anyone is still waiting on goes with it.
+	 *
+	 * Returns what went, so the toast can offer it back.
 	 */
-	deleteGroup(id: string): void {
+	deleteGroup(id: string): { id: string; tasks: { id: string; text: string }[] } | null {
+		const group = this.doc.groups[id];
+		if (!group || group.deleted) return null;
+
+		const tasks = ops.liveTasks(this.doc, id).map((t) => ({ id: t.id, text: t.text }));
 		this.#apply((doc, ctx) => ops.deleteGroup(doc, ctx, id));
+
+		return { id, tasks };
+	}
+
+	/** Undo for the above: the group first, then everything that was in it. */
+	restoreGroup(entry: { id: string; tasks: readonly { id: string; text: string }[] }): void {
+		this.#apply((doc, ctx) =>
+			ops.restoreTasks(ops.restoreGroup(doc, ctx, entry.id), ctx, entry.tasks)
+		);
 	}
 
 	// ── tasks ───────────────────────────────────────────────────────────────
@@ -121,6 +136,19 @@ export class Sheet {
 	addTask(groupId: string, text: string): string | null {
 		const id = newId();
 		return this.#apply((doc, ctx) => ops.addTask(doc, ctx, { id, groupId, text })) ? id : null;
+	}
+
+	/**
+	 * The same, at a position rather than on the end — Enter on a task opens a
+	 * fresh one directly beneath it.
+	 */
+	addTaskAt(groupId: string, index: number, text: string): string | null {
+		const id = newId();
+		const order = this.orderAt(groupId, index);
+
+		return this.#apply((doc, ctx) => ops.addTask(doc, ctx, { id, groupId, text, order }))
+			? id
+			: null;
 	}
 
 	editTask(id: string, text: string): void {

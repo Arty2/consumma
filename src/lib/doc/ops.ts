@@ -91,17 +91,42 @@ export function moveGroup(doc: Doc, ctx: Ctx, id: string, order: string): Doc {
  * under "Loose ends" on read (view.ts) rather than being destroyed by a
  * deletion the other device may not have intended for them.
  */
+/**
+ * Removes a group and everything in it.
+ *
+ * The tasks have to go too. A group is only a name and an order — deleting it
+ * alone leaves its tasks with a group id nobody knows, and `view` gathers those
+ * into Loose ends. Emptying a finished group would have quietly poured its done
+ * tasks back onto the sheet under another heading.
+ */
 export function deleteGroup(doc: Doc, ctx: Ctx, id: string): Doc {
 	const group = doc.groups[id];
 	if (!group || group.deleted) return doc;
 
-	const next: Group = {
+	let next = doc;
+	for (const task of liveTasks(doc, id)) next = deleteTask(next, ctx, task.id);
+
+	const gone: Group = {
 		...group,
 		deleted: true,
 		stamps: { ...group.stamps, deleted: stamp(ctx) }
 	};
 
-	return { ...doc, groups: { ...doc.groups, [id]: next } };
+	return { ...next, groups: { ...next.groups, [id]: gone } };
+}
+
+/** Puts a deleted group back, stamping forward the way undo always does. */
+export function restoreGroup(doc: Doc, ctx: Ctx, id: string): Doc {
+	const group = doc.groups[id];
+	if (!group) return doc;
+
+	const back: Group = {
+		...group,
+		deleted: false,
+		stamps: { ...group.stamps, deleted: stamp(ctx) }
+	};
+
+	return { ...doc, groups: { ...doc.groups, [id]: back } };
 }
 
 // ── tasks ────────────────────────────────────────────────────────────────────
@@ -109,7 +134,8 @@ export function deleteGroup(doc: Doc, ctx: Ctx, id: string): Doc {
 export function addTask(
 	doc: Doc,
 	ctx: Ctx,
-	args: { id: string; groupId: string; text: string }
+	/** `order` places it; without one it goes on the end. */
+	args: { id: string; groupId: string; text: string; order?: string }
 ): Doc {
 	const text = clean(args.text, LIMITS.taskText);
 	if (text === '' || !canAddTask(doc)) return doc;
@@ -120,7 +146,7 @@ export function addTask(
 		groupId: args.groupId,
 		text,
 		state: 'todo',
-		order: last(liveTasks(doc, args.groupId).map((t) => t.order)),
+		order: args.order ?? last(liveTasks(doc, args.groupId).map((t) => t.order)),
 		deleted: false,
 		stamps: { text: s, state: s, order: s, groupId: s, deleted: s }
 	};

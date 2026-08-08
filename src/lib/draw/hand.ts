@@ -474,6 +474,35 @@ export function handBracket(
 }
 
 /**
+ * A handful of short strokes radiating from the middle: the one flourish a
+ * checkbox gets when it is ticked.
+ *
+ * Unequal lengths and uneven angles, because six identical spokes is an asterisk
+ * and this is meant to read as a scribble of delight. Nothing here is animated —
+ * the strokes are drawn, and CSS fades and grows them.
+ */
+export function handSparkle(size: number, options: HandOptions & { rays?: number }): string {
+	const rays = options.rays ?? 6;
+	const c = size / 2;
+	const random = rng(options.seed ^ 0x2545f491);
+
+	return Array.from({ length: rays }, (_, i) => {
+		// Off the even spoke by up to a third of a step, so no two gaps match.
+		const angle = ((i + (random() * 2 - 1) * 0.33) / rays) * Math.PI * 2;
+		const from = c * (0.42 + random() * 0.12);
+		const to = c * (0.72 + random() * 0.26);
+
+		return handPath(
+			[
+				{ x: c + Math.cos(angle) * from, y: c + Math.sin(angle) * from },
+				{ x: c + Math.cos(angle) * to, y: c + Math.sin(angle) * to }
+			],
+			{ ...options, seed: options.seed + i * 733 }
+		);
+	}).join(' ');
+}
+
+/**
  * The side of the sheet: a drawn line down its whole length.
  *
  * The torn edges close the paper top and bottom; without these it has no

@@ -509,28 +509,58 @@ Numbers in brackets are the section of the build plan a decision came from.
     handler on release and disarms it 400ms later, in case a touch produces no
     click at all.
 
+60. **Enter means "and the next one".** On a task it commits and opens a fresh
+    row directly beneath; on a group title it commits the name and opens one at
+    the top of the group. A list is written by typing, and reaching for the add
+    row at the bottom after every line is not typing.
+
+    Both commit inside the keydown rather than letting blur do it. Blur fires
+    after the new row has been asked for and would close it again.
+
+61. **A double tap sets half.** The first tap's toggle has already happened by
+    then and is simply overridden. The alternative is holding every single tap
+    back for a third of a second to see whether a second is coming, which puts
+    a delay between a finger and every tick on the sheet.
+
+    The cost is that a quick tick-then-untick lands on half instead of to-do.
+    The long press still sets half too; this is a second way to the same place,
+    not a replacement.
+
+62. **Two animations, and they are opacity and scale.** A few drawn strokes
+    thrown out from a checkbox when it is ticked, and a short swell as a done
+    task leaves. No colour, no shadow, nothing that moves a row while it plays.
+
+    Both ask `prefers-reduced-motion` in JavaScript rather than hiding in CSS.
+    The sparkle is cleared by its own `animationend`, so one that is merely
+    invisible never clears and its strokes stay in the document for good.
+
+63. **Everything folds shut while a group is carried.** The whole list becomes a
+    handful of titles, so there is somewhere visible to put it down. Nothing is
+    written: the fold is a view of the drag, not a change to what is collapsed,
+    and collapsed state is local and stays that way.
+
 ## Corrections to the build plan
 
 Each of these is a deviation, recorded so it reads as deliberate rather than as
 drift.
 
-60. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
+64. **The browser never talks to the blob host.** §5 says so; §3, §9 and §11
     still described reads coming straight from the CDN. §5 is right — it is what
     makes `connect-src 'self'` possible — so `PUBLIC_BLOB_BASE` and the
     `/api/room/[roomId]/version` route are both gone.
 
-61. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
+65. **Stamps come from a per-device monotonic clock**, `t = max(now, last + 1)`,
     persisted beside the client id. Without it, two edits from one device in the
     same millisecond collide on `(t, c)` and merge stops being commutative. The
     comparator also falls back to the value itself, which makes it total for any
     document, including a corrupt one.
 
-62. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
+66. **`merge` takes no clock.** Skew clamping (`clampStamps(doc, now)`) and
     tombstone collection (`gc(doc, now)`) are separate functions applied by the
     sync and write paths. Folding either into merge would destroy the algebra
     the property tests check.
 
-63. **Every write is read back once.** Blob storage has no compare-and-set, so
+67. **Every write is read back once.** Blob storage has no compare-and-set, so
     two writers can both pass the version check and the second one's bytes win.
     The loser cannot tell from the version number — it was told 2, the server
     holds 2, and its next conditional read returns 304 forever. The
@@ -538,18 +568,18 @@ drift.
     `tests/sync.spec.ts` sets the race up deliberately; removing the read-back
     makes it fail.
 
-64. **The ETag is the document's own version**, not the blob's upload time and
+68. **The ETag is the document's own version**, not the blob's upload time and
     size. The latter answers a conditional read without fetching the body, but
     two writes in the same millisecond whose JSON is the same length produce an
     identical token, and the second is reported as unchanged. A saved fetch is
     not worth a lost edit.
 
-65. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
+69. **The crypto envelope carries a version byte**: `base64(0x01 ‖ iv ‖
 ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     optional, but it cannot be past the first write — a reader cannot tell a
     compressed payload from an uncompressed one.
 
-66. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
+70. **`style-src` carries one pinned hash under `'unsafe-hashes'`.**
     SvelteKit's own `#svelte-announcer` has a hardcoded `style` attribute we do
     not author and cannot switch off. `'unsafe-hashes'` permits that exact
     string and nothing else; it is not `'unsafe-inline'`. `trusted-types` names
@@ -557,7 +587,7 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     `e2e/csp.e2e.ts` fails on any console error, so an upgrade that changes the
     string breaks CI rather than the policy.
 
-67. **"Loose ends" has an id no document can hold**, and that is deliberate.
+71. **"Loose ends" has an id no document can hold**, and that is deliberate.
     `__loose__` fails the `/^[A-Za-z0-9]{1,24}$/` the validator enforces, which
     is what stops it ever being written to a document and then syncing to
     someone who has no such group. The cost is that anything which can name a

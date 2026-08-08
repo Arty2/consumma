@@ -355,6 +355,41 @@ test('a group title has the air under it that the tasks have between them', asyn
 	expect(Math.abs(gaps.underTitle - rhythm)).toBeLessThan(3);
 });
 
+test('the toast reads on the middle of its own box', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	await page.getByRole('checkbox', { name: 'Bread' }).click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	await expect(page.locator('.toast')).toBeVisible();
+
+	const offset = await page.evaluate(() => {
+		const toast = document.querySelector('.toast')!;
+		const words = toast.querySelector('span')!;
+		const drawn = toast.querySelector('svg.rect path')!.getBoundingClientRect();
+
+		const style = getComputedStyle(words);
+		const range = document.createRange();
+		range.selectNodeContents(words);
+		const line = range.getBoundingClientRect();
+
+		const ctx = document.createElement('canvas').getContext('2d')!;
+		ctx.font = `${style.fontSize} ${style.fontFamily}`;
+		const m = ctx.measureText(words.textContent!.trim().toUpperCase());
+		const fh = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
+		const base = line.top + (line.height - fh) / 2 + m.fontBoundingBoxAscent;
+		const ink = (base - m.actualBoundingBoxAscent + (base + m.actualBoundingBoxDescent)) / 2;
+
+		return (drawn.top + drawn.bottom) / 2 - ink;
+	});
+
+	// Graphe's capitals ride high, so a box centred on the row reads low.
+	expect(Math.abs(offset)).toBeLessThan(2);
+});
+
 test('a checkbox sits level with the capitals it is beside', async ({ page }) => {
 	/*
 	 * What `--cap-lift` is for. Graphe's capitals ride high in their own line

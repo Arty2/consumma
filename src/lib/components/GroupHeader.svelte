@@ -19,6 +19,8 @@
 		ontoggle: () => void;
 		onrename: (title: string) => void;
 		ondelete: () => void;
+		/** Enter leaves the name and opens a task at the top of the group. */
+		onaddtask: () => void;
 		onreorder: (index: number) => void;
 	};
 
@@ -32,6 +34,7 @@
 		ontoggle,
 		onrename,
 		ondelete,
+		onaddtask,
 		onreorder
 	}: Props = $props();
 
@@ -68,7 +71,10 @@
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			(event.currentTarget as HTMLInputElement).blur();
+			// Committing here rather than through blur, so the row that opens next
+			// is not closed again by the blur that would follow.
+			commit();
+			onaddtask();
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			editing = false;
