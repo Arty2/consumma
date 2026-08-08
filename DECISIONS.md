@@ -655,6 +655,52 @@ ciphertext)`, with the plaintext always deflate-raw. §3 called compression
     accommodate it: a task pointed at `__loose__` makes the whole document fail
     validation, and the next load then discards the entire list.
 
+78. **A price is read off the task, not stored beside it.** A shopping list
+    already carries its numbers — `2x Tomatos 5,08` — and what it could not do
+    was say what the trolley comes to. That could have been two new fields on a
+    task, and it is not: a task is one string, and adding a `cost` to the
+    document would mean a schema version, a merge rule for it, a stamp for it,
+    and an export that no longer round-trips through another app. `amount.ts`
+    reads the string on the way to the screen instead, the way `lang.ts` does,
+    and `aria-label`, the markdown export and merge never see the difference.
+
+    **Both `,` and `.` are decimal separators, and thousands are still
+    readable.** Picking one mark and calling the other a grouping separator
+    would have been simpler and wrong in half of Europe; picking by locale would
+    make one person's list read differently on the other person's phone, which
+    is the one thing a shared list cannot do. So the digit pattern decides: one
+    or two digits behind the final mark makes it a decimal point, exactly three
+    makes it a grouping mark, four is neither and the line has no price in it.
+    `5,08` and `5.08` are the same money, `1,234` and `1.234` are the same
+    thousand, and `1.234,56` and `1,234.56` both come to the same. Values are
+    held in integer minor units, because ten prices at `0,10` have to come to
+    `1,00` and floats do not.
+
+    **Done does not count; half counts in full.** The total is what is still to
+    buy, so a ticked task is already in the basket. Half is not half the money —
+    it is a task still on the list, and the tri-state was never a progress bar.
+
+    **The total sits on the group header**, between the title and the `[…]`,
+    because a group is what a total belongs to and the header is the one row
+    that is not a task. It stays while the group is collapsed, which is when a
+    number standing in for four hidden rows is worth the most.
+
+    **The figures are set in a system monospace**, and that is the single
+    exception to one typeface. A price is a figure rather than a word: it has to
+    line down a column, and tabular digits in the hand would still not read as a
+    different kind of thing from the words beside them. A system stack rather
+    than a second `@font-face` keeps the exception cheap — no file, no request,
+    nothing added to `connect-src`. `e2e/design.e2e.ts` names it by class
+    instead of loosening the rule, so anything else leaving Graphe still fails.
+
+    `--mono-scale` corrects for the mono being drawn on a larger body than
+    Graphe, in one place and for the same reason `size-adjust` and `--cap-lift`
+    exist. It is measured in a browser, not derived. Inside a row the words take
+    `overflow-wrap: break-word` rather than the `anywhere` a plain row uses:
+    both break the same words, but `anywhere` also shrinks the element's
+    min-content width to a single character, and a flex item sized from that
+    gives the words a column two letters wide while the price sits in daylight.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

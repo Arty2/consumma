@@ -1,6 +1,7 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
 	import TriCheckbox from './TriCheckbox.svelte';
+	import { amountsIn } from '$lib/doc/amount';
 	import { length } from '$lib/doc/clean';
 	import { langOf } from '$lib/doc/lang';
 	import { COUNTER_APPEARS_AT, LIMITS } from '$lib/doc/limits';
@@ -13,6 +14,8 @@
 	type Props = {
 		task: Task;
 		groupId: string;
+		/** Some task in the group leads with a count, so every row keeps room for one. */
+		reserve: boolean;
 		onstate: (state: State) => void;
 		onedit: (text: string) => void;
 		ondelete: () => void;
@@ -23,8 +26,18 @@
 		onEnterGroup: (groupId: string) => void;
 	};
 
-	let { task, groupId, onstate, onedit, ondelete, onsplit, onmove, ondrop, onEnterGroup }: Props =
-		$props();
+	let {
+		task,
+		groupId,
+		reserve,
+		onstate,
+		onedit,
+		ondelete,
+		onsplit,
+		onmove,
+		ondrop,
+		onEnterGroup
+	}: Props = $props();
 
 	let editing = $state(false);
 	let draft = $state('');
@@ -32,6 +45,17 @@
 	let going = $state(false);
 
 	const lifted = $derived(drag.isLifted(task.id));
+
+	/*
+	 * The count at the front and the price at the back, read on the way to the
+	 * screen and never written down — the text is one string and stays one.
+	 *
+	 * A row with neither, in a group with neither, is left exactly as it was: a
+	 * text node in a button. Only a row that has something to line up becomes
+	 * three cells, so nothing about an ordinary list moves.
+	 */
+	const reading = $derived(amountsIn(task.text));
+	const shaped = $derived(reserve || reading.amount !== null || reading.cost !== null);
 	const remaining = $derived(LIMITS.taskText - length(draft));
 	const showCounter = $derived(editing && length(draft) >= COUNTER_APPEARS_AT);
 	const cross = $derived(handCross(18, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
@@ -123,13 +147,25 @@
 		-->
 		<button
 			class="text caps"
+			class:shaped
 			type="button"
 			lang={langOf(task.text)}
 			aria-label={task.text}
 			onclick={startEditing}
 			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}
 		>
-			{task.text}
+			{#if shaped}
+				{#if reserve || reading.amount !== null}
+					<!-- Empty on a row that has no count: the space is what lines the names up. -->
+					<span class="num amount">{reading.amount ?? ''}</span>
+				{/if}
+				<span class="name">{reading.name}</span>
+				{#if reading.cost}
+					<span class="num cost">{reading.cost}</span>
+				{/if}
+			{:else}
+				{task.text}
+			{/if}
 		</button>
 	{/if}
 
@@ -213,6 +249,41 @@
 		touch-action: auto;
 		user-select: text;
 		-webkit-user-select: text;
+	}
+
+	/*
+	 * Three cells rather than a line of words, and only once there is something
+	 * to line up. Baselines rather than boxes: the figures are set in a
+	 * different face from the words beside them, and the baseline is what the
+	 * two share.
+	 */
+	.text.shaped {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5rem;
+	}
+
+	/*
+	 * `break-word` here, not the `anywhere` the plain row uses. They break the
+	 * same words; the difference is that `anywhere` also shrinks the element's
+	 * min-content width to one character, and a flex item sized from that gives
+	 * the words a column two letters wide while the price sits in daylight.
+	 */
+	.name {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow-wrap: break-word;
+	}
+
+	/* Wide enough for a count and its x, so the names start at one place. */
+	.amount {
+		flex: 0 0 auto;
+		min-width: 2.5ch;
+	}
+
+	/* Last in the row, so the prices end level down the right-hand edge. */
+	.cost {
+		flex: 0 0 auto;
 	}
 
 	.counter {

@@ -46,6 +46,22 @@
 
 	--hand: 'Graphe', ui-rounded, cursive;
 
+	/*
+	 * The one thing on the sheet not written in the hand, and the exception is
+	 * the point: a recognised count or price is a figure, not a word, and it is
+	 * set apart so the column reads down.
+	 *
+	 * A system stack, so this is still exactly one @font-face, one file and no
+	 * request — nothing here touches connect-src or the CSP.
+	 *
+	 * The scale correction is measured in a browser, not derived, for the same
+	 * reason `size-adjust` and `--cap-lift` are: mono faces are drawn on a
+	 * larger body than Graphe, and the two have to read at the same size when
+	 * they sit on one line. Retune it if either face changes.
+	 */
+	--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	--mono-scale: 0.9;
+
 	/* 32 / 22 / 17 / 14. Handwritten faces need more line-height than you think. */
 	--size-display: 2rem;
 	--size-title: 1.5rem;
@@ -132,6 +148,23 @@ body {
 .caps {
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
+}
+
+/*
+ * A figure the app has recognised: the count at the front of a task, the price
+ * at the back, and the total on a group's header.
+ *
+ * Tabular so the prices line down the right-hand edge, heavier so they read as
+ * figures against the words, and without the caps letter-spacing, which is set
+ * for Graphe's capitals and only loosens digits.
+ */
+.num {
+	font-family: var(--mono);
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	font-size: calc(1em * var(--mono-scale));
+	letter-spacing: normal;
+	text-transform: none;
 }
 
 /*

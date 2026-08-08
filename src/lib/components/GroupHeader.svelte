@@ -17,6 +17,8 @@
 		finished: boolean;
 		/** Loose ends is assembled on read, so it has no title to edit. */
 		editable: boolean;
+		/** What the group's unfinished tasks come to, or nothing to total. */
+		total: string | null;
 		ontoggle: () => void;
 		onrename: (title: string) => void;
 		ondelete: () => void;
@@ -32,6 +34,7 @@
 		count,
 		finished,
 		editable,
+		total,
 		ontoggle,
 		onrename,
 		ondelete,
@@ -117,6 +120,12 @@
 		<HandRect seed={`liftgroup${seed}`} dashed wobble={1.2} />
 	{/if}
 
+	<!--
+		Three things on this row, and the middle one is the same in both states,
+		which is why the name and the icon are branched separately rather than
+		together: the total does not move when a rename swaps one for an input
+		and the other for a cross.
+	-->
 	{#if editing}
 		<!-- svelte-ignore a11y_autofocus -->
 		<input
@@ -130,7 +139,35 @@
 			onblur={commit}
 			{onkeydown}
 		/>
+	{:else}
+		<!--
+			The name, and the way to change it. A long press picks the group up
+			instead — the same gesture that lifts a task, on the same kind of row.
+		-->
+		<button
+			class="title caps"
+			class:untitled={title === ''}
+			type="button"
+			lang={langOf(title)}
+			aria-label={title === '' ? 'Untitled group' : title}
+			onclick={startEditing}
+			onkeydown={(event) => event.key === 'F2' && startEditing()}
+			use:dragGroup={{ groupId: seed, enabled: editable, onDrop: onreorder }}
+		>
+			{title === '' ? '…' : title}
+		</button>
+	{/if}
 
+	<!--
+		What the group still costs. Done tasks are bought and do not count; half
+		ones are still on the list and count in full. It stays while the group is
+		collapsed, which is when it is worth most.
+	-->
+	{#if total !== null}
+		<span class="num total">{total}</span>
+	{/if}
+
+	{#if editing}
 		<!--
 			While the name is being edited, the icon's place is taken by the way to
 			get rid of the group. It is the same 44px square, so nothing moves.
@@ -150,23 +187,6 @@
 			</svg>
 		</button>
 	{:else}
-		<!--
-			The name, and the way to change it. A long press picks the group up
-			instead — the same gesture that lifts a task, on the same kind of row.
-		-->
-		<button
-			class="title caps"
-			class:untitled={title === ''}
-			type="button"
-			lang={langOf(title)}
-			aria-label={title === '' ? 'Untitled group' : title}
-			onclick={startEditing}
-			onkeydown={(event) => event.key === 'F2' && startEditing()}
-			use:dragGroup={{ groupId: seed, enabled: editable, onDrop: onreorder }}
-		>
-			{title === '' ? '…' : title}
-		</button>
-
 		<!--
 			Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
 			[…], the same ellipsis an untitled group and the add row use for "there
@@ -261,6 +281,16 @@
 
 	.untitled {
 		opacity: var(--faint);
+	}
+
+	/*
+	 * Set at task size rather than title size: it belongs to the rows under it,
+	 * not to the name beside it, and a second thing in title type would read as
+	 * a second title.
+	 */
+	.total {
+		flex: 0 0 auto;
+		font-size: var(--size-task);
 	}
 
 	.icon {

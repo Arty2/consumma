@@ -70,16 +70,28 @@ test('the palette is black on white and nothing else', async ({ page }) => {
 test('one handwritten face, served from our origin, and only one', async ({ page }) => {
 	const families = await page.evaluate(() => [...document.fonts].map((f) => f.family));
 
-	// Titles and body differ by size and caps, not by typeface.
+	// Titles and body differ by size and caps, not by typeface. This is the
+	// assertion that guards against a second downloaded face, and it holds
+	// whatever the carve-out below allows: the figures are a system stack, so
+	// there is still one @font-face, one file and no extra request.
 	expect(families).toStrictEqual(['Graphe']);
 
-	const used = await page.evaluate(() => [
-		...new Set(
-			[...document.querySelectorAll('body *')].map((el) => getComputedStyle(el).fontFamily)
-		)
-	]);
-	for (const stack of used) {
-		expect(stack, stack).toContain('Graphe');
+	/*
+	 * The one exception, and it is named rather than inferred: a recognised
+	 * count or price carries `.num` and is set in the mono stack, because a
+	 * figure is not a word and the prices have to line down a column. Anything
+	 * else resolving to something other than Graphe is a second face creeping
+	 * back in.
+	 */
+	const used = await page.evaluate(() =>
+		[...document.querySelectorAll('body *')].map((el) => ({
+			figure: el.classList.contains('num'),
+			stack: getComputedStyle(el).fontFamily
+		}))
+	);
+	for (const { figure, stack } of used) {
+		if (figure) expect(stack, stack).toContain('ui-monospace');
+		else expect(stack, stack).toContain('Graphe');
 	}
 });
 

@@ -3,6 +3,7 @@
 	import GroupHeader from './GroupHeader.svelte';
 	import TaskRow from './TaskRow.svelte';
 	import TextRule from './TextRule.svelte';
+	import { groupTotal, hasAmounts } from '$lib/doc/amount';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import type { State } from '$lib/doc/types';
@@ -167,6 +168,7 @@
 				count={group.tasks.length}
 				finished={group.tasks.every((task) => task.state === 'done')}
 				editable={!group.synthetic}
+				total={groupTotal(group.tasks)}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
 				onrename={(title) => sheet.renameGroup(group.id, title)}
 				ondelete={() => removeGroup(group.id, group.title)}
@@ -198,6 +200,7 @@
 						<TaskRow
 							{task}
 							groupId={group.id}
+							reserve={hasAmounts(group.tasks)}
 							onstate={(state) => setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
