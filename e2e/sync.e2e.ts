@@ -366,6 +366,59 @@ test('the corner sync button says when it did sync', async ({ page }) => {
 	await expect(page.getByRole('button', { name: /^Sync —/ })).toHaveCount(0);
 });
 
+test('the mark works while the sync is in flight, and goes out on a fade', async ({ page }) => {
+	/*
+	 * Syncing is the one thing here that takes long enough to wonder about, and
+	 * the button went as still during it as it is when idle. Now it moves — the
+	 * circular arrow turns, the outbox arrow breathes, both on the same count so
+	 * the corner reads as one thing working.
+	 */
+	await device(page, 'aaaa bbbb cccc');
+	await addTask(page, 'Bread');
+
+	const button = page.getByRole('button', { name: /^Sync —/ });
+	const mark = page.locator('.sync svg');
+
+	const animation = () =>
+		mark.evaluate((el) => {
+			const style = getComputedStyle(el);
+			return {
+				name: style.animationName,
+				duration: style.animationDuration,
+				count: style.animationIterationCount
+			};
+		});
+
+	// Idle: still.
+	expect((await animation()).name).toBe('none');
+
+	/*
+	 * The same fake server, answering slowly. Registered over the one `device`
+	 * put down, and calling it rather than continuing to the network — there is
+	 * no network here, and a sync that is over before the first frame cannot be
+	 * read off the button at all.
+	 */
+	await page.route('**/api/room/**', async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, 700));
+		await api(route);
+	});
+	await button.click();
+
+	const working = await animation();
+	// Something waiting to go, so this is the outbox arrow: it breathes.
+	expect(working.name).toContain('pulse');
+	expect(working.duration).toBe('0.9s');
+	expect(working.count).toBe('infinite');
+
+	/*
+	 * And then it leaves. The button vanishing is the only sign the corner gives
+	 * that the sync landed, and a mark that blinks out is one you are never sure
+	 * you saw — so it fades, and is gone once the fade ends.
+	 */
+	await expect(page.getByRole('status').filter({ hasText: 'Synced.' })).toBeVisible();
+	await expect(button).toHaveCount(0);
+});
+
 test('a crossed circle when the list cannot be reached', async ({ page }) => {
 	/*
 	 * Offline had no mark at all. It is not an error — everything is safe on the

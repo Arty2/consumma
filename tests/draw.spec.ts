@@ -465,6 +465,8 @@ describe('handSlashedCircle', () => {
 
 describe('handSun, handMoon and handSunMoon', () => {
 	const SIZE = 22;
+	/** --stroke in src/app.css: what every one of these is drawn with. */
+	const STROKE = 1.4;
 	const centre = { x: SIZE / 2, y: SIZE / 2 };
 	const radius = (p: { x: number; y: number }) => Math.hypot(p.x - centre.x, p.y - centre.y);
 
@@ -520,8 +522,14 @@ describe('handSun, handMoon and handSunMoon', () => {
 		const along = (apex.x - centre.x) * Math.cos(facing) + (apex.y - centre.y) * Math.sin(facing);
 		expect(along).toBeLessThan(0);
 
-		// And short of the limb, or the two strokes meet and the waist closes.
-		expect(radius(apex)).toBeLessThan(SIZE * 0.32);
+		/*
+		 * And far enough short of the limb to leave a moon between the two
+		 * strokes rather than a bend in one. A hairline crescent at 22px is a
+		 * stroke that changed its mind, so the waist has to clear the width it
+		 * is drawn with by a good margin, not by a hair.
+		 */
+		const waist = SIZE * 0.32 - radius(apex);
+		expect(waist).toBeGreaterThan(STROKE * 2);
 	});
 
 	it('strikes every ray clear of the body in the middle of it', () => {
@@ -529,10 +537,14 @@ describe('handSun, handMoon and handSunMoon', () => {
 		expect(sun).toHaveLength(16);
 		for (const p of sun) expect(radius(p)).toBeGreaterThan(SIZE * 0.19);
 
-		// Sparser, because the gaps in the corona are what say `crescent`.
+		/*
+		 * Sparser, because the gaps in the corona are what say `crescent` — and
+		 * struck clear of the limb by more than the stroke that draws them, or
+		 * the rays read as spines on the moon rather than as light behind it.
+		 */
 		const both = horns(handSunMoon(SIZE, { seed: 5, wobble: 0 })).rays;
 		expect(both).toHaveLength(12);
-		for (const p of both) expect(radius(p)).toBeGreaterThan(SIZE * 0.28);
+		for (const p of both) expect(radius(p)).toBeGreaterThan(SIZE * 0.23 + STROKE);
 	});
 
 	it('stays inside its box at any seed', () => {

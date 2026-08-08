@@ -6,6 +6,7 @@
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import type { State } from '$lib/doc/types';
+	import type { ViewGroup } from '$lib/doc/view';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, type DropTarget } from '$lib/dnd/drag.svelte';
@@ -77,14 +78,47 @@
 	}
 
 	/**
+	 * The group id a new task is stored under.
+	 *
+	 * Loose ends has none of its own: `LOOSE_ENDS_ID` is a view constant, and
+	 * `ID_PATTERN` refuses it, so storing a task under it would fail validation
+	 * on the next read and take the whole document down with it. What the tasks
+	 * already under that heading point at is a real id — the group they lost —
+	 * and a new one joins them there rather than inventing a second nowhere.
+	 */
+	function groupIdFor(group: ViewGroup): string | null {
+		if (!group.synthetic) return group.id;
+		return group.tasks[0]?.groupId ?? null;
+	}
+
+	/** The add row at the end of a group, Loose ends included. */
+	function add(group: ViewGroup, text: string): boolean {
+		const groupId = groupIdFor(group);
+		if (groupId === null) return false;
+
+		return group.synthetic
+			? sheet.addTaskAfter(groupId, text, group.tasks.at(-1)?.order ?? null) !== null
+			: sheet.addTask(groupId, text) !== null;
+	}
+
+	/**
 	 * Puts a task in at a position rather than on the end, and moves the open
 	 * row down past it so a run of Enters reads top to bottom.
 	 */
-	function insert(groupId: string, index: number, text: string): boolean {
-		const id = sheet.addTaskAt(groupId, index, text);
+	function insert(group: ViewGroup, index: number, text: string): boolean {
+		const groupId = groupIdFor(group);
+		if (groupId === null) return false;
+
+		/*
+		 * Within Loose ends an index means nothing — see addTaskAfter — so it
+		 * goes after the task it was opened beneath.
+		 */
+		const id = group.synthetic
+			? sheet.addTaskAfter(groupId, text, group.tasks[index - 1]?.order ?? null)
+			: sheet.addTaskAt(groupId, index, text);
 		if (id === null) return false;
 
-		inserting = { groupId, index: index + 1 };
+		inserting = { groupId: group.id, index: index + 1 };
 		return true;
 	}
 
@@ -194,7 +228,7 @@
 								seed={`${group.id}-at${taskIndex}`}
 								disabled={!sheet.canAddTask}
 								opened
-								onadd={(text) => insert(group.id, taskIndex, text)}
+								onadd={(text) => insert(group, taskIndex, text)}
 								onclose={() => (inserting = null)}
 							/>
 						{/if}
@@ -233,19 +267,24 @@
 							seed={`${group.id}-end`}
 							disabled={!sheet.canAddTask}
 							opened
-							onadd={(text) => insert(group.id, group.tasks.length, text)}
+							onadd={(text) => insert(group, group.tasks.length, text)}
 							onclose={() => (inserting = null)}
 						/>
 					{/if}
 
-					{#if !group.synthetic}
-						<AddRow
-							seed={group.id}
-							disabled={!sheet.canAddTask}
-							{lone}
-							onadd={(text) => sheet.addTask(group.id, text) !== null}
-						/>
-					{/if}
+					<!--
+						Every group ends with one, Loose ends included. It is assembled
+						on read rather than stored, but it is still a heading with tasks
+						under it and the last thing on the sheet — leaving it the only
+						one with no way to add put a dead end at the bottom of the page,
+						which is where a list is most likely to be added to.
+					-->
+					<AddRow
+						seed={group.id}
+						disabled={!sheet.canAddTask}
+						{lone}
+						onadd={(text) => add(group, text)}
+					/>
 				</ul>
 			{/if}
 		</section>

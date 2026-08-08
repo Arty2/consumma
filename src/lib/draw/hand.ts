@@ -708,6 +708,17 @@ function crescent(
  */
 const FACING = -Math.PI * 0.25;
 
+/**
+ * The one crescent both marks are cut from, drawn at two sizes.
+ *
+ * A generous waist and a narrow gap: a moon this app draws is a moon a few
+ * nights off full, not a fingernail. Thinner, it came out as a stroke with a
+ * bend in it — and the sliver that was left in the smaller of the two closed
+ * up altogether once the corona was around it.
+ */
+const GAP = Math.PI * 0.26;
+const WAIST = 0.68;
+
 /** The theme is light: a sun, disc and all. */
 export function handSun(size: number, options: HandOptions & { rays?: number }): string {
 	const c = size / 2;
@@ -724,7 +735,7 @@ export function handSun(size: number, options: HandOptions & { rays?: number }):
 
 /** The theme is dark: a moon, and nothing else in the sky. */
 export function handMoon(size: number, options: HandOptions): string {
-	return crescent(size / 2, size * 0.32, FACING, Math.PI * 0.34, 0.42, options);
+	return crescent(size / 2, size * 0.32, FACING, GAP, WAIST, options);
 }
 
 /**
@@ -742,7 +753,16 @@ export function handMoon(size: number, options: HandOptions): string {
  */
 export function handSunMoon(size: number, options: HandOptions): string {
 	const c = size / 2;
-	const moon = crescent(c, size * 0.28, FACING, Math.PI * 0.38, 0.42, options);
+	/*
+	 * A smaller moon than handMoon draws, and the corona struck further out
+	 * than the sun's, so there is a clear band of paper between the two. Sat
+	 * closer they touched at 22px and the rays read as spines on the moon
+	 * rather than as light behind it.
+	 *
+	 * The rays are shorter for it. That is the right thing to spend: their
+	 * length says nothing, and the gap says these are two bodies.
+	 */
+	const moon = crescent(c, size * 0.23, FACING, GAP, WAIST, options);
 
 	return `${moon} ${corona(c, size, 6, 0.37, 0.46, options)}`;
 }
