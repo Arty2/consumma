@@ -12,6 +12,16 @@ import { buzz, LONG_PRESS_MS } from './longpress';
 
 export type DropTarget = { groupId: string; index: number };
 
+/**
+ * Not a group — the row that offers to make one.
+ *
+ * A task carried onto it lands in a group that does not exist yet, so the drop
+ * makes one and puts it there. It is a group id in the shape of the answer
+ * rather than a second kind of target, because everything between here and the
+ * drop already speaks in group ids.
+ */
+export const NEW_GROUP = '__newgroup__';
+
 const EDGE = 60;
 const EDGE_SPEED = 12;
 
@@ -71,6 +81,15 @@ export type DragOptions = {
  */
 function targetAt(x: number, y: number, movingId: string): DropTarget | null {
 	const elements = document.elementsFromPoint(x, y);
+
+	/*
+	 * Asked first, because the row that offers a new group sits between the
+	 * groups rather than inside one — neither branch below would find it, and
+	 * the pointer would go on reporting the last group it was over.
+	 */
+	if (elements.some((el) => el instanceof HTMLElement && el.dataset.newgroup !== undefined)) {
+		return { groupId: NEW_GROUP, index: 0 };
+	}
 
 	const row = elements.find((el) => el instanceof HTMLElement && el.dataset.task) as
 		HTMLElement | undefined;

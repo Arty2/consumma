@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { handArrow, handRefresh, handSlashedCircle } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { sheet } from '$lib/state/doc.svelte';
@@ -42,6 +43,34 @@
 	 * device either way, but "it did not go" is not something to find out later.
 	 */
 	const shown = $derived(!nothingYet && (offline || waiting || sync.stale));
+
+	/*
+	 * Asked in JS rather than left to a media query, as every animation here is:
+	 * `leaving` is cleared by its own animationend, and a fade that is merely
+	 * switched off in CSS never ends, so the button would sit invisible in the
+	 * corner holding its place for good.
+	 */
+	const still = () => browser && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	/** While a sync is actually in flight — from here or from the menu. */
+	const working = $derived(sync.busy && !still());
+
+	/*
+	 * On its way out after a sync that left nothing to offer.
+	 *
+	 * Kept on the page for the length of the fade, because the button vanishing
+	 * is the only sign the corner gives that the sync landed, and a mark that
+	 * blinks out is one you are never sure you saw.
+	 */
+	let leaving = $state(false);
+	let was = false;
+
+	$effect(() => {
+		const now = shown;
+		if (now) leaving = false;
+		else if (was && !still()) leaving = true;
+		was = now;
+	});
 
 	const label = $derived(
 		offline
@@ -92,16 +121,26 @@
 	});
 </script>
 
-{#if shown}
+{#if shown || leaving}
 	<button
 		class="sync"
+		class:leaving
 		type="button"
-		disabled={sync.busy || sync.cooling}
+		disabled={leaving || sync.busy || sync.cooling}
 		onclick={syncNow}
+		onanimationend={() => (leaving = false)}
 		aria-label={label}
 		title={label}
 	>
-		<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE} aria-hidden="true">
+		<svg
+			class="mark"
+			class:working
+			class:turning={working && !offline && !waiting}
+			viewBox="0 0 {SIZE} {SIZE}"
+			width={SIZE}
+			height={SIZE}
+			aria-hidden="true"
+		>
 			<path d={offline ? slash : waiting ? arrow : refresh} class="drawn" />
 		</svg>
 	</button>
@@ -123,5 +162,55 @@
 
 	svg {
 		overflow: visible;
+	}
+
+	/*
+	 * One beat for every mark this button draws, so the corner reads as one
+	 * thing working rather than as two different ideas about waiting. The
+	 * circular arrow turns, because it is a stroke that came round and turning
+	 * is what it already means. The outbox arrow cannot turn without pointing
+	 * somewhere it does not mean, and the crossed circle turning would read as
+	 * a mark being scribbled out, so both of those breathe on the same count
+	 * instead — opacity and scale, as everywhere else here.
+	 */
+	.working {
+		animation-duration: 900ms;
+		animation-iteration-count: infinite;
+		animation-name: pulse;
+		animation-timing-function: ease-in-out;
+	}
+
+	.working.turning {
+		animation-name: turn;
+		animation-timing-function: linear;
+	}
+
+	@keyframes turn {
+		to {
+			rotate: 360deg;
+		}
+	}
+
+	@keyframes pulse {
+		50% {
+			opacity: 0.4;
+			scale: 0.86;
+		}
+	}
+
+	/*
+	 * Gone, and the last thing it does is say so. Cleared by its own
+	 * animationend — see `still()` for why that is asked in JS.
+	 */
+	.leaving {
+		animation: fade 260ms ease-out forwards;
+		pointer-events: none;
+	}
+
+	@keyframes fade {
+		to {
+			opacity: 0;
+			scale: 0.8;
+		}
 	}
 </style>
