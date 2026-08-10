@@ -564,10 +564,42 @@ test('the credit names the version, the project and both authors', async ({ page
 	const dedication = credit.getByText('Dialectic Acheropoieton', { exact: false });
 	await expect(dedication).toHaveCSS('font-style', 'italic');
 
-	// The break is three asterisks, not a rule: punctuation rather than a mark,
-	// so it is the one separator here that is not drawn.
-	await expect(credit.locator('.break')).toHaveText('* * *');
-	expect(await credit.locator('svg').count()).toBe(0);
+	/*
+	 * The break above it is the same tear the panel's other sections are told
+	 * apart by. It used to be three asterisks — punctuation rather than a mark,
+	 * and the one separator here that was not drawn, which left the panel with
+	 * two ways of saying the same thing.
+	 */
+	const tear = credit.locator('svg path');
+	await expect(tear).toHaveCount(1);
+
+	// Dashed from the shared class rather than an attribute of its own, which
+	// is what makes it the same mark and not merely a similar one.
+	await expect(tear).toHaveClass(/drawn--dashed/);
+	expect(await tear.evaluate((el) => getComputedStyle(el).strokeDasharray)).not.toBe('none');
+});
+
+test('the menu is told apart by tears, and they are the same mark as Loose ends', async ({
+	page
+}) => {
+	await openMenu(page);
+
+	// One before each of the two headings, and one above the credit.
+	const tears = page.getByRole('dialog', { name: 'Menu' }).locator('.tear svg path');
+	await expect(tears).toHaveCount(3);
+
+	// Drawn and dashed, at the weight everything else here is drawn at.
+	for (const dash of await tears.evaluateAll((paths) =>
+		paths.map((p) => getComputedStyle(p).strokeDasharray)
+	)) {
+		expect(dash).not.toBe('none');
+	}
+
+	// Full width, out to the drawn frame of the drawer — a break that stopped
+	// short of both margins would be a rule, and a rule is a different mark.
+	const panel = (await page.getByRole('dialog', { name: 'Menu' }).boundingBox())!;
+	const first = (await tears.first().boundingBox())!;
+	expect(first.width).toBeGreaterThan(panel.width * 0.85);
 });
 
 test('every underline in the app is drawn, not a CSS decoration', async ({ page }) => {

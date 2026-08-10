@@ -318,7 +318,7 @@
 			{/if}
 
 			<footer class="credit">
-				<p class="break" aria-hidden="true">* * *</p>
+				<div class="tear"><Perforation seed="menu-credit" /></div>
 				<!--
 					The one link off this origin, and it goes to the project's own
 					page. Bare https, and no target: a list held in a browser tab is
@@ -562,8 +562,13 @@
 		margin-top: 2.5rem;
 	}
 
+	/*
+	 * The tear brings its own room above, so the footer adds none of its own.
+	 * It used to open with three asterisks and 3rem of padding; the mark now
+	 * spaces itself the way the other two do.
+	 */
 	.credit {
-		padding-top: 3rem;
+		padding-top: 0;
 	}
 
 	.credit p {
@@ -573,11 +578,9 @@
 		overflow-wrap: anywhere;
 	}
 
-	.credit .break {
-		margin: 0 0 1.25rem;
-		letter-spacing: 0.3em;
-		/* The letter-spacing hangs off the last asterisk; pull the row back. */
-		text-indent: 0.3em;
+	/* The last section break, and the same distance under it as over it. */
+	.credit .tear {
+		margin-bottom: 1.25rem;
 	}
 
 	/*
