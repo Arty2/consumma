@@ -690,3 +690,154 @@ test('carrying a group folds them all shut, and unfolds them after', async ({ pa
 	await page.reload();
 	await expect(page.getByRole('checkbox')).toHaveCount(2);
 });
+
+/**
+ * Strands a task under a group that is not in the document, which is the only
+ * way Loose ends comes about: a group deleted on another phone, or a list
+ * imported with nothing above it.
+ */
+async function strand(page: Page, ...texts: string[]) {
+	await addTask(page, 'Bread');
+	await page.evaluate((stray) => {
+		const doc = JSON.parse(localStorage.getItem('consumma:doc')!);
+		const first = Object.values(doc.tasks)[0] as Record<string, unknown>;
+
+		stray.forEach((text, i) => {
+			const task = JSON.parse(JSON.stringify(first));
+			task.id = `stranded${i}`;
+			task.text = text;
+			task.groupId = 'agroupthatisgone';
+			doc.tasks[task.id] = task;
+		});
+
+		localStorage.setItem('consumma:doc', JSON.stringify(doc));
+	}, texts);
+	await page.reload();
+}
+
+test('what has lost its group is ruled off rather than headed', async ({ page }) => {
+	await strand(page, 'Stray');
+
+	/*
+	 * Loose ends only ever appears because two phones disagreed. Nothing under
+	 * it was put there on purpose, so there is nothing to name, rename, delete,
+	 * carry, collapse or add to — and a title row offers every one of those just
+	 * by looking like one. A perforation across the paper offers none.
+	 */
+	const line = page.getByRole('separator', { name: 'Loose ends' });
+	await expect(line).toBeVisible();
+
+	// Drawn and dashed, like the landing rule and the paper's own edges.
+	const path = line.locator('path');
+	await expect(path).toHaveClass(/drawn--dashed/);
+	expect(await path.evaluate((el) => getComputedStyle(el).strokeWidth)).toBe(
+		await page.evaluate(
+			() => getComputedStyle(document.documentElement).getPropertyValue('--stroke').trim() + 'px'
+		)
+	);
+
+	// Right across the paper, not the width of a word — the rules are not.
+	const across = (await line.boundingBox())!.width;
+	const sheet = (await page.locator('main').boundingBox())!.width;
+	expect(across).toBeCloseTo(sheet, 0);
+
+	// None of the things a heading offers.
+	await expect(page.getByRole('button', { name: 'Loose ends' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Add a task' })).toHaveCount(1);
+	await expect(page.getByRole('button', { name: /^(Collapse|Expand) group/ })).toHaveCount(1);
+	await expect(page.locator('section.group svg.rule')).toHaveCount(1);
+
+	/*
+	 * And the way to make a group belongs above the line, among the ones anyone
+	 * made. Under it, it would read as a way to name what is already there.
+	 */
+	const order = await page
+		.locator('section.group, .new-group')
+		.evaluateAll((els) => els.map((el) => (el.className.includes('new-group') ? 'new' : 'group')));
+	expect(order).toStrictEqual(['group', 'new', 'group']);
+});
+
+test('a task carried onto the new-group row lands in one that did not exist', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Olives');
+	await expect(page.locator('section.group')).toHaveCount(1);
+
+	const row = page.getByRole('button', { name: 'Olives', exact: true });
+	const from = (await row.boundingBox())!;
+	const onto = (await page.locator('.new-group').boundingBox())!;
+
+	await page.mouse.move(from.x + 30, from.y + from.height / 2);
+	await page.mouse.down();
+	// Long enough to lift: a shorter press is a tap and a moved one is a scroll.
+	await page.waitForTimeout(600);
+	await page.mouse.move(from.x + 30, from.y + 10, { steps: 4 });
+	await page.mouse.move(onto.x + 30, onto.y + onto.height / 2, { steps: 12 });
+
+	// The offer is made in the same hand as every other landing. The rule is
+	// what shows; its row takes no room, so the row itself has no box at all.
+	await expect(page.locator('.landing svg')).toBeVisible();
+
+	await page.mouse.up();
+
+	/*
+	 * It arrives unnamed, showing the ellipsis an untitled group always shows.
+	 * Carrying a task somewhere new is one decision; being made to name the
+	 * place before the finger comes up would be a second.
+	 */
+	await expect(page.locator('section.group')).toHaveCount(2);
+	await expect(page.getByRole('button', { name: 'Untitled group' })).toBeVisible();
+
+	const perGroup = await page
+		.locator('section.group')
+		.evaluateAll((els) =>
+			els.map((el) =>
+				[...el.querySelectorAll('[data-task] .text')].map((t) => t.textContent!.trim())
+			)
+		);
+	expect(perGroup).toStrictEqual([['Bread'], ['Olives']]);
+
+	// And it survives being put down.
+	await page.reload();
+	await expect(page.locator('section.group')).toHaveCount(2);
+});
+
+test('the landing rule is drawn in the gap, and never moves the list', async ({ page }) => {
+	/*
+	 * It used to be five pixels tall and in the flow, so every time the target
+	 * changed, every row past it moved five pixels — which is what the jerking
+	 * under the finger was. Worse, the rows it moved are the rows the next hit
+	 * test reads, so the drag was steering by a ruler it kept nudging.
+	 */
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	for (const text of ['One', 'Two', 'Three', 'Four']) {
+		await input.fill(text);
+		await input.press('Enter');
+	}
+	await page.keyboard.press('Escape');
+
+	const tops = () =>
+		page
+			.locator('[data-task]')
+			.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().top));
+
+	// The lifted row tilts, so its own box moves; the rest must not.
+	const before = (await tops()).slice(1);
+
+	const row = (await page.getByRole('button', { name: 'One', exact: true }).boundingBox())!;
+	await page.mouse.move(row.x + 30, row.y + row.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await page.mouse.move(row.x + 30, row.y + 8, { steps: 3 });
+	await page.mouse.move(row.x + 30, row.y + 120, { steps: 10 });
+
+	const landing = page.locator('.landing');
+	await expect(landing).toHaveCount(1);
+	await expect(landing.locator('svg')).toBeVisible();
+
+	// Drawn, but taking no room: the rule sits between two rows, not among them.
+	expect(await landing.evaluate((el) => (el as HTMLElement).offsetHeight)).toBe(0);
+	expect((await tops()).slice(1)).toStrictEqual(before);
+
+	await page.mouse.up();
+});

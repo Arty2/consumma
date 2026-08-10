@@ -22,7 +22,18 @@ const out = join(here, '..', 'static', 'icons');
 
 const SIZE = 512;
 
-function mark(padding: number): string {
+/**
+ * Which way round the two colours go. The palette is still #000 and #fff —
+ * this only decides which of them is the paper, exactly as --ink and --paper
+ * do on the sheet.
+ */
+type Palette = { paper: string; ink: string };
+
+const ON_PAPER: Palette = { paper: '#ffffff', ink: '#000000' };
+const ON_INK: Palette = { paper: '#000000', ink: '#ffffff' };
+
+// Left whole rather than destructured: `ink` below is a length, not a colour.
+function mark(padding: number, palette: Palette): string {
 	const box = SIZE - padding * 2;
 	const seed = seedFrom('consumma');
 
@@ -60,8 +71,8 @@ function mark(padding: number): string {
 	const crossX = x + bracketWidth + gap - crossSize * CROSS_PAD;
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
-	<rect width="${SIZE}" height="${SIZE}" fill="#ffffff"/>
-	<g transform="translate(${padding} ${padding})" fill="none" stroke="#000000" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+	<rect width="${SIZE}" height="${SIZE}" fill="${palette.paper}"/>
+	<g transform="translate(${padding} ${padding})" fill="none" stroke="${palette.ink}" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
 		<path d="${left}" transform="translate(${x} ${top})"/>
 		<path d="${cross}" transform="translate(${crossX} ${(box - crossSize) / 2})"/>
 		<path d="${right}" transform="translate(${x + run - bracketWidth} ${top})"/>
@@ -69,15 +80,33 @@ function mark(padding: number): string {
 </svg>`;
 }
 
+/*
+ * The plain icons are drawn the other way up, because they are the ones a
+ * launch screen puts on `background_color` — which is black, so that opening
+ * the installed app starts from black rather than flashing white at somebody
+ * who is about to be handed a black sheet. Drawn on white they would be a
+ * white card sitting in the middle of that black.
+ *
+ * The launcher icons are not inverted. A maskable icon is what Android cuts
+ * its home-screen tile from, and apple-touch-icon is the same tile on iOS —
+ * neither is the launch screen, and the app's mark on a home screen full of
+ * other apps is not the place to make a statement about the theme.
+ *
+ * Which icon a browser picks for a splash is not in the specification, so a
+ * version that reaches for the maskable one instead would show the mark on
+ * white. That is a worse splash, not a broken one.
+ */
+const splash = Buffer.from(mark(48, ON_INK));
+const touch = Buffer.from(mark(48, ON_PAPER));
+
 /** Maskable icons are cropped to a circle, so the mark needs more room. */
-const plain = Buffer.from(mark(48));
-const maskable = Buffer.from(mark(110));
+const maskable = Buffer.from(mark(110, ON_PAPER));
 
 const targets = [
-	{ file: 'icon-192.png', size: 192, svg: plain },
-	{ file: 'icon-512.png', size: 512, svg: plain },
+	{ file: 'icon-192.png', size: 192, svg: splash },
+	{ file: 'icon-512.png', size: 512, svg: splash },
 	{ file: 'icon-maskable-512.png', size: 512, svg: maskable },
-	{ file: 'apple-touch-icon.png', size: 180, svg: plain }
+	{ file: 'apple-touch-icon.png', size: 180, svg: touch }
 ];
 
 await mkdir(out, { recursive: true });

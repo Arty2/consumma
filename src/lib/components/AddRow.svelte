@@ -12,12 +12,22 @@
 		disabled?: boolean;
 		/** Opened by the parent: Enter on a task puts one of these beneath it. */
 		opened?: boolean;
+		/** The only row on the sheet — see the note on `.ghost` below. */
+		lone?: boolean;
 		onclose?: () => void;
 		/** Backspace on an empty row: it closes, and the task above opens. */
 		onback?: () => void;
 	};
 
-	let { onadd, seed, disabled = false, opened = false, onclose, onback }: Props = $props();
+	let {
+		onadd,
+		seed,
+		disabled = false,
+		opened = false,
+		lone = false,
+		onclose,
+		onback
+	}: Props = $props();
 
 	const SIZE = 22;
 	const box = $derived(
@@ -30,6 +40,9 @@
 
 	/** Open because it was tapped, or because the parent put it here open. */
 	const open = $derived(byTap || opened);
+
+	/** Whether the box is drawn at all, rather than kept back. */
+	const shown = $derived(open || lone);
 
 	// Placed already open rather than tapped: take the caret with it.
 	$effect(() => {
@@ -106,7 +119,7 @@
 	-->
 	<button class="box" type="button" tabindex="-1" aria-hidden="true" {disabled} onclick={start}>
 		<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE}>
-			<path d={box} class="drawn" class:ghost={!open} class:pending={open} />
+			<path d={box} class="drawn" class:ghost={!shown} class:shown />
 		</svg>
 	</button>
 
@@ -168,12 +181,10 @@
 	}
 
 	/*
-	 * Drawn but not shown, until there is something being written in it.
+	 * Drawn but not shown.
 	 *
-	 * An empty square at the end of a list read as one more thing to do rather
-	 * than as room for one — but once the row is open it is the box that task is
-	 * about to get, and it should be there to see. Faint, like everything else
-	 * that is not quite real yet.
+	 * An empty square at the end of a list reads as one more thing to do rather
+	 * than as room for one, so at the end of a list it is kept back.
 	 *
 	 * Its own rule rather than a change to --faint, which is a value and not a
 	 * switch.
@@ -182,8 +193,14 @@
 		opacity: 0;
 	}
 
-	/* Open: the box that task is about to get, as faint as the words in it. */
-	.pending {
+	/*
+	 * The two cases where it is there to see, both as faint as the words beside
+	 * it: once the row is open, because that is the box the task is about to
+	 * get — and on a sheet with nothing on it, because there is then no list
+	 * for it to be mistaken for the end of. It is the only row there, and the
+	 * only thing saying what a task on this sheet looks like.
+	 */
+	.shown {
 		opacity: var(--faint);
 	}
 
