@@ -210,14 +210,18 @@
 <Toast />
 
 <style>
+	/*
+	 * The paper's own box, and the menu is laid out from the same variables —
+	 * the panel is the back of this sheet, not a drawer beside it. See app.css.
+	 */
 	.page {
-		max-width: 34rem;
+		max-width: var(--paper-width);
 		margin: 0 auto;
-		padding: 0 1rem calc(2rem + env(safe-area-inset-bottom));
+		padding: 0 var(--paper-x) var(--paper-bottom);
 	}
 
 	.top {
-		padding-top: calc(2rem + env(safe-area-inset-top));
+		padding-top: var(--paper-top);
 	}
 
 	/*
@@ -228,7 +232,7 @@
 	main {
 		display: block;
 		position: relative;
-		padding: 0 1.25rem;
+		padding: 0 var(--paper-inset);
 	}
 
 	/*

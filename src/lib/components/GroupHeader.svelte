@@ -1,9 +1,10 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
+	import Perforation from './Perforation.svelte';
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handCross, handLine } from '$lib/draw/hand';
+	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
 	import { taken, tapped } from '$lib/feel';
@@ -50,33 +51,63 @@
 	/** Set for the length of the pop, so the group leaves rather than vanishes. */
 	let going = $state(false);
 
-	let width = $state(0);
-
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
-	/*
-	 * Measured rather than stretched, like every other drawn line here: a rule
-	 * generated once and scaled to fit comes out with an uneven weight, because a
-	 * stroke under an anisotropic transform is thinner along the squashed axis.
-	 */
-	const perforation = $derived(
-		width > 0 ? handLine(width, { seed: seedFrom(`perf${seed}`), wobble: 1.2, y: 2 }) : ''
-	);
-	const cross = $derived(handCross(20, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
+	/* The same mark, the same size, as the ✕ on every done task below it. */
+	const CROSS = 11;
+
+	const cross = $derived(handCross(CROSS, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
 
 	/** What the rule is drawn under: the title, or the title being typed. */
 	const shown = $derived(editing ? draft : title === '' ? '…' : title);
 
+	/**
+	 * Long enough to be a second tap, short enough not to catch two decisions.
+	 * The same window a task row and the checkbox use — it is the same finger.
+	 */
+	const DOUBLE_TAP_MS = 320;
+
+	let folding: ReturnType<typeof setTimeout> | null = null;
+
 	/*
-	 * Three controls on one row, and each does one thing.
+	 * A tap folds the group, two taps open its name — the same pair a task row
+	 * offers, so the sheet answers a finger the same way wherever it lands.
 	 *
-	 * The title is the name, so tapping it edits the name. Collapsing is the
-	 * icon's job and nothing else's — the two used to share the title, which
-	 * meant every rename began with a double tap and every collapse risked one.
+	 * Held back rather than optimistic, which is the opposite of what a task
+	 * row does, and deliberately. A row's tap is the tick, the thing people
+	 * came to do, thousands of times; a third of a second of lag on it would
+	 * be the app's whole character. Folding a group is neither frequent nor
+	 * urgent — and taking it back is not a tick reappearing but a whole list
+	 * folding and unfolding under the thumb, which is a much worse flicker
+	 * than the wait it saves.
+	 *
+	 * Because it waits, it can use the real `dblclick` rather than pairing two
+	 * clicks by their timing, so nothing depends on them arriving as a pair.
 	 *
 	 * A long press on the title picks the group up instead, the way it picks a
-	 * task up.
+	 * task up. The icon beside the name still folds on one tap and does nothing
+	 * else, for anyone who would rather aim at it.
 	 */
+	function ontap() {
+		if (synthetic || editing) return;
+
+		if (folding) clearTimeout(folding);
+		folding = setTimeout(() => {
+			folding = null;
+			ontoggle();
+		}, DOUBLE_TAP_MS);
+	}
+
+	function onsecondtap() {
+		if (synthetic) return;
+
+		// The fold never happened, so there is nothing to put back.
+		if (folding) clearTimeout(folding);
+		folding = null;
+
+		startEditing();
+	}
+
 	function startEditing() {
 		if (synthetic) return;
 		draft = title;
@@ -148,11 +179,7 @@
 		called what it is called, for anyone who cannot see it.
 	-->
 	<div class="perforation" role="separator" aria-label={title}>
-		<svg bind:clientWidth={width} height="5" aria-hidden="true">
-			{#if width > 0}
-				<path d={perforation} class="drawn drawn--dashed" />
-			{/if}
-		</svg>
+		<Perforation {seed} />
 	</div>
 {:else}
 	<div class="header" class:lifted class:going>
@@ -176,8 +203,9 @@
 			/>
 		{:else}
 			<!--
-				The name, and the way to change it. A long press picks the group up
-				instead — the same gesture that lifts a task, on the same kind of row.
+				The name. One tap folds the group, two open the name for changing,
+				and a long press picks the group up — the same gesture that lifts a
+				task, on the same kind of row.
 			-->
 			<button
 				class="title caps"
@@ -185,7 +213,8 @@
 				type="button"
 				lang={langOf(title)}
 				aria-label={title === '' ? 'Untitled group' : title}
-				onclick={startEditing}
+				onclick={ontap}
+				ondblclick={onsecondtap}
 				onkeydown={(event) => event.key === 'F2' && startEditing()}
 				use:dragGroup={{ groupId: seed, enabled: !synthetic, onDrop: onreorder }}
 			>
@@ -247,7 +276,7 @@
 				aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
 				title={finished ? 'Delete group' : 'Finish its tasks first'}
 			>
-				<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+				<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
 					<path d={cross} class="drawn" />
 				</svg>
 			</button>
@@ -265,14 +294,7 @@
 	 * than stopping short of them like a word would.
 	 */
 	.perforation {
-		margin: 0.7rem -1.25rem 0.9rem;
-	}
-
-	.perforation svg {
-		display: block;
-		width: 100%;
-		height: 5px;
-		overflow: visible;
+		margin: 0.7rem calc(-1 * var(--paper-inset)) 0.9rem;
 	}
 
 	.header {
@@ -281,6 +303,8 @@
 		align-items: center;
 		gap: 0.25rem;
 		min-height: var(--touch);
+		/* The total lands over the prices, so it stops where they stop. */
+		padding-right: var(--corner-ink);
 	}
 
 	.lifted {
@@ -393,6 +417,19 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		/*
+		 * Centred on the margin that can be seen, not on the box: the paper's
+		 * visible edge is --edge-face inside its padding box.
+		 */
+		padding-right: var(--edge-face);
+	}
+
+	/*
+	 * The mark alone steps in; the button does not, so the tap area stays out
+	 * in the margin — see --cross-step.
+	 */
+	.remove svg {
+		translate: calc(-1 * var(--cross-step)) 0;
 	}
 
 	/* Drawn, but not offered: the group still has something in it to do. */

@@ -39,7 +39,9 @@
 	.edge {
 		position: absolute;
 		top: 0;
-		width: 9px;
+		/* WIDTH above, named in app.css so the ✕ can line up against the stroke
+		   this box draws down its middle. */
+		width: var(--edge);
 		/*
 		 * Explicit, not from top/bottom: an svg is a replaced element, so `height:
 		 * auto` resolves to its intrinsic 150px and the offsets are ignored. The

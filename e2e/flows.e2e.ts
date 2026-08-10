@@ -286,6 +286,103 @@ test('IMPORT skips duplicates and says so', async ({ page, context }) => {
 	await expect(page.getByRole('checkbox')).toHaveCount(2);
 });
 
+/*
+ * The other half of IMPORT, and the half most people will actually meet.
+ *
+ * Firefox rejects a clipboard read outright and Safari raises a prompt, so on
+ * those browsers the panel opens on an empty box and the list arrives by hand.
+ * ImportModal calls that a first-class path rather than a fallback nobody
+ * maintains — which is only true if something checks it, and until now the
+ * tests only ever went in through the clipboard read.
+ */
+test('IMPORT takes a list pasted by hand, when the clipboard cannot be read', async ({
+	page,
+	context
+}) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	// A browser that refuses the read. Writing still works, which is how the
+	// list gets onto the clipboard for the paste below.
+	await context.addInitScript(() => {
+		Object.defineProperty(navigator.clipboard, 'readText', {
+			value: () => Promise.reject(new Error('denied')),
+			configurable: true
+		});
+	});
+	await page.reload();
+
+	await page.evaluate(() => navigator.clipboard.writeText('Bread\nCoffee\nMilk'));
+	await fromMenu(page, 'Import');
+
+	// No preview yet: there was nothing to read, so it opens on the box.
+	const field = page.getByRole('textbox', { name: 'Markdown to import' });
+	await expect(field).toBeVisible();
+	await expect(page.getByLabel('What will be added')).toHaveCount(0);
+
+	await field.focus();
+	await page.keyboard.press('Control+V');
+
+	// A real paste reaches the same parse a clipboard read would have.
+	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
+	await expect(page.getByLabel('What will be added')).toContainText('- [ ] Bread');
+
+	await page.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(3);
+	await expect(task(page, 'Milk')).toBeVisible();
+});
+
+/*
+ * A list repeats itself, and that is not a mistake.
+ *
+ * The preview used to be keyed by what each line said, so a second task
+ * reading the same thing — or a second group with the same name — was a
+ * duplicate key. Svelte throws on those, which took the whole preview down
+ * and left a perfectly good list looking as though it had been refused, with
+ * nothing on screen to say why.
+ */
+test('IMPORT takes a list that repeats itself, in a task and in a heading', async ({
+	page,
+	context
+}) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	await page.evaluate(() =>
+		navigator.clipboard.writeText(
+			[
+				'## Market',
+				'',
+				'- [ ] Milk',
+				'- [x] Milk',
+				'',
+				'## Market',
+				'',
+				'- [~] Bread',
+				'- [ ] Bread'
+			].join('\n')
+		)
+	);
+
+	await fromMenu(page, 'Import');
+
+	// The preview reads every line, including the ones that say the same thing.
+	// This is the assertion that would have failed: the whole block went down
+	// with the duplicate key and there was nothing on screen at all.
+	await expect(page.getByText('Add 4 tasks in 2 groups?')).toBeVisible();
+	await expect(page.getByLabel('What will be added')).toContainText('- [x] Milk');
+
+	/*
+	 * What lands is deduplicated, which is a separate and deliberate rule —
+	 * a re-import of the same list adds nothing, and it is counted out loud
+	 * rather than silently doubling a list. Reading a line and keeping it are
+	 * two different questions, and only the first was broken.
+	 */
+	await page.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+	await expect(
+		page.getByRole('status').filter({ hasText: /skipped 2 already there/ })
+	).toBeVisible();
+});
+
 test('IMPORT refuses a data file and a web page, and says which', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
@@ -425,6 +522,32 @@ test('a panel closes on Escape and returns focus to what opened it', async ({ pa
 	await page.keyboard.press('Escape');
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 	await expect(menuButton(page)).toBeFocused();
+});
+
+/*
+ * Focus does not stay inside a panel on its own. Pressing Sync now disables
+ * that button while it cools, which blurs it to the body on the spot — and a
+ * trap listening on the panel never sees a key pressed there, so Escape
+ * reached nothing and the menu could not be closed by keyboard at all.
+ *
+ * It went unnoticed because the panel used to be a drawer down one side: the
+ * sheet stayed clickable beside it, so a test that carried on tapping the list
+ * with the menu still open never knew the difference.
+ */
+test('Escape closes the panel even when focus has fallen out of it', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await openMenu(page);
+
+	// Disables itself for the cooldown, taking focus with it.
+	await page.getByRole('button', { name: /^Sync now/ }).click();
+	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeDisabled();
+	expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+
+	// And the sheet behind it is reachable again.
+	await expect(page.getByRole('button', { name: 'Add a task' }).first()).toBeVisible();
 });
 
 test('the menu reports being unable to reach the list, and keeps the tasks', async ({ page }) => {

@@ -24,7 +24,7 @@
 	 * one at the top of the group. There is never more than one, because there
 	 * is only one caret.
 	 */
-	let inserting = $state<{ groupId: string; index: number } | null>(null);
+	let inserting = $state<{ groupId: string; index: number; carried?: string } | null>(null);
 
 	/**
 	 * Which task's editor to open, when the caret is coming back up from a row
@@ -248,7 +248,13 @@
 			</button>
 		{/if}
 
-		<TextRule text={newGroupShown} seed="new-group" faint />
+		<!--
+			Faint while it is still an offer, ink as soon as it is being written in.
+			The ellipsis and its rule are one mark in two media and cannot be set
+			apart — but a title being typed is no longer a placeholder, and a full
+			rule under it is what every other title on the sheet gets.
+		-->
+		<TextRule text={newGroupShown} seed="new-group" faint={!newGroupOpen} />
 	</div>
 {/snippet}
 
@@ -302,6 +308,7 @@
 								seed={`${group.id}-at${taskIndex}`}
 								disabled={!sheet.canAddTask}
 								opened
+								initial={inserting.carried ?? ''}
 								onadd={(text) => insert(group.id, taskIndex, text)}
 								onclose={() => (inserting = null)}
 								onback={() => back(group.id, taskIndex)}
@@ -324,8 +331,9 @@
 							onstate={(state) => setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
-							onsplit={() =>
-								group.synthetic || (inserting = { groupId: group.id, index: taskIndex + 1 })}
+							onsplit={(carried) =>
+								group.synthetic ||
+								(inserting = { groupId: group.id, index: taskIndex + 1, carried })}
 							onback={() => back(group.id, taskIndex, task.id)}
 							onopened={() => (opening = null)}
 							onmove={(direction) => move(groupIndex, taskIndex, direction)}
@@ -347,6 +355,7 @@
 							seed={`${group.id}-end`}
 							disabled={!sheet.canAddTask}
 							opened
+							initial={inserting.carried ?? ''}
 							onadd={(text) => insert(group.id, group.tasks.length, text)}
 							onclose={() => (inserting = null)}
 							onback={() => back(group.id, group.tasks.length)}

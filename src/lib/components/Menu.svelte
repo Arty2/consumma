@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
+	import Perforation from './Perforation.svelte';
 	import TextRule from './TextRule.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
@@ -41,7 +42,15 @@
 	let offset = $state(0);
 	let dragStart: { x: number; at: number } | null = null;
 
-	const cross = $derived(handCross(20, { seed: seedFrom('closemenu'), wobble: 0.8 }));
+	/*
+	 * The same size as the burger it stands in for. This is the one control that
+	 * is drawn twice — closed it is three strokes, open it is two — and it has to
+	 * read as one button being looked at from either side, so it keeps the
+	 * burger's size as well as its place.
+	 */
+	const CLOSE = 22;
+
+	const cross = $derived(handCross(CLOSE, { seed: seedFrom('closemenu'), wobble: 0.8 }));
 
 	const summary = $derived(statusText(sync.status, sync.unsent, refused));
 	const valid = $derived(normaliseCode(entered) !== null);
@@ -167,7 +176,7 @@
 	</div>
 
 	<button class="close" type="button" onclick={onclose} aria-label="Close">
-		<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
 			<path d={cross} class="drawn" />
 		</svg>
 	</button>
@@ -203,6 +212,13 @@
 			{#if error}
 				<p class="error" role="alert">{error}</p>
 			{/if}
+
+			<!--
+				The panel's sections are told apart by a tear across the paper, the
+				same mark Loose ends is. They are already named by their headings;
+				what was missing was the line saying where one stops.
+			-->
+			<div class="tear"><Perforation seed="menu-list" /></div>
 
 			<h2 class="caps">This list</h2>
 			<TextRule text="This list" seed="thislist" centred />
@@ -261,6 +277,8 @@
 				</button>
 			</div>
 
+			<div class="tear"><Perforation seed="menu-join" /></div>
+
 			<h2 class="caps">Join list</h2>
 			<TextRule text="Join list" seed="joinlist" centred />
 
@@ -300,8 +318,21 @@
 			{/if}
 
 			<footer class="credit">
-				<p class="break" aria-hidden="true">* * *</p>
-				<p>v{__VERSION__} • heracl.es/consumma</p>
+				<div class="tear"><Perforation seed="menu-credit" /></div>
+				<!--
+					The one link off this origin, and it goes to the project's own
+					page. A new tab and nothing carried with it, exactly as a link in
+					a task is: the list is held in this tab and lives on a key in
+					this browser, so navigating it away is not a thing to do by
+					accident.
+				-->
+				<p>
+					v{__VERSION__} •
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href="https://heracl.es/consumma" target="_blank" rel="noopener noreferrer nofollow"
+						>heracl.es/consumma</a
+					>
+				</p>
 				<p class="dedication">
 					Dialectic Acheropoieton<br />of Heracles Papatheodorou and Claude
 				</p>
@@ -316,20 +347,41 @@
 	 * a panel are the same thing, and half a sheet of paper is not a shape this
 	 * app has.
 	 */
+	/*
+	 * The same piece of paper as the sheet, seen from the back.
+	 *
+	 * It used to be a 24rem drawer pinned to the right edge, which on anything
+	 * wider than a phone opened a panel of one width over a sheet of another,
+	 * with its own margins and its own top. Laid out from the paper's own
+	 * variables it lands exactly on the sheet at every width — same width, same
+	 * margins, same room above and below the tear — so opening the menu turns
+	 * the list over rather than sliding something else in front of it.
+	 *
+	 * Centred like the page, so the drag-to-dismiss offset is composed with the
+	 * centring rather than replacing it.
+	 */
 	.menu {
 		position: fixed;
 		top: 0;
-		right: 0;
 		bottom: 0;
-		width: min(24rem, 100%);
+		left: 50%;
+		width: 100%;
+		max-width: var(--paper-width);
 		z-index: 10;
 		background: var(--paper);
-		padding: calc(2rem + env(safe-area-inset-top)) 1.75rem calc(2rem + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
 		outline: none;
 		touch-action: pan-y;
-		translate: var(--offset, 0);
+		translate: calc(-50% + var(--offset, 0px)) 0;
+		/*
+		 * The paper's own top and bottom, so the scroller inside is exactly the
+		 * frame's box and the content is cut where the paper stops. Cut at the
+		 * viewport instead, a button halfway out of the panel went on being
+		 * drawn in the margin below the drawn edge, which reads as the panel
+		 * leaking rather than as paper ending.
+		 */
+		padding-block: var(--paper-top) var(--paper-bottom);
 	}
 
 	/*
@@ -338,31 +390,79 @@
 	 * outside the border, because an absolutely positioned box in a scroll
 	 * container sizes to the visible box rather than to what it holds.
 	 */
+	/*
+	 * On the sheet's own drawn edges: the room beside the paper across, and the
+	 * room the tears leave above and below. The sheet closes itself with two
+	 * torn edges and two side edges; the panel closes itself with one drawn
+	 * box, in the same place.
+	 */
 	.frame {
 		position: absolute;
-		inset: 0.75rem;
+		top: var(--paper-top);
+		right: var(--paper-x);
+		bottom: var(--paper-bottom);
+		left: var(--paper-x);
 		pointer-events: none;
 	}
 
+	/*
+	 * The inset belongs to the scrolled content, not to the panel around it.
+	 *
+	 * Held on the panel it was a margin pretending to be padding: the scroll
+	 * box stopped short of the panel's edges, so a line of text vanished two
+	 * centimetres before it reached them and reappeared the same distance in.
+	 * Text that fades out in the middle of a panel reads as a bug in the panel.
+	 *
+	 * Here the scroller is the whole panel and the room is its padding, so the
+	 * first line starts where it always did, scrolls the full height, and is
+	 * cut only at the edge of the paper — which is the one place a cut reads as
+	 * the paper ending rather than as the text giving up.
+	 */
 	.scroll {
 		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
+		/*
+		 * In by the same margin the sheet keeps its writing off its own edges
+		 * by, so a line in the panel starts exactly where a task on the sheet
+		 * starts. The room above and below belongs to the panel, which is what
+		 * makes the frame the thing that clips.
+		 */
+		padding-inline: calc(var(--paper-x) + var(--paper-inset));
 	}
 
+	/*
+	 * On the burger, because it is the burger: the button does not move when
+	 * the panel opens, it only changes what it is drawn as.
+	 *
+	 * Simply the paper's own corner now. It used to need a min() of two terms
+	 * to chase a centred page from a right-pinned drawer; with the panel laid
+	 * out as the same box, there is nothing to chase.
+	 */
 	.close {
 		position: absolute;
-		top: calc(1.1rem + env(safe-area-inset-top));
-		right: 1.1rem;
+		top: var(--corner-y);
+		right: var(--corner-x);
 		width: var(--touch);
 		height: var(--touch);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		/* Above the content it scrolls over. */
+		z-index: 1;
 	}
 
+	/*
+	 * Clear of the ✕, which sits lower than it used to now that it stands where
+	 * the burger stands.
+	 */
+	/*
+	 * Clear of the ✕, which stands a tear's height below the paper's top edge
+	 * and is a touch target tall. Derived rather than guessed, so it follows
+	 * the corner it is avoiding.
+	 */
 	.body {
-		padding-top: 1.5rem;
+		padding-top: calc(var(--tear) + var(--touch));
 		text-align: center;
 	}
 
@@ -482,8 +582,35 @@
 		line-height: 1.4;
 	}
 
+	/*
+	 * Out to the drawn edge of the paper and no further.
+	 *
+	 * A section break that stopped short of both margins would be a rule, and a
+	 * rule is a different mark — but the frame is where this paper ends, so a
+	 * tear running past it reads as a stroke that missed rather than as the
+	 * sheet being torn. It takes back exactly what Loose ends takes back on the
+	 * sheet, and for the same reason: the margin the writing is held off the
+	 * edge by.
+	 *
+	 * The h2 under it brings its own room, so the space belongs to the line
+	 * above rather than being split between the two.
+	 */
+	.tear {
+		margin: 2.5rem calc(-1 * var(--paper-inset)) 0;
+	}
+
+	/* The tear above already set this section apart. */
+	.tear + h2 {
+		margin-top: 2.5rem;
+	}
+
+	/*
+	 * The tear brings its own room above, so the footer adds none of its own.
+	 * It used to open with three asterisks and 3rem of padding; the mark now
+	 * spaces itself the way the other two do.
+	 */
 	.credit {
-		padding-top: 3rem;
+		padding-top: 0;
 	}
 
 	.credit p {
@@ -493,11 +620,9 @@
 		overflow-wrap: anywhere;
 	}
 
-	.credit .break {
-		margin: 0 0 1.25rem;
-		letter-spacing: 0.3em;
-		/* The letter-spacing hangs off the last asterisk; pull the row back. */
-		text-indent: 0.3em;
+	/* The last section break, and the same distance under it as over it. */
+	.credit .tear {
+		margin-bottom: 1.25rem;
 	}
 
 	/*

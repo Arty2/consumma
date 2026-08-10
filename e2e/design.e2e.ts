@@ -28,6 +28,63 @@ test('every mark on the page is a drawn path, not an image', async ({ page }) =>
 	expect(await page.locator('svg path').count()).toBeGreaterThan(2);
 });
 
+/*
+ * The one exception, and it is worth stating as one rather than leaving the
+ * rule above quietly true only because nothing on a bare sheet is a link.
+ *
+ * A link is inline text that wraps, and every one of its line boxes wants its
+ * own underline — which is the one thing an inline <svg> measured to a box
+ * cannot do. So the mark is a repeating background, still drawn by the same
+ * hand, still seeded, and still nothing but a stroke.
+ */
+test('the only background in the app is the drawn underline under a link', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	await field.fill('Recipe https://heracl.es/projects/2024/consumma tonight');
+	await field.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const backgrounds = await page.evaluate(() =>
+		[...document.querySelectorAll('*')]
+			.map((el) => ({ tag: el.tagName, image: getComputedStyle(el).backgroundImage }))
+			.filter((entry) => entry.image !== 'none')
+	);
+
+	// Exactly one, on the anchor, and it is an SVG drawn into the page rather
+	// than a file fetched from anywhere.
+	expect(backgrounds).toHaveLength(1);
+	expect(backgrounds[0].tag).toBe('A');
+	expect(backgrounds[0].image).toContain('data:image/svg+xml');
+	expect(backgrounds[0].image).toContain('stroke');
+
+	// Never the browser's own rule. The check below walks the whole page for
+	// that; this says it of the one element most likely to acquire one.
+	await expect(page.locator('a').first()).toHaveCSS('text-decoration-line', 'none');
+});
+
+test('the link underline is ink, and turns over with the theme', async ({ page }) => {
+	await page.emulateMedia({ colorScheme: 'light' });
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	await field.fill('Recipe https://heracl.es/consumma tonight');
+	await field.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const tile = () =>
+		page
+			.locator('a')
+			.first()
+			.evaluate((el) => getComputedStyle(el).backgroundImage);
+
+	// A data URI is its own document and cannot read --ink, so the colour is
+	// baked and the pair is swapped with the theme. Black on the white sheet.
+	expect(decodeURIComponent(await tile())).toContain('stroke="#000"');
+
+	await themeButton(page).click();
+	await expect.poll(async () => (await swatch(page)).resolved).toBe('dark');
+	expect(decodeURIComponent(await tile())).toContain('stroke="#fff"');
+});
+
 test('nothing casts a shadow, because a shadow means grey', async ({ page }) => {
 	const shadows = await page.evaluate(() =>
 		[...document.querySelectorAll('*')]
@@ -507,10 +564,42 @@ test('the credit names the version, the project and both authors', async ({ page
 	const dedication = credit.getByText('Dialectic Acheropoieton', { exact: false });
 	await expect(dedication).toHaveCSS('font-style', 'italic');
 
-	// The break is three asterisks, not a rule: punctuation rather than a mark,
-	// so it is the one separator here that is not drawn.
-	await expect(credit.locator('.break')).toHaveText('* * *');
-	expect(await credit.locator('svg').count()).toBe(0);
+	/*
+	 * The break above it is the same tear the panel's other sections are told
+	 * apart by. It used to be three asterisks — punctuation rather than a mark,
+	 * and the one separator here that was not drawn, which left the panel with
+	 * two ways of saying the same thing.
+	 */
+	const tear = credit.locator('svg path');
+	await expect(tear).toHaveCount(1);
+
+	// Dashed from the shared class rather than an attribute of its own, which
+	// is what makes it the same mark and not merely a similar one.
+	await expect(tear).toHaveClass(/drawn--dashed/);
+	expect(await tear.evaluate((el) => getComputedStyle(el).strokeDasharray)).not.toBe('none');
+});
+
+test('the menu is told apart by tears, and they are the same mark as Loose ends', async ({
+	page
+}) => {
+	await openMenu(page);
+
+	// One before each of the two headings, and one above the credit.
+	const tears = page.getByRole('dialog', { name: 'Menu' }).locator('.tear svg path');
+	await expect(tears).toHaveCount(3);
+
+	// Drawn and dashed, at the weight everything else here is drawn at.
+	for (const dash of await tears.evaluateAll((paths) =>
+		paths.map((p) => getComputedStyle(p).strokeDasharray)
+	)) {
+		expect(dash).not.toBe('none');
+	}
+
+	// Full width, out to the drawn frame of the drawer — a break that stopped
+	// short of both margins would be a rule, and a rule is a different mark.
+	const panel = (await page.getByRole('dialog', { name: 'Menu' }).boundingBox())!;
+	const first = (await tears.first().boundingBox())!;
+	expect(first.width).toBeGreaterThan(panel.width * 0.85);
 });
 
 test('every underline in the app is drawn, not a CSS decoration', async ({ page }) => {
@@ -651,11 +740,12 @@ test('the first tap is always the opposite of the phone, so something changes', 
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 	expect((await swatch(page)).resolved).toBe('dark');
 
-	// Round in three, and back to writing nothing down.
-	await themeButton(page).click();
-	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — light');
+	// Round in two, and back to writing nothing down. There is no third state:
+	// the choice agreeing with the phone drew the same sheet as following it,
+	// so both the tap into it and the tap out of it looked like nothing.
 	await themeButton(page).click();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — following the phone');
+	expect((await swatch(page)).resolved).toBe('light');
 	expect(await page.evaluate(() => localStorage.getItem('consumma:theme'))).toBeNull();
 
 	// And the other way on a dark phone.
@@ -775,4 +865,37 @@ test('the theme is the device’s, so removing the list does not take it', async
 	await page.reload();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 	expect((await swatch(page)).resolved).toBe('dark');
+});
+
+/*
+ * At the top, under the corner buttons.
+ *
+ * A phone puts its keyboard at the bottom of the screen, and every toast here
+ * follows an edit — which is made with the keyboard up. Down there the one
+ * message most worth reading, the one offering to undo what just happened, was
+ * behind the keys that had just caused it.
+ */
+test('the toast stands at the top, clear of where a keyboard comes up', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 760 });
+
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	await page.getByRole('checkbox', { name: 'Bread' }).click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+
+	const where = await page.evaluate(() => {
+		const toast = document.querySelector('.toast')!.getBoundingClientRect();
+		const burger = document.querySelector('[aria-label^="Menu"]')!.getBoundingClientRect();
+		return { top: toast.top, bottom: toast.bottom, corner: burger.bottom, height: innerHeight };
+	});
+
+	// Below the buttons, never over them — they are the other marks on that line.
+	expect(where.top).toBeGreaterThanOrEqual(where.corner);
+
+	// And nowhere near the bottom, which is the keyboard's half of the screen.
+	expect(where.bottom).toBeLessThan(where.height / 2);
 });

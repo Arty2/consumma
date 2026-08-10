@@ -100,18 +100,122 @@
 	--touch: 44px;
 
 	/*
+	 * How big a drawn glyph is inside a touch target: the burger, the theme,
+	 * the sync mark, the menu's ✕. Each is centred in a --touch square, so its
+	 * ink stops --corner-ink short of where the button does.
+	 *
+	 * That is the line the figures end on. A price is set against the corner
+	 * above it rather than against the button's invisible box, because the
+	 * button's box is not a thing anybody can see — and stopping at the ink
+	 * leaves the ✕ the room it needs in the margin beyond.
+	 *
+	 * The components draw their paths at --glyph and name it themselves; this
+	 * is the same number where CSS needs it.
+	 */
+	--glyph: 22px;
+	--corner-ink: calc((var(--touch) - var(--glyph)) / 2);
+
+	/* How tall a torn edge is drawn. TornEdge draws its path at this height. */
+	--tear: 16px;
+
+	/*
+	 * How wide the box a drawn side edge lives in is. SideEdge draws its stroke
+	 * down the middle of that box, so the visible edge of the paper is half of
+	 * this inside the sheet's own padding box — which is not where CSS thinks
+	 * the edge is, and is why anything lining up against it has to say so.
+	 */
+	--edge: 9px;
+
+	/*
+	 * How far inside the padding box the edge's nearest ink can actually come.
+	 *
+	 * Three things, and leaving any of them out puts a mark against the line.
+	 * Half of --edge, because the stroke runs down the middle of its box. Half
+	 * a stroke, because the stroke has width and its face is nearer than its
+	 * centre. And half of SideEdge's own wobble — the edge is drawn by a hand
+	 * and wanders about a pixel either way down its length, so the gap a mark
+	 * has is the gap at the line's nearest excursion, not at its average.
+	 *
+	 * The last term is handVertical's wobble halved, and it is written out
+	 * because CSS cannot read it. Retune it with the wobble in SideEdge.
+	 */
+	--edge-face: calc(var(--edge) / 2 + var(--stroke) * 0.5px + 1.1px);
+
+	/*
+	 * How far the ✕ steps in from the paper's edge, over and above sitting in
+	 * the middle of the margin.
+	 *
+	 * Centred, it is centred — measured, two and a half pixels of air on each
+	 * side — and it still reads as pinned to the edge, because the margin is
+	 * fifteen pixels and the mark paints eight of them. There is no arranging
+	 * that gap into looking generous; the only thing that helps is standing
+	 * further in.
+	 *
+	 * About half the mark's own width. It used to be capped at what would clear
+	 * a price, because a price is written for reading against a shelf and is
+	 * the one thing on the row that must not be struck through — but the
+	 * figures now stop at --corner-ink, a good half-centimetre earlier, so
+	 * there is nothing left in the way and the mark can stand where it looks
+	 * right rather than where it fits.
+	 *
+	 * It moves the mark only. The hit area stays out in the margin, so tapping
+	 * the end of a price still opens the row rather than deleting it.
+	 */
+	--cross-step: 5px;
+
+	/*
+	 * Where the paper is, and how wide.
+	 *
+	 * The sheet and the menu are the same piece of paper seen twice — the panel
+	 * is not a drawer beside the list, it is the back of it — so they have to
+	 * agree on their edges. These are that agreement, written once: the widest
+	 * the paper is ever drawn, the room either side of it, and the room above
+	 * and below where the tears fall.
+	 *
+	 * +page.svelte lays the sheet out from them and Menu.svelte lays the panel
+	 * out from them. Change one of these and both move together; write a
+	 * number into either file instead and they part company by exactly as much
+	 * as you were not paying attention.
+	 */
+	--paper-width: 34rem;
+	--paper-x: 1rem;
+	--paper-top: calc(2rem + env(safe-area-inset-top));
+	--paper-bottom: calc(2rem + env(safe-area-inset-bottom));
+
+	/* How far the writing sits inside the drawn edge, on both. */
+	--paper-inset: 1.25rem;
+
+	/*
+	 * Where the buttons in the sheet's corners sit, measured from the edges of
+	 * the paper above.
+	 *
+	 * The menu's ✕ is the burger seen from the other side, so it has to land on
+	 * the burger. Now that the panel is the same box as the sheet, that is just
+	 * the paper's own margins — across, the room beside the paper plus the room
+	 * inside it; down, the room above the tear plus the tear itself.
+	 */
+	--corner-x: calc(var(--paper-x) + var(--paper-inset));
+	--corner-y: calc(var(--paper-top) + var(--tear));
+
+	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
 	 *
 	 * Every way of deleting something stands in one column out here, clear of
 	 * everything in flow, so that a ✕ appearing moves nothing and the prices
 	 * stay a column on the rows that are done.
 	 *
-	 * There is 2.25rem to play with — the sheet's own 1.25rem of padding and the
-	 * page's 1rem beyond it — so this leaves half a rem before the viewport and
-	 * cannot push the sheet sideways. It is narrower than `--touch` across,
-	 * which is the price of the position; it keeps the full 44px of height.
+	 * Exactly the margin the sheet holds its writing off its own edge by, so
+	 * the column sits in the paper's own padding and stops at the drawn edge.
+	 * It used to be wider than that and crossed the edge to reach the page
+	 * beyond it, which put a live control on top of the line that says where
+	 * the paper stops — the one mark on the sheet that is not writing.
+	 *
+	 * It is narrower than `--touch` across, which is the price of the position;
+	 * it keeps the full 44px of height. The mark stands in the middle of the
+	 * margin you can see rather than the middle of the box — the drawn edge is
+	 * half of --edge inside the box, so the two middles are not the same place.
 	 */
-	--gutter: 1.75rem;
+	--gutter: var(--paper-inset);
 
 	/*
 	 * How faint a thing that is not there yet is drawn.
@@ -290,6 +394,30 @@ button {
 
 .drawn--faint {
 	opacity: var(--faint);
+}
+
+/*
+ * A link, which is the one thing on the sheet that is not just words.
+ *
+ * Underlined with a drawn stroke like every other underline here, but as a
+ * repeating background rather than an inline `<svg>`: a link is inline text,
+ * it wraps, and each of its line boxes wants its own mark. --underline is set
+ * on the document by +layout.svelte and turns over with the theme; the tile
+ * itself is drawn by handUnderlineTile, seeded, in the same hand as the rest.
+ *
+ * No colour and no decoration. `text-decoration: underline` is the one thing
+ * this cannot be — e2e/design.e2e.ts walks the page and fails on any of it,
+ * because a browser's underline is a ruled line and nothing here is ruled.
+ */
+a {
+	color: inherit;
+	text-decoration: none;
+	background-image: var(--underline);
+	background-repeat: repeat-x;
+	background-position: 0 100%;
+	background-size: 44px 6px;
+	/* Room under the words for the stroke to sit in rather than through. */
+	padding-bottom: 3px;
 }
 
 .sr-only {

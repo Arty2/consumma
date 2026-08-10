@@ -50,19 +50,32 @@
 </script>
 
 <Modal title="Import" seed="import" {onclose}>
+	<!--
+		What was read, always shown and always editable.
+
+		Opening IMPORT reads the clipboard, so most of the time the list is
+		already here and there is nothing to do but confirm it. It stays on
+		screen rather than being replaced by the preview: a list arriving from
+		somebody else's phone is exactly the thing you want to look at before
+		it lands, and a stray line is fixed here rather than by cancelling,
+		editing elsewhere and starting again.
+
+		Firefox rejects a clipboard read outright and Safari raises a prompt, so
+		this is also where a list gets pasted by hand — a first-class path
+		rather than a fallback nobody maintains, and the same box either way.
+	-->
+	<p>
+		{text === ''
+			? 'Paste a list — one thing per line, or a markdown checklist.'
+			: 'From your clipboard. Edit it here if anything is off.'}
+	</p>
+
+	<label>
+		<span class="sr-only">Markdown to import</span>
+		<textarea rows="5" bind:value={text} oninput={look}></textarea>
+	</label>
+
 	{#if !parsed}
-		<!--
-			Firefox rejects a clipboard read outright and Safari raises a prompt, so
-			pasting by hand is a first-class path rather than a fallback nobody
-			maintains.
-		-->
-		<p>Paste a list — one thing per line, or a markdown checklist.</p>
-
-		<label>
-			<span class="sr-only">Markdown to import</span>
-			<textarea rows="8" bind:value={text} oninput={look}></textarea>
-		</label>
-
 		{#if tried && text.trim() !== ''}
 			<p role="alert">{refusal}</p>
 		{/if}
@@ -93,12 +106,25 @@
 
 			Written as text, never as markup: nothing in this app renders HTML.
 		-->
+		<!--
+			Keyed by position, never by what a line says.
+
+			A list repeats itself: two tasks reading the same thing in one group is
+			an ordinary list, not a mistake, and so is a second group with the same
+			name. Keyed by the text, the second of any such pair is a duplicate key
+			— which Svelte throws on, taking the whole preview down with it, so a
+			perfectly good list came back as though it had been refused.
+
+			Position is the honest key here in any case. This is one parse rendered
+			once: nothing reorders, nothing is identified across renders, and the
+			whole block is replaced whenever the text changes.
+		-->
 		<div class="preview" aria-label="What will be added">
-			{#each parsed.groups as group (group.title)}
+			{#each parsed.groups as group, at (at)}
 				{#if group.title !== ''}
 					<p class="heading">## {group.title}</p>
 				{/if}
-				{#each group.tasks as task (task.text)}
+				{#each group.tasks as task, line (line)}
 					<p class="line">- {marker(task.state)} {task.text}</p>
 				{/each}
 			{/each}

@@ -1,9 +1,41 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import '../app.css';
+	import { handUnderlineTile } from '$lib/draw/hand';
+	import { seedFrom } from '$lib/draw/rng';
 	import { theme } from '$lib/state/theme.svelte';
 
 	let { children } = $props();
+
+	/*
+	 * The mark under a link, drawn once for each colour the sheet is ever in.
+	 *
+	 * It has to be a repeating background rather than an inline `<svg>`, because
+	 * a link is inline text that wraps and every line box wants its own
+	 * underline. A background repeats per line box for nothing; a measured
+	 * element would have to be re-measured on every reflow.
+	 *
+	 * A data URI is its own document and cannot read `--ink`, so the colour is
+	 * baked and the pair is swapped with the theme below. That is one tile in
+	 * two colours rather than a second palette: there is still exactly one pair
+	 * of colours in the app, and this is it, written where a custom property
+	 * cannot reach.
+	 *
+	 * Set through the CSSOM, which CSP does not govern — the policy is
+	 * `style-src 'self'` with one pinned hash and no room for an attribute.
+	 */
+	const TILE = { width: 44, height: 6 };
+
+	const tiles = {
+		light: handUnderlineTile(TILE.width, TILE.height, '#000', {
+			seed: seedFrom('underline'),
+			wobble: 0.9
+		}),
+		dark: handUnderlineTile(TILE.width, TILE.height, '#fff', {
+			seed: seedFrom('underline'),
+			wobble: 0.9
+		})
+	};
 
 	/*
 	 * Read here rather than beside the page's other loaders, and before the
@@ -39,6 +71,12 @@
 		document
 			.querySelector('meta[name="theme-color"]')
 			?.setAttribute('content', resolved === 'dark' ? '#000000' : '#ffffff');
+
+		// The link underline turns over with everything else.
+		document.documentElement.style.setProperty(
+			'--underline',
+			`url("data:image/svg+xml,${encodeURIComponent(tiles[resolved])}")`
+		);
 	});
 </script>
 

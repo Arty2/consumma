@@ -766,3 +766,39 @@ export function handSunMoon(size: number, options: HandOptions): string {
 
 	return `${moon} ${corona(c, size, 6, 0.37, 0.46, options)}`;
 }
+
+/**
+ * The mark under a link, as a tile that repeats along a line of text.
+ *
+ * Every other drawn thing here is an inline `<svg>` measured to the box it
+ * belongs to. A link cannot be: it is inline text, it wraps, and each of its
+ * line boxes wants its own underline — which is precisely what a repeating
+ * background does for free and what a single measured element cannot do at
+ * all without re-measuring every line on every reflow.
+ *
+ * So this one returns a whole SVG document rather than a path, ready to be a
+ * `url()`. It is still drawn by the same hand as the rest: one `handLine`,
+ * seeded, wobbling on the same terms.
+ *
+ * The colour is baked because a data URI is its own document and cannot read
+ * `--ink`. That is why this takes one — see app.css, where it is called once
+ * for each of the two colours the sheet is ever drawn in.
+ */
+export function handUnderlineTile(
+	width: number,
+	height: number,
+	ink: string,
+	options: HandOptions
+): string {
+	// Two-thirds down the tile, so the stroke has room to wobble under the
+	// baseline without being clipped by the edge of its own box.
+	const d = handLine(width, { ...options, y: height * 0.55, every: 9 });
+
+	const svg =
+		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" ` +
+		`viewBox="0 0 ${width} ${height}">` +
+		`<path d="${d}" fill="none" stroke="${ink}" stroke-width="1.4" ` +
+		`stroke-linecap="round"/></svg>`;
+
+	return svg;
+}

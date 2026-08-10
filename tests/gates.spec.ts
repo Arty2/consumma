@@ -158,7 +158,7 @@ describe('gates', () => {
 		const { status, output } = runGates();
 
 		expect(status).toBe(1);
-		expect(output).toContain('shadow, background-image or <img>');
+		expect(output).toContain('shadow or <img>');
 	});
 
 	it('rejects an img element', () => {
@@ -167,6 +167,37 @@ describe('gates', () => {
 		const { status, output } = runGates();
 
 		expect(status).toBe(1);
-		expect(output).toContain('shadow, background-image or <img>');
+		expect(output).toContain('shadow or <img>');
+	});
+
+	/*
+	 * The link underline is the one background-image in the app, and it is
+	 * allowed by its exact spelling rather than by relaxing the rule — the
+	 * point of the gate is that no second one arrives quietly.
+	 */
+	it('allows the drawn link underline', () => {
+		file('src/app.css', 'a {\n\tbackground-image: var(--underline);\n}\n');
+
+		const { status } = runGates();
+
+		expect(status).toBe(0);
+	});
+
+	it('rejects any other background-image', () => {
+		file('src/app.css', '.sheet {\n\tbackground-image: url("/paper.png");\n}\n');
+
+		const { status, output } = runGates();
+
+		expect(status).toBe(1);
+		expect(output).toContain('not the drawn link underline');
+	});
+
+	it('rejects a gradient, which is a grey by another name', () => {
+		file('src/app.css', '.fade {\n\tbackground-image: linear-gradient(#000, #fff);\n}\n');
+
+		const { status, output } = runGates();
+
+		expect(status).toBe(1);
+		expect(output).toContain('not the drawn link underline');
 	});
 });

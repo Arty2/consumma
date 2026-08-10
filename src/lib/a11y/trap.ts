@@ -34,6 +34,18 @@ export function trap(node: HTMLElement, onclose: () => void) {
 		const first = focusable[0];
 		const last = focusable[focusable.length - 1];
 
+		/*
+		 * Focus can end up outside the panel without anybody tabbing there: a
+		 * button that disables itself when pressed — Sync now, while it cools —
+		 * drops focus to the body on the spot. Tab from there would walk the
+		 * sheet behind the panel, so it comes back inside instead.
+		 */
+		if (!node.contains(document.activeElement)) {
+			event.preventDefault();
+			(event.shiftKey ? last : first).focus();
+			return;
+		}
+
 		if (event.shiftKey && document.activeElement === first) {
 			event.preventDefault();
 			last.focus();
@@ -43,14 +55,23 @@ export function trap(node: HTMLElement, onclose: () => void) {
 		}
 	}
 
-	node.addEventListener('keydown', onkeydown);
+	/*
+	 * On the document, not on the panel.
+	 *
+	 * A listener on the panel only ever sees a key if focus is inside it, and
+	 * focus does not stay inside on its own: pressing Sync now disables that
+	 * button, which blurs it to the body, and from there Escape reached nothing
+	 * and the panel could not be closed by keyboard at all. A panel that covers
+	 * the page has to answer Escape wherever the caret happens to be.
+	 */
+	document.addEventListener('keydown', onkeydown);
 
 	return {
 		update(next: () => void) {
 			close = next;
 		},
 		destroy() {
-			node.removeEventListener('keydown', onkeydown);
+			document.removeEventListener('keydown', onkeydown);
 			document.body.style.overflow = overflow;
 			previous?.focus();
 		}

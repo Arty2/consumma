@@ -43,7 +43,8 @@
 	.tear {
 		display: block;
 		width: 100%;
-		height: 16px;
+		/* HEIGHT above, named in app.css so the corner buttons can clear it. */
+		height: var(--tear);
 		/* The teeth reach the edges of the box and the stroke sits on the path,
 		   so half of it falls outside. */
 		overflow: visible;
