@@ -97,7 +97,7 @@ test('the total stays when the group is collapsed or being renamed', async ({ pa
 	await expect(total(page)).toHaveText('126,06');
 
 	await page.getByRole('button', { name: 'Expand group' }).click();
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	await expect(page.getByRole('textbox', { name: 'Group title' })).toBeVisible();
 	await expect(total(page)).toHaveText('126,06');
 });
@@ -156,7 +156,7 @@ test('every ✕ on the sheet stands in one column, out of the way', async ({ pag
 
 	// The group's own ✕ appears while its name is being edited, in the same
 	// place as the task's, and neither pushes the sheet sideways.
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	const columns = await page.evaluate(() =>
 		[...document.querySelectorAll('.remove')].map((el) =>
 			Math.round(el.getBoundingClientRect().left)

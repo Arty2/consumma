@@ -6,7 +6,7 @@
 	import { length } from '$lib/doc/clean';
 	import { langOf } from '$lib/doc/lang';
 	import { COUNTER_WITHIN, LIMITS } from '$lib/doc/limits';
-	import { pieces } from '$lib/doc/links';
+	import { hasLink, pieces } from '$lib/doc/links';
 	import { nearLimit, spill } from '$lib/doc/spill';
 	import type { State, Task } from '$lib/doc/types';
 	import { handCross } from '$lib/draw/hand';
@@ -78,6 +78,16 @@
 	 */
 	const reading = $derived(amountsIn(task.text));
 	const shaped = $derived(reading.amount !== null || reading.cost !== null);
+
+	/*
+	 * Whether this row has to give up being a button.
+	 *
+	 * Only a task naming an address does: a button cannot hold a link, and a
+	 * link nobody can follow is not one. Every other row stays exactly what it
+	 * was, keeps its accessible name, and keeps its place in the tab order —
+	 * which is nearly every row, so nearly nothing changes.
+	 */
+	const linked = $derived(hasLink(task.text));
 
 	/*
 	 * Written out the way the group writes numbers rather than the way this line
@@ -259,6 +269,20 @@
 	}
 </script>
 
+{#snippet marks()}
+	{#if shaped}
+		{#if count !== null}
+			<span class="num amount">{count}</span>
+		{/if}
+		<span class="name">{@render written(reading.name)}</span>
+		{#if cost !== null}
+			<span class="num cost">{cost}</span>
+		{/if}
+	{:else}
+		{@render written(task.text)}
+	{/if}
+{/snippet}
+
 {#snippet written(text: string)}
 	<!--
 		The words, with any address in them shown as what it points at rather
@@ -318,22 +342,15 @@
 			{oninput}
 			{onkeydown}
 			use:grow={draft}></textarea>
-	{:else}
+	{:else if linked}
 		<!--
-			Everything right of the checkbox is drag territory, and a tap here
-			ticks the task off rather than opening it. Two taps open it.
+			A task that names an address is the one that cannot be a button, since
+			a button cannot hold a link. It is a plain container instead, and what
+			it gives up is only the keyboard's way in — which the row still has,
+			on F2, and the checkbox still has for ticking. Nothing is unreachable.
 
-			Not a button any more. A button cannot hold a link, and a task that
-			names an address should let someone follow it — so this is a plain
-			container with the marks inside it, and the two things it does are
-			reached the two ways they are reached everywhere else on the sheet:
-			by finger here, and from the keyboard by the checkbox (which ticks)
-			and F2 on the row (which opens). Nothing actionable is unreachable.
-		-->
-		<!--
-			The keyboard's handlers are on the row, not here: this element is not
-			focusable and never will be, so a key handler on it could not fire.
-			F2 opens the row and the checkbox ticks it — see onrowkeydown.
+			The handlers stay on the row: this element is not focusable and never
+			will be, so a key handler here could not fire.
 		-->
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -344,18 +361,29 @@
 			onclick={ontap}
 			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}
 		>
-			{#if shaped}
-				{#if count !== null}
-					<span class="num amount">{count}</span>
-				{/if}
-				<span class="name">{@render written(reading.name)}</span>
-				{#if cost !== null}
-					<span class="num cost">{cost}</span>
-				{/if}
-			{:else}
-				{@render written(task.text)}
-			{/if}
+			{@render marks()}
 		</div>
+	{:else}
+		<!-- Everything right of the checkbox is drag territory. -->
+		<!--
+			A tap here ticks the task off and two taps open it — the button is
+			named for the task and does the thing the task is for.
+
+			The label is set explicitly because Chrome folds text-transform into
+			the accessible name, and a screen reader should read what was written
+			rather than shouting it.
+		-->
+		<button
+			class="text caps"
+			class:shaped
+			type="button"
+			lang={langOf(task.text)}
+			aria-label={task.text}
+			onclick={ontap}
+			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}
+		>
+			{@render marks()}
+		</button>
 	{/if}
 
 	<!--

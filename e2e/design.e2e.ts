@@ -651,11 +651,12 @@ test('the first tap is always the opposite of the phone, so something changes', 
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 	expect((await swatch(page)).resolved).toBe('dark');
 
-	// Round in three, and back to writing nothing down.
-	await themeButton(page).click();
-	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — light');
+	// Round in two, and back to writing nothing down. There is no third state:
+	// the choice agreeing with the phone drew the same sheet as following it,
+	// so both the tap into it and the tap out of it looked like nothing.
 	await themeButton(page).click();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — following the phone');
+	expect((await swatch(page)).resolved).toBe('light');
 	expect(await page.evaluate(() => localStorage.getItem('consumma:theme'))).toBeNull();
 
 	// And the other way on a dark phone.

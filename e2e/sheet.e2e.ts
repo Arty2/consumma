@@ -145,7 +145,7 @@ test('a long press on the checkbox sets half without a keyboard', async ({ page 
 test('edits a task in place', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	await page.getByRole('button', { name: 'Bread', exact: true }).dblclick();
 	const input = page.getByRole('textbox').first();
 	await input.fill('Sourdough');
 	await input.press('Enter');
@@ -329,7 +329,7 @@ test('the title renames, the icon collapses, and neither does the other', async 
 	 * every rename began by collapsing the group and every collapse was one slip
 	 * away from an edit box.
 	 */
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	const field = page.getByRole('textbox', { name: 'Group title' });
 	await expect(field).toBeFocused();
 
@@ -351,7 +351,7 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	await addTask(page, 'Milk');
 
 	// Editing the name is where the way out lives, in the icon's place.
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	const remove = page.getByRole('button', { name: /^Delete group/ });
 
 	// Two tasks open, so it is drawn but not offered.
@@ -360,13 +360,13 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	await page.keyboard.press('Escape');
 
 	await task(page, 'Bread').click();
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	// One still open: still refused.
 	await expect(page.getByRole('button', { name: /^Delete group/ })).toBeDisabled();
 	await page.keyboard.press('Escape');
 
 	await task(page, 'Milk').click();
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 
 	const ready = page.getByRole('button', { name: 'Delete group' });
 	await expect(ready).toBeEnabled();
@@ -451,7 +451,7 @@ test('Enter on a task opens a fresh one directly beneath it', async ({ page }) =
 			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
 
 	// Editing the first one and pressing Enter leaves it and opens a row below.
-	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	await page.getByRole('button', { name: 'Bread', exact: true }).dblclick();
 	// The edit field is the only textbox on the sheet while it is open.
 	await page.getByRole('textbox').first().press('Enter');
 
@@ -481,7 +481,7 @@ test('tapping a task takes the caret with it, to the end of what it says', async
 	 * that reads exactly like the two being lost.
 	 */
 	await addTask(page, '2x Tomatos 5,08');
-	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).dblclick();
 
 	const field = page.getByRole('textbox').first();
 	await expect(field).toBeFocused();
@@ -494,7 +494,7 @@ test('tapping a task takes the caret with it, to the end of what it says', async
 
 	// The same on a task that is done — where this was first noticed.
 	await task(page, '2x Tomatos 5,08').click();
-	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).dblclick();
 	await expect(page.getByRole('textbox').first()).toBeFocused();
 });
 
@@ -508,7 +508,7 @@ test('Backspace on an empty row takes the caret back to the one above', async ({
 			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
 
 	// Enter opens a fresh row; backspace on it closes it again and goes back.
-	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	await page.getByRole('button', { name: 'Bread', exact: true }).dblclick();
 	await page.getByRole('textbox').first().press('Enter');
 	await expect(page.getByRole('textbox', { name: 'New task' })).toBeFocused();
 
@@ -532,7 +532,7 @@ test('Escape discards an edit rather than committing it', async ({ page }) => {
 	 */
 	await addTask(page, 'Bread');
 
-	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	await page.getByRole('button', { name: 'Bread', exact: true }).dblclick();
 	const field = page.getByRole('textbox').first();
 	await field.fill('Sourdough');
 	await field.press('Escape');
@@ -541,7 +541,7 @@ test('Escape discards an edit rather than committing it', async ({ page }) => {
 	await expect(task(page, 'Sourdough')).toHaveCount(0);
 
 	// The same on a group title.
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	const title = page.getByRole('textbox', { name: 'Group title' });
 	await title.fill('Market');
 	await title.press('Escape');
@@ -561,7 +561,7 @@ test('Backspace on a task emptied of its words deletes it, and offers it back', 
 			.getByRole('checkbox')
 			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
 
-	await page.getByRole('button', { name: 'Milk', exact: true }).click();
+	await page.getByRole('button', { name: 'Milk', exact: true }).dblclick();
 	const field = page.getByRole('textbox').first();
 	await field.fill('');
 	await field.press('Backspace');
@@ -582,7 +582,7 @@ test('Backspace on a task emptied of its words deletes it, and offers it back', 
 test('Backspace on the first task in a group deletes nothing', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	await page.getByRole('button', { name: 'Bread', exact: true }).dblclick();
 	const field = page.getByRole('textbox').first();
 	await field.fill('');
 	await field.press('Backspace');
@@ -594,7 +594,7 @@ test('Backspace on the first task in a group deletes nothing', async ({ page }) 
 test('Enter on a group title opens a task inside the group', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	const title = page.getByRole('textbox', { name: 'Group title' });
 	await title.fill('Market');
 	await title.press('Enter');
@@ -642,7 +642,7 @@ test('removing a group offers it back, with everything that was in it', async ({
 	await task(page, 'Bread').click();
 	await task(page, 'Milk').click();
 
-	await page.getByRole('button', { name: 'My list' }).click();
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	await page.getByRole('button', { name: 'Delete group' }).click();
 
 	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);

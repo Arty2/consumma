@@ -542,16 +542,19 @@
 	}
 
 	/*
-	 * Full bleed, so the tear runs to the drawn edges of the panel the way it
-	 * runs to the edges of the sheet — a section break that stopped short of
-	 * both margins would be a rule, and a rule is a different mark.
+	 * Out to the drawn edge of the drawer and no further.
 	 *
-	 * It takes back the scroller's own side padding. The h2 under it brings its
-	 * own room, so the space belongs to the line above rather than being split
-	 * between the two.
+	 * A section break that stopped short of both margins would be a rule, and a
+	 * rule is a different mark — but the frame is where this paper ends, so a
+	 * tear running past it reads as a stroke that missed rather than as the
+	 * sheet being torn. The scroller's 1.75rem of padding comes off, less the
+	 * frame's own 0.75rem inset.
+	 *
+	 * The h2 under it brings its own room, so the space belongs to the line
+	 * above rather than being split between the two.
 	 */
 	.tear {
-		margin: 2.5rem -1.75rem 0;
+		margin: 2.5rem -1rem 0;
 	}
 
 	/* The tear above already set this section apart. */
