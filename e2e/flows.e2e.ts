@@ -331,6 +331,58 @@ test('IMPORT takes a list pasted by hand, when the clipboard cannot be read', as
 	await expect(task(page, 'Milk')).toBeVisible();
 });
 
+/*
+ * A list repeats itself, and that is not a mistake.
+ *
+ * The preview used to be keyed by what each line said, so a second task
+ * reading the same thing — or a second group with the same name — was a
+ * duplicate key. Svelte throws on those, which took the whole preview down
+ * and left a perfectly good list looking as though it had been refused, with
+ * nothing on screen to say why.
+ */
+test('IMPORT takes a list that repeats itself, in a task and in a heading', async ({
+	page,
+	context
+}) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	await page.evaluate(() =>
+		navigator.clipboard.writeText(
+			[
+				'## Market',
+				'',
+				'- [ ] Milk',
+				'- [x] Milk',
+				'',
+				'## Market',
+				'',
+				'- [~] Bread',
+				'- [ ] Bread'
+			].join('\n')
+		)
+	);
+
+	await fromMenu(page, 'Import');
+
+	// The preview reads every line, including the ones that say the same thing.
+	// This is the assertion that would have failed: the whole block went down
+	// with the duplicate key and there was nothing on screen at all.
+	await expect(page.getByText('Add 4 tasks in 2 groups?')).toBeVisible();
+	await expect(page.getByLabel('What will be added')).toContainText('- [x] Milk');
+
+	/*
+	 * What lands is deduplicated, which is a separate and deliberate rule —
+	 * a re-import of the same list adds nothing, and it is counted out loud
+	 * rather than silently doubling a list. Reading a line and keeping it are
+	 * two different questions, and only the first was broken.
+	 */
+	await page.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+	await expect(
+		page.getByRole('status').filter({ hasText: /skipped 2 already there/ })
+	).toBeVisible();
+});
+
 test('IMPORT refuses a data file and a web page, and says which', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
