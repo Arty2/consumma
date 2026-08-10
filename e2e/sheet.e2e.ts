@@ -841,3 +841,135 @@ test('the landing rule is drawn in the gap, and never moves the list', async ({ 
 
 	await page.mouse.up();
 });
+
+/*
+ * One tap does the common thing and two open it for editing — on a task row
+ * and on a group title alike, because it is one finger and one sheet.
+ *
+ * The two are built differently on purpose, and the difference is the point of
+ * the pair of tests below: a row acts on the first tap and lets the second
+ * take it back, a group title waits. See the note in GroupHeader.
+ */
+
+test('one tap ticks a task off, and two open it for editing', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+
+	await words.click();
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+
+	/*
+	 * Clear of the double-tap window before tapping again, or this is a double
+	 * tap and opens the row — which is the behaviour under test, not a flake.
+	 * The window is 320ms; the wait is generous so a slow machine cannot make
+	 * two deliberate taps read as one gesture.
+	 */
+	await page.waitForTimeout(450);
+
+	// And back, so a mistaken tick costs one tap.
+	await words.click();
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+
+	await page.waitForTimeout(450);
+
+	/*
+	 * Two taps open the words instead, and put back the tick the first tap
+	 * made. The row is optimistic — the tick happens and is taken back — so
+	 * what matters is where it lands, not what it did on the way.
+	 */
+	await words.dblclick();
+	await expect(page.getByRole('textbox').first()).toBeFocused();
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+});
+
+test('one tap folds a group, and two open its name', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const title = page.getByRole('button', { name: 'My list' });
+	const icon = page.getByRole('button', { name: /^(Collapse|Expand) group/ });
+
+	await title.click();
+	await expect(icon).toHaveAttribute('aria-expanded', 'false');
+	await expect(task(page, 'Bread')).toHaveCount(0);
+
+	await title.click();
+	await expect(icon).toHaveAttribute('aria-expanded', 'true');
+
+	/*
+	 * The fold is held back for the window rather than done and undone, so two
+	 * taps never fold the group at all — a whole list folding and unfolding
+	 * under the thumb is a far worse flicker than the wait it would save.
+	 */
+	await title.dblclick();
+	await expect(page.getByRole('textbox', { name: 'Group title' })).toBeVisible();
+	await expect(icon).toHaveAttribute('aria-expanded', 'true');
+});
+
+test('a row that runs out of room fills up, and the rest starts the next one', async ({ page }) => {
+	/*
+	 * Never `maxlength`. On a phone a field that stops accepting characters is
+	 * indistinguishable from a keyboard that has died, in the middle of a
+	 * sentence, with nothing said. Nothing is refused and nothing is lost.
+	 */
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+
+	// Two hundred is the limit, so this runs ten characters past it, with a
+	// space sitting exactly on the boundary.
+	await field.fill(`${'A'.repeat(200)} SPILLOVER`);
+
+	// The word travelled whole rather than being cut at the two hundredth
+	// character, and it is in the row below with the caret after it, ready to
+	// carry on. The row above kept its full complement.
+	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('SPILLOVER');
+	await expect(task(page, 'A'.repeat(200))).toBeVisible();
+
+	await page.keyboard.press('Escape');
+});
+
+test('a task drawn over two lines is edited over two lines', async ({ page }) => {
+	const long =
+		'A rather long task that certainly runs onto a second line however wide the sheet is';
+	await addTask(page, long);
+
+	const words = page.getByRole('button', { name: long, exact: true });
+	const read = (await words.boundingBox())!.height;
+
+	await words.dblclick();
+	const field = page.getByRole('textbox').first();
+	await expect(field).toBeFocused();
+
+	/*
+	 * A single-line input would collapse the row to one line and hide the end
+	 * of the task behind its own left edge, reflowing the sheet on every tap.
+	 * The field is as tall as the words were, give or take the padding.
+	 */
+	const editing = (await field.boundingBox())!.height;
+	expect(Math.abs(editing - read)).toBeLessThan(12);
+	expect(await field.evaluate((el) => el.tagName)).toBe('TEXTAREA');
+});
+
+test('an address is shown short, and still goes where it says', async ({ page }) => {
+	await addTask(page, 'Recipe https://heracl.es/projects/2024/consumma tonight');
+
+	const link = page.locator('.tasks a').first();
+
+	// No protocol, and the middle of the path elided — what is wanted is which
+	// site and which page, not every character of how to get there.
+	await expect(link).toHaveText('heracl.es/…/consumma');
+
+	// The href keeps all of it: this is a reading, not an edit.
+	await expect(link).toHaveAttribute('href', 'https://heracl.es/projects/2024/consumma');
+
+	// And the text was never touched, so the export still has the whole URL.
+	const exported = await page.evaluate(() => JSON.stringify(localStorage.getItem('consumma:doc')));
+	expect(exported).toContain('https://heracl.es/projects/2024/consumma');
+});
+
+test('only three schemes are ever drawn as a link', async ({ page }) => {
+	// The app hands this string to an href, and two of these run code.
+	await addTask(page, 'Nope javascript:alert(1) and blob:https://heracl.es/x either');
+
+	await expect(page.locator('.tasks a')).toHaveCount(0);
+});

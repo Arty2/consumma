@@ -12,10 +12,20 @@ const executablePath = !process.env.CI && existsSync(preinstalled) ? preinstalle
 export default defineConfig({
 	testDir: 'e2e',
 	testMatch: '**/*.e2e.{ts,js}',
+	/*
+	 * Never reused, on any machine.
+	 *
+	 * `!process.env.CI` meant that locally a preview server already listening on
+	 * 4173 was adopted as-is — serving whatever build happened to be on disk
+	 * when it started. Every failure then points at the wrong thing: the code
+	 * under test is not the code being served, and the diff you are staring at
+	 * is not in the bundle. Building and starting fresh costs a few seconds and
+	 * removes a whole class of failure that looks exactly like a real one.
+	 */
 	webServer: {
 		command: 'pnpm run build && pnpm run preview',
 		port: 4173,
-		reuseExistingServer: !process.env.CI
+		reuseExistingServer: false
 	},
 	use: { baseURL: 'http://localhost:4173' },
 	projects: [

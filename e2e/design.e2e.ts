@@ -28,6 +28,63 @@ test('every mark on the page is a drawn path, not an image', async ({ page }) =>
 	expect(await page.locator('svg path').count()).toBeGreaterThan(2);
 });
 
+/*
+ * The one exception, and it is worth stating as one rather than leaving the
+ * rule above quietly true only because nothing on a bare sheet is a link.
+ *
+ * A link is inline text that wraps, and every one of its line boxes wants its
+ * own underline — which is the one thing an inline <svg> measured to a box
+ * cannot do. So the mark is a repeating background, still drawn by the same
+ * hand, still seeded, and still nothing but a stroke.
+ */
+test('the only background in the app is the drawn underline under a link', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	await field.fill('Recipe https://heracl.es/projects/2024/consumma tonight');
+	await field.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const backgrounds = await page.evaluate(() =>
+		[...document.querySelectorAll('*')]
+			.map((el) => ({ tag: el.tagName, image: getComputedStyle(el).backgroundImage }))
+			.filter((entry) => entry.image !== 'none')
+	);
+
+	// Exactly one, on the anchor, and it is an SVG drawn into the page rather
+	// than a file fetched from anywhere.
+	expect(backgrounds).toHaveLength(1);
+	expect(backgrounds[0].tag).toBe('A');
+	expect(backgrounds[0].image).toContain('data:image/svg+xml');
+	expect(backgrounds[0].image).toContain('stroke');
+
+	// Never the browser's own rule. The check below walks the whole page for
+	// that; this says it of the one element most likely to acquire one.
+	await expect(page.locator('a').first()).toHaveCSS('text-decoration-line', 'none');
+});
+
+test('the link underline is ink, and turns over with the theme', async ({ page }) => {
+	await page.emulateMedia({ colorScheme: 'light' });
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	await field.fill('Recipe https://heracl.es/consumma tonight');
+	await field.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const tile = () =>
+		page
+			.locator('a')
+			.first()
+			.evaluate((el) => getComputedStyle(el).backgroundImage);
+
+	// A data URI is its own document and cannot read --ink, so the colour is
+	// baked and the pair is swapped with the theme. Black on the white sheet.
+	expect(decodeURIComponent(await tile())).toContain('stroke="#000"');
+
+	await themeButton(page).click();
+	await expect.poll(async () => (await swatch(page)).resolved).toBe('dark');
+	expect(decodeURIComponent(await tile())).toContain('stroke="#fff"');
+});
+
 test('nothing casts a shadow, because a shadow means grey', async ({ page }) => {
 	const shadows = await page.evaluate(() =>
 		[...document.querySelectorAll('*')]
