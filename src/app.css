@@ -103,21 +103,38 @@
 	--tear: 16px;
 
 	/*
+	 * Where the paper is, and how wide.
+	 *
+	 * The sheet and the menu are the same piece of paper seen twice — the panel
+	 * is not a drawer beside the list, it is the back of it — so they have to
+	 * agree on their edges. These are that agreement, written once: the widest
+	 * the paper is ever drawn, the room either side of it, and the room above
+	 * and below where the tears fall.
+	 *
+	 * +page.svelte lays the sheet out from them and Menu.svelte lays the panel
+	 * out from them. Change one of these and both move together; write a
+	 * number into either file instead and they part company by exactly as much
+	 * as you were not paying attention.
+	 */
+	--paper-width: 34rem;
+	--paper-x: 1rem;
+	--paper-top: calc(2rem + env(safe-area-inset-top));
+	--paper-bottom: calc(2rem + env(safe-area-inset-bottom));
+
+	/* How far the writing sits inside the drawn edge, on both. */
+	--paper-inset: 1.25rem;
+
+	/*
 	 * Where the buttons in the sheet's corners sit, measured from the edges of
-	 * the viewport.
+	 * the paper above.
 	 *
 	 * The menu's ✕ is the burger seen from the other side, so it has to land on
-	 * the burger — but it lives in a fixed panel and the burger lives in the
-	 * page's flow, so nothing in CSS relates the two. These are that relation,
-	 * written once: across, the page's own 1rem plus the sheet's 1.25rem; down,
-	 * the room above the tear plus the tear itself, which is everything between
-	 * the top of the viewport and the row the buttons are on.
-	 *
-	 * Retune them with .page's padding, main's padding or --tear, and not
-	 * otherwise — they are those three numbers and nothing else.
+	 * the burger. Now that the panel is the same box as the sheet, that is just
+	 * the paper's own margins — across, the room beside the paper plus the room
+	 * inside it; down, the room above the tear plus the tear itself.
 	 */
-	--corner-x: 2.25rem;
-	--corner-y: calc(2rem + env(safe-area-inset-top) + var(--tear));
+	--corner-x: calc(var(--paper-x) + var(--paper-inset));
+	--corner-y: calc(var(--paper-top) + var(--tear));
 
 	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
@@ -126,12 +143,28 @@
 	 * everything in flow, so that a ✕ appearing moves nothing and the prices
 	 * stay a column on the rows that are done.
 	 *
-	 * There is 2.25rem to play with — the sheet's own 1.25rem of padding and the
-	 * page's 1rem beyond it — so this leaves half a rem before the viewport and
-	 * cannot push the sheet sideways. It is narrower than `--touch` across,
-	 * which is the price of the position; it keeps the full 44px of height.
+	 * Exactly the margin the sheet holds its writing off its own edge by, so
+	 * the column sits in the paper's own padding and stops at the drawn edge.
+	 * It used to be wider than that and crossed the edge to reach the page
+	 * beyond it, which put a live control on top of the line that says where
+	 * the paper stops — the one mark on the sheet that is not writing.
+	 *
+	 * It is narrower than `--touch` across, which is the price of the position;
+	 * it keeps the full 44px of height. The mark inside it is smaller again and
+	 * sits off-centre, away from the edge — see --gutter-clear.
 	 */
-	--gutter: 1.75rem;
+	--gutter: var(--paper-inset);
+
+	/*
+	 * How far the ✕ keeps off the drawn edge beside it.
+	 *
+	 * The column ends exactly at the edge, so a mark centred in it lands within
+	 * a pixel or two of the line — and the line is drawn by a hand, so it
+	 * wanders that far on its own. Two marks touching read as one smudge, and
+	 * one of them is the line that says where the paper stops. This is the air
+	 * between them.
+	 */
+	--gutter-clear: 3px;
 
 	/*
 	 * How faint a thing that is not there yet is drawn.

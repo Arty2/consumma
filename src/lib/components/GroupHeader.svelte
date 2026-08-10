@@ -53,7 +53,10 @@
 
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
-	const cross = $derived(handCross(20, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
+	/* The same mark, the same size, as the ✕ on every done task below it. */
+	const CROSS = 13;
+
+	const cross = $derived(handCross(CROSS, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
 
 	/** What the rule is drawn under: the title, or the title being typed. */
 	const shown = $derived(editing ? draft : title === '' ? '…' : title);
@@ -273,7 +276,7 @@
 				aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
 				title={finished ? 'Delete group' : 'Finish its tasks first'}
 			>
-				<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+				<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
 					<path d={cross} class="drawn" />
 				</svg>
 			</button>
@@ -291,7 +294,7 @@
 	 * than stopping short of them like a word would.
 	 */
 	.perforation {
-		margin: 0.7rem -1.25rem 0.9rem;
+		margin: 0.7rem calc(-1 * var(--paper-inset)) 0.9rem;
 	}
 
 	.header {
@@ -407,6 +410,8 @@
 	.remove {
 		position: absolute;
 		right: calc(-1 * var(--gutter));
+		/* Off-centre in its column, as on every task below it. */
+		padding-right: var(--gutter-clear);
 		width: var(--gutter);
 		height: var(--touch);
 		display: inline-flex;

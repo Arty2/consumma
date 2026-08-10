@@ -100,7 +100,16 @@
 	);
 	const remaining = $derived(LIMITS.taskText - length(draft));
 	const showCounter = $derived(editing && nearLimit(draft, LIMITS.taskText, COUNTER_WITHIN));
-	const cross = $derived(handCross(18, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
+	/*
+	 * Small enough to sit inside the paper's margin without touching the drawn
+	 * edge beside it. The column is exactly that margin wide, so a mark filling
+	 * it lands on the line that says where the paper stops — two marks in one
+	 * place, one of which is a button. The same size as the group's ✕ above it,
+	 * because they stand in one column and are one thing.
+	 */
+	const CROSS = 13;
+
+	const cross = $derived(handCross(CROSS, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
 
 	/**
 	 * Long enough to be a second tap, short enough not to catch two decisions.
@@ -396,7 +405,7 @@
 	-->
 	{#if task.state === 'done' && !editing && !drag.dragging}
 		<button class="remove" type="button" onclick={pop} aria-label="Delete task">
-			<svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true">
+			<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
 				<path d={cross} class="drawn" />
 			</svg>
 		</button>
@@ -576,6 +585,8 @@
 	.remove {
 		position: absolute;
 		right: calc(-1 * var(--gutter));
+		/* Off-centre in its column, so the mark keeps clear of the drawn edge. */
+		padding-right: var(--gutter-clear);
 		/*
 		 * On the first line, beside the box — a task that wraps keeps its ✕
 		 * where the row starts rather than letting it slide down beside the

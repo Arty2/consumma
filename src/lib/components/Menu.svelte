@@ -343,19 +343,41 @@
 	 * a panel are the same thing, and half a sheet of paper is not a shape this
 	 * app has.
 	 */
+	/*
+	 * The same piece of paper as the sheet, seen from the back.
+	 *
+	 * It used to be a 24rem drawer pinned to the right edge, which on anything
+	 * wider than a phone opened a panel of one width over a sheet of another,
+	 * with its own margins and its own top. Laid out from the paper's own
+	 * variables it lands exactly on the sheet at every width — same width, same
+	 * margins, same room above and below the tear — so opening the menu turns
+	 * the list over rather than sliding something else in front of it.
+	 *
+	 * Centred like the page, so the drag-to-dismiss offset is composed with the
+	 * centring rather than replacing it.
+	 */
 	.menu {
 		position: fixed;
 		top: 0;
-		right: 0;
 		bottom: 0;
-		width: min(24rem, 100%);
+		left: 50%;
+		width: 100%;
+		max-width: var(--paper-width);
 		z-index: 10;
 		background: var(--paper);
 		display: flex;
 		flex-direction: column;
 		outline: none;
 		touch-action: pan-y;
-		translate: var(--offset, 0);
+		translate: calc(-50% + var(--offset, 0px)) 0;
+		/*
+		 * The paper's own top and bottom, so the scroller inside is exactly the
+		 * frame's box and the content is cut where the paper stops. Cut at the
+		 * viewport instead, a button halfway out of the panel went on being
+		 * drawn in the margin below the drawn edge, which reads as the panel
+		 * leaking rather than as paper ending.
+		 */
+		padding-block: var(--paper-top) var(--paper-bottom);
 	}
 
 	/*
@@ -364,9 +386,18 @@
 	 * outside the border, because an absolutely positioned box in a scroll
 	 * container sizes to the visible box rather than to what it holds.
 	 */
+	/*
+	 * On the sheet's own drawn edges: the room beside the paper across, and the
+	 * room the tears leave above and below. The sheet closes itself with two
+	 * torn edges and two side edges; the panel closes itself with one drawn
+	 * box, in the same place.
+	 */
 	.frame {
 		position: absolute;
-		inset: 0.75rem;
+		top: var(--paper-top);
+		right: var(--paper-x);
+		bottom: var(--paper-bottom);
+		left: var(--paper-x);
 		pointer-events: none;
 	}
 
@@ -387,32 +418,33 @@
 		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
-		padding: calc(2rem + env(safe-area-inset-top)) 1.75rem calc(2rem + env(safe-area-inset-bottom));
+		/*
+		 * In by the same margin the sheet keeps its writing off its own edges
+		 * by, so a line in the panel starts exactly where a task on the sheet
+		 * starts. The room above and below belongs to the panel, which is what
+		 * makes the frame the thing that clips.
+		 */
+		padding-inline: calc(var(--paper-x) + var(--paper-inset));
 	}
 
 	/*
-	 * On the burger, because it is the burger: the button does not move when the
-	 * panel opens, it only changes what it is drawn as. See --corner-x/y.
+	 * On the burger, because it is the burger: the button does not move when
+	 * the panel opens, it only changes what it is drawn as.
 	 *
-	 * The page is centred once it is wider than its own max-width, so the
-	 * burger walks inwards from the viewport edge and the ✕ follows it — until
-	 * following would take it off the panel, which is what the min() stops. On
-	 * a phone, where the panel is the whole width, the first term always wins
-	 * and the two land on each other exactly.
+	 * Simply the paper's own corner now. It used to need a min() of two terms
+	 * to chase a centred page from a right-pinned drawer; with the panel laid
+	 * out as the same box, there is nothing to chase.
 	 */
 	.close {
 		position: absolute;
 		top: var(--corner-y);
-		right: min(
-			calc(max(0px, (100vw - 34rem) / 2) + var(--corner-x)),
-			calc(100% - var(--touch) - 1.1rem)
-		);
+		right: var(--corner-x);
 		width: var(--touch);
 		height: var(--touch);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		/* Above the content it now scrolls over. */
+		/* Above the content it scrolls over. */
 		z-index: 1;
 	}
 
@@ -420,8 +452,13 @@
 	 * Clear of the ✕, which sits lower than it used to now that it stands where
 	 * the burger stands.
 	 */
+	/*
+	 * Clear of the ✕, which stands a tear's height below the paper's top edge
+	 * and is a touch target tall. Derived rather than guessed, so it follows
+	 * the corner it is avoiding.
+	 */
 	.body {
-		padding-top: 3.5rem;
+		padding-top: calc(var(--tear) + var(--touch));
 		text-align: center;
 	}
 
@@ -542,19 +579,20 @@
 	}
 
 	/*
-	 * Out to the drawn edge of the drawer and no further.
+	 * Out to the drawn edge of the paper and no further.
 	 *
 	 * A section break that stopped short of both margins would be a rule, and a
 	 * rule is a different mark — but the frame is where this paper ends, so a
 	 * tear running past it reads as a stroke that missed rather than as the
-	 * sheet being torn. The scroller's 1.75rem of padding comes off, less the
-	 * frame's own 0.75rem inset.
+	 * sheet being torn. It takes back exactly what Loose ends takes back on the
+	 * sheet, and for the same reason: the margin the writing is held off the
+	 * edge by.
 	 *
 	 * The h2 under it brings its own room, so the space belongs to the line
 	 * above rather than being split between the two.
 	 */
 	.tear {
-		margin: 2.5rem -1rem 0;
+		margin: 2.5rem calc(-1 * var(--paper-inset)) 0;
 	}
 
 	/* The tear above already set this section apart. */

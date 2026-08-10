@@ -524,6 +524,32 @@ test('a panel closes on Escape and returns focus to what opened it', async ({ pa
 	await expect(menuButton(page)).toBeFocused();
 });
 
+/*
+ * Focus does not stay inside a panel on its own. Pressing Sync now disables
+ * that button while it cools, which blurs it to the body on the spot — and a
+ * trap listening on the panel never sees a key pressed there, so Escape
+ * reached nothing and the menu could not be closed by keyboard at all.
+ *
+ * It went unnoticed because the panel used to be a drawer down one side: the
+ * sheet stayed clickable beside it, so a test that carried on tapping the list
+ * with the menu still open never knew the difference.
+ */
+test('Escape closes the panel even when focus has fallen out of it', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await openMenu(page);
+
+	// Disables itself for the cooldown, taking focus with it.
+	await page.getByRole('button', { name: /^Sync now/ }).click();
+	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeDisabled();
+	expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BODY');
+
+	await page.keyboard.press('Escape');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+
+	// And the sheet behind it is reachable again.
+	await expect(page.getByRole('button', { name: 'Add a task' }).first()).toBeVisible();
+});
+
 test('the menu reports being unable to reach the list, and keeps the tasks', async ({ page }) => {
 	await addTask(page, 'Bread');
 
