@@ -303,6 +303,8 @@
 		align-items: center;
 		gap: 0.25rem;
 		min-height: var(--touch);
+		/* The total lands over the prices, so it stops where they stop. */
+		padding-right: var(--corner-ink);
 	}
 
 	.lifted {

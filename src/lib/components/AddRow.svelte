@@ -202,6 +202,8 @@
 		min-height: var(--touch);
 		list-style: none;
 		font-size: var(--size-task);
+		/* The same column the rows above it keep. */
+		padding-right: var(--corner-ink);
 	}
 
 	/* The mirror of the ✕ column, as on a task row. */

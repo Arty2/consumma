@@ -967,6 +967,24 @@ test('an address is shown short, and still goes where it says', async ({ page })
 	expect(exported).toContain('https://heracl.es/projects/2024/consumma');
 });
 
+/*
+ * The list is held in this tab and lives on a key in this browser, so a link
+ * written by whoever else is on the list never navigates it away — and the
+ * page it opens is told nothing about where it came from and given no handle
+ * on the tab it came from.
+ */
+test('a link opens in its own tab, and carries nothing with it', async ({ page }) => {
+	await addTask(page, 'Recipe https://heracl.es/consumma tonight');
+
+	const link = page.locator('.tasks a').first();
+	await expect(link).toHaveAttribute('target', '_blank');
+
+	const rel = (await link.getAttribute('rel'))!.split(/\s+/);
+	expect(rel).toContain('noopener');
+	expect(rel).toContain('noreferrer');
+	expect(rel).toContain('nofollow');
+});
+
 test('only three schemes are ever drawn as a link', async ({ page }) => {
 	// The app hands this string to an href, and two of these run code.
 	await addTask(page, 'Nope javascript:alert(1) and blob:https://heracl.es/x either');

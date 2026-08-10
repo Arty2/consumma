@@ -14,10 +14,22 @@
 {/if}
 
 <style>
+	/*
+	 * At the top, under the buttons in the corners.
+	 *
+	 * It used to sit at the bottom, which is where a phone puts its keyboard —
+	 * so the one message that most wants reading, the one offering to undo what
+	 * just happened, was behind the keys that had just caused it. Every toast
+	 * here follows an edit, and an edit is made with the keyboard up.
+	 *
+	 * Below the corner row rather than level with it: those buttons are the
+	 * other things drawn on this line, and a bar through them would cover the
+	 * sync mark and the burger.
+	 */
 	.toast {
 		position: fixed;
 		left: 50%;
-		bottom: calc(1rem + env(safe-area-inset-bottom));
+		top: calc(var(--corner-y) + var(--touch) + 0.5rem);
 		translate: -50% 0;
 		display: flex;
 		align-items: center;

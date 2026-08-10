@@ -99,6 +99,22 @@
 	--stroke: 1.4;
 	--touch: 44px;
 
+	/*
+	 * How big a drawn glyph is inside a touch target: the burger, the theme,
+	 * the sync mark, the menu's ✕. Each is centred in a --touch square, so its
+	 * ink stops --corner-ink short of where the button does.
+	 *
+	 * That is the line the figures end on. A price is set against the corner
+	 * above it rather than against the button's invisible box, because the
+	 * button's box is not a thing anybody can see — and stopping at the ink
+	 * leaves the ✕ the room it needs in the margin beyond.
+	 *
+	 * The components draw their paths at --glyph and name it themselves; this
+	 * is the same number where CSS needs it.
+	 */
+	--glyph: 22px;
+	--corner-ink: calc((var(--touch) - var(--glyph)) / 2);
+
 	/* How tall a torn edge is drawn. TornEdge draws its path at this height. */
 	--tear: 16px;
 
@@ -135,18 +151,17 @@
 	 * that gap into looking generous; the only thing that helps is standing
 	 * further in.
 	 *
-	 * As far as it can go and still clear a price. The mark paints about eight
-	 * pixels of a fifteen-pixel margin, so stepping in by this much roughly
-	 * doubles the air on the edge side — two and a half becomes five and a
-	 * half — and leaves the ink stopping exactly where the last digit does.
-	 * A full half-glyph, five pixels, puts the ✕ through the final numeral:
-	 * a price is written for reading against a shelf and is the one thing on
-	 * the row that must not be struck through.
+	 * About half the mark's own width. It used to be capped at what would clear
+	 * a price, because a price is written for reading against a shelf and is
+	 * the one thing on the row that must not be struck through — but the
+	 * figures now stop at --corner-ink, a good half-centimetre earlier, so
+	 * there is nothing left in the way and the mark can stand where it looks
+	 * right rather than where it fits.
 	 *
 	 * It moves the mark only. The hit area stays out in the margin, so tapping
 	 * the end of a price still opens the row rather than deleting it.
 	 */
-	--cross-step: 2.5px;
+	--cross-step: 5px;
 
 	/*
 	 * Where the paper is, and how wide.

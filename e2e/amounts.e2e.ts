@@ -186,6 +186,55 @@ test('the total stands directly over the prices it is the sum of', async ({ page
 	for (const price of edges.prices) expect(price).toBe(edges.total);
 });
 
+/*
+ * And the column itself ends on the corner above it.
+ *
+ * The buttons up there are --touch squares with a --glyph drawn in the middle,
+ * so their ink stops short of their boxes. The figures line up on the ink,
+ * because the box is not a thing anybody can see — and stopping there is what
+ * leaves the ✕ room to stand in the margin without touching either the last
+ * digit or the drawn edge of the paper.
+ */
+test('the figures end where the ink of the corner above them ends', async ({ page }) => {
+	await theList(page);
+
+	const edges = await page.evaluate(() => {
+		const right = (el: Element) => Math.round(el.getBoundingClientRect().right);
+		return {
+			burger: right(document.querySelector('[aria-label^="Menu"] path')!),
+			total: right(document.querySelector('.total')!),
+			price: right(document.querySelector('.tasks li .cost')!)
+		};
+	});
+
+	expect(edges.price).toBe(edges.burger);
+	expect(edges.total).toBe(edges.burger);
+});
+
+test('the ✕ stands clear of both the figures and the edge of the paper', async ({ page }) => {
+	await theList(page);
+	await task(page, '2x Tomatos 5,08').click();
+
+	const gaps = await page.evaluate(() => {
+		const box = (el: Element) => el.getBoundingClientRect();
+		const cross = box(document.querySelector('[aria-label="Delete task"] path')!);
+		const price = box(document.querySelector('.tasks li .cost')!);
+		// The second is the right-hand side edge of the sheet.
+		const edge = box([...document.querySelectorAll('main > svg path')][1]);
+
+		return {
+			fromPrice: cross.left - price.right,
+			toEdge: edge.left - cross.right
+		};
+	});
+
+	// Both sides clear, and neither crowded — it sits in the middle of the
+	// margin rather than against one end of it.
+	expect(gaps.fromPrice).toBeGreaterThan(4);
+	expect(gaps.toEdge).toBeGreaterThan(4);
+	expect(Math.abs(gaps.fromPrice - gaps.toEdge)).toBeLessThan(4);
+});
+
 test('the figures are set apart, and the words are not', async ({ page }) => {
 	await theList(page);
 

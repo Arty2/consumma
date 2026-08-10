@@ -104,16 +104,12 @@
 	 * The ✕ stands in the middle of the paper's own right margin, and its size
 	 * is what decides how much air is left either side of it.
 	 *
-	 * The margin that can be seen is narrower than the padding: the drawn edge
-	 * runs down the middle of its own box and has a stroke's width of its own,
-	 * so it stops a good five pixels short of where the padding does. Fifteen
-	 * are left, and handCheck draws its ink across the middle 56% of whatever
-	 * size it is given, jittering each end by 6% of it. Eleven therefore paints
-	 * about seven and a half and leaves three and a half either side, with the
-	 * jitter worth well under a pixel of that. Thirteen left the arm within a
-	 * pixel and a half of the line — and the line wanders about as far again,
-	 * so the two met. Two marks touching read as one smudge, and one of them
-	 * says where the paper stops.
+	 * handCheck draws its ink across the middle 56% of whatever size it is
+	 * given, jittering each end by 6% of it, so eleven paints about seven and a
+	 * half. Thirteen left the arm within a pixel and a half of the drawn edge —
+	 * and the edge is drawn by a hand that wanders about as far again, so the
+	 * two met. Two marks touching read as one smudge, and one of them says
+	 * where the paper stops.
 	 *
 	 * The same size as the group's ✕ above it, because they stand in one column
 	 * and are one thing.
@@ -316,11 +312,25 @@
 				Never an app route: `links.ts` allows three schemes and every one of
 				them is absolute and off this origin, so there is nothing here for
 				resolve() to resolve.
+
+				Always a new tab, and never carrying anything with it. The list is
+				held in this tab and lives on a key in this browser — navigating it
+				away to follow a link written by whoever else is on the list is not
+				a thing to make easy. `noopener` denies the opened page a handle on
+				this one, `noreferrer` stops it being told where the visitor came
+				from, and `nofollow` says this is somebody's shopping list rather
+				than an endorsement.
 			-->
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={piece.href} rel="noreferrer" onclick={(event) => event.stopPropagation()}>
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			<a
+				href={piece.href}
+				target="_blank"
+				rel="noopener noreferrer nofollow"
+				onclick={(event) => event.stopPropagation()}
+			>
 				{piece.label}
 			</a>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{:else}
 			{piece.text}
 		{/if}
@@ -444,6 +454,14 @@
 		gap: 0.25rem;
 		min-height: var(--touch);
 		list-style: none;
+		/*
+		 * The price column ends level with the ink of the buttons in the corner
+		 * above it, not with their boxes — see --corner-ink. It is out of the
+		 * ✕'s way for free: the ✕ is positioned against this row's border box,
+		 * which padding does not move, so the margin beyond the figures widens
+		 * by exactly this much.
+		 */
+		padding-right: var(--corner-ink);
 	}
 
 	.lifted {

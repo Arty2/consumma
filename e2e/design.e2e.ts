@@ -866,3 +866,36 @@ test('the theme is the device’s, so removing the list does not take it', async
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 	expect((await swatch(page)).resolved).toBe('dark');
 });
+
+/*
+ * At the top, under the corner buttons.
+ *
+ * A phone puts its keyboard at the bottom of the screen, and every toast here
+ * follows an edit — which is made with the keyboard up. Down there the one
+ * message most worth reading, the one offering to undo what just happened, was
+ * behind the keys that had just caused it.
+ */
+test('the toast stands at the top, clear of where a keyboard comes up', async ({ page }) => {
+	await page.setViewportSize({ width: 390, height: 760 });
+
+	await page.getByRole('button', { name: 'Add a task' }).click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	await input.fill('Bread');
+	await input.press('Enter');
+	await page.keyboard.press('Escape');
+
+	await page.getByRole('checkbox', { name: 'Bread' }).click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+
+	const where = await page.evaluate(() => {
+		const toast = document.querySelector('.toast')!.getBoundingClientRect();
+		const burger = document.querySelector('[aria-label^="Menu"]')!.getBoundingClientRect();
+		return { top: toast.top, bottom: toast.bottom, corner: burger.bottom, height: innerHeight };
+	});
+
+	// Below the buttons, never over them — they are the other marks on that line.
+	expect(where.top).toBeGreaterThanOrEqual(where.corner);
+
+	// And nowhere near the bottom, which is the keyboard's half of the screen.
+	expect(where.bottom).toBeLessThan(where.height / 2);
+});

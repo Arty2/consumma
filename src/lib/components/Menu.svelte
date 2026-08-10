@@ -321,13 +321,17 @@
 				<div class="tear"><Perforation seed="menu-credit" /></div>
 				<!--
 					The one link off this origin, and it goes to the project's own
-					page. Bare https, and no target: a list held in a browser tab is
-					not something to navigate away from by accident, but a new tab is
-					the person's decision to make with a long press, not ours.
+					page. A new tab and nothing carried with it, exactly as a link in
+					a task is: the list is held in this tab and lives on a key in
+					this browser, so navigating it away is not a thing to do by
+					accident.
 				-->
 				<p>
 					v{__VERSION__} •
-					<a href="https://heracl.es/consumma" rel="noreferrer">heracl.es/consumma</a>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href="https://heracl.es/consumma" target="_blank" rel="noopener noreferrer nofollow"
+						>heracl.es/consumma</a
+					>
 				</p>
 				<p class="dedication">
 					Dialectic Acheropoieton<br />of Heracles Papatheodorou and Claude
