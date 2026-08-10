@@ -286,6 +286,51 @@ test('IMPORT skips duplicates and says so', async ({ page, context }) => {
 	await expect(page.getByRole('checkbox')).toHaveCount(2);
 });
 
+/*
+ * The other half of IMPORT, and the half most people will actually meet.
+ *
+ * Firefox rejects a clipboard read outright and Safari raises a prompt, so on
+ * those browsers the panel opens on an empty box and the list arrives by hand.
+ * ImportModal calls that a first-class path rather than a fallback nobody
+ * maintains — which is only true if something checks it, and until now the
+ * tests only ever went in through the clipboard read.
+ */
+test('IMPORT takes a list pasted by hand, when the clipboard cannot be read', async ({
+	page,
+	context
+}) => {
+	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+
+	// A browser that refuses the read. Writing still works, which is how the
+	// list gets onto the clipboard for the paste below.
+	await context.addInitScript(() => {
+		Object.defineProperty(navigator.clipboard, 'readText', {
+			value: () => Promise.reject(new Error('denied')),
+			configurable: true
+		});
+	});
+	await page.reload();
+
+	await page.evaluate(() => navigator.clipboard.writeText('Bread\nCoffee\nMilk'));
+	await fromMenu(page, 'Import');
+
+	// No preview yet: there was nothing to read, so it opens on the box.
+	const field = page.getByRole('textbox', { name: 'Markdown to import' });
+	await expect(field).toBeVisible();
+	await expect(page.getByLabel('What will be added')).toHaveCount(0);
+
+	await field.focus();
+	await page.keyboard.press('Control+V');
+
+	// A real paste reaches the same parse a clipboard read would have.
+	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
+	await expect(page.getByLabel('What will be added')).toContainText('- [ ] Bread');
+
+	await page.getByRole('button', { name: 'Add', exact: true }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(3);
+	await expect(task(page, 'Milk')).toBeVisible();
+});
+
 test('IMPORT refuses a data file and a web page, and says which', async ({ page, context }) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
