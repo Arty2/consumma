@@ -72,7 +72,23 @@ export default defineConfig({
 						'unsafe-hashes',
 						'sha256-S8qMpvofolR8Mpjy4kQvEm7m1q8clzU4dfDH0AmvZjo='
 					],
-					'img-src': ['self'],
+					/*
+					 * 'self' plus data:, for exactly one thing: the link underline.
+					 *
+					 * It is a tile drawn by src/lib/draw and handed to CSS as a
+					 * `url()`, because an underline on wrapping inline text has to be
+					 * a repeating background and a background cannot be an inline
+					 * `<svg>`. The tile is generated in our own code from our own
+					 * data — nothing here parses or renders a data: URI that came
+					 * from anywhere else.
+					 *
+					 * What this gives up is small and worth naming: `data:` in
+					 * img-src means an injected `<img>` could render bytes of its own
+					 * rather than having to fetch them. It cannot send anything —
+					 * connect-src is still 'self' alone, which is the directive that
+					 * matters for a browser holding a key.
+					 */
+					'img-src': ['self', 'data:'],
 					'font-src': ['self'],
 					'connect-src': ['self'],
 					'manifest-src': ['self'],

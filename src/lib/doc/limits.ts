@@ -11,7 +11,7 @@
  */
 export const LIMITS = {
 	/** Characters in a task, counted in code points. */
-	taskText: 100,
+	taskText: 200,
 	/** Live tasks in a list, excluding tombstones. */
 	tasks: 100,
 	/** Characters in a group title, counted in code points. */
@@ -24,5 +24,12 @@ export const LIMITS = {
 	plaintextBytes: 1024 * 1024
 } as const;
 
-/** The character counter appears at this length, and not before. */
-export const COUNTER_APPEARS_AT = 80;
+/**
+ * How close to the limit a row gets before it says so.
+ *
+ * A count, not a length, so it does not have to be retuned every time the
+ * limit moves. Past the limit the row does not stop accepting characters —
+ * it fills up and the rest starts the next row (see doc/spill.ts) — so this
+ * is a last stretch of page rather than a warning.
+ */
+export const COUNTER_WITHIN = 20;

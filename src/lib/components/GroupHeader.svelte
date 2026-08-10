@@ -58,16 +58,44 @@
 	/** What the rule is drawn under: the title, or the title being typed. */
 	const shown = $derived(editing ? draft : title === '' ? '…' : title);
 
+	/**
+	 * Long enough to be a second tap, short enough not to catch two decisions.
+	 * The same window a task row and the checkbox use — it is the same finger.
+	 */
+	const DOUBLE_TAP_MS = 320;
+
+	let lastTap = -Infinity;
+
 	/*
-	 * Three controls on one row, and each does one thing.
+	 * A tap folds the group, two taps open its name — the same pair a task row
+	 * offers, so the sheet answers a finger the same way wherever it lands.
 	 *
-	 * The title is the name, so tapping it edits the name. Collapsing is the
-	 * icon's job and nothing else's — the two used to share the title, which
-	 * meant every rename began with a double tap and every collapse risked one.
+	 * Optimistic rather than delayed, as everywhere else here: the fold happens
+	 * on the first tap and the second takes it back before opening the field.
+	 * Holding every tap back a third of a second to see whether another is
+	 * coming would put that lag on the common action to spare the rare one.
 	 *
 	 * A long press on the title picks the group up instead, the way it picks a
-	 * task up.
+	 * task up. The icon beside the name still folds on one tap and does nothing
+	 * else, for anyone who would rather aim at it.
 	 */
+	function ontap() {
+		if (synthetic) return;
+
+		const now = performance.now();
+		const quick = now - lastTap < DOUBLE_TAP_MS;
+		lastTap = now;
+
+		if (quick) {
+			// Put the fold back before opening the name.
+			ontoggle();
+			startEditing();
+			return;
+		}
+
+		ontoggle();
+	}
+
 	function startEditing() {
 		if (synthetic) return;
 		draft = title;
@@ -163,8 +191,9 @@
 			/>
 		{:else}
 			<!--
-				The name, and the way to change it. A long press picks the group up
-				instead — the same gesture that lifts a task, on the same kind of row.
+				The name. One tap folds the group, two open the name for changing,
+				and a long press picks the group up — the same gesture that lifts a
+				task, on the same kind of row.
 			-->
 			<button
 				class="title caps"
@@ -172,7 +201,7 @@
 				type="button"
 				lang={langOf(title)}
 				aria-label={title === '' ? 'Untitled group' : title}
-				onclick={startEditing}
+				onclick={ontap}
 				onkeydown={(event) => event.key === 'F2' && startEditing()}
 				use:dragGroup={{ groupId: seed, enabled: !synthetic, onDrop: onreorder }}
 			>

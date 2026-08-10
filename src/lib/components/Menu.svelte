@@ -319,7 +319,16 @@
 
 			<footer class="credit">
 				<p class="break" aria-hidden="true">* * *</p>
-				<p>v{__VERSION__} • heracl.es/consumma</p>
+				<!--
+					The one link off this origin, and it goes to the project's own
+					page. Bare https, and no target: a list held in a browser tab is
+					not something to navigate away from by accident, but a new tab is
+					the person's decision to make with a long press, not ours.
+				-->
+				<p>
+					v{__VERSION__} •
+					<a href="https://heracl.es/consumma" rel="noreferrer">heracl.es/consumma</a>
+				</p>
 				<p class="dedication">
 					Dialectic Acheropoieton<br />of Heracles Papatheodorou and Claude
 				</p>

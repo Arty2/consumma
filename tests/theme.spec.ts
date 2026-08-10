@@ -64,17 +64,37 @@ describe('nextTheme', () => {
 		expect(nextTheme('system', 'dark')).toBe('light');
 	});
 
-	it('comes back round to following the phone in three', () => {
-		expect(cycle('system', 'light', 3)).toStrictEqual(['dark', 'light', 'system']);
-		expect(cycle('system', 'dark', 3)).toStrictEqual(['light', 'dark', 'system']);
+	it('comes back round to following the phone in two', () => {
+		expect(cycle('system', 'light', 2)).toStrictEqual(['dark', 'system']);
+		expect(cycle('system', 'dark', 2)).toStrictEqual(['light', 'system']);
 	});
 
-	it('keeps cycling through all three and nothing else', () => {
+	/*
+	 * Two states, not three. The one that was dropped is the choice agreeing
+	 * with the phone: it draws the same sheet as following does, so a tap into
+	 * it and the tap out of it both looked like nothing happening.
+	 */
+	it('never settles on the choice that agrees with the phone', () => {
 		for (const system of ['dark', 'light'] as const) {
-			const seen = cycle('system', system, 9);
+			const seen = cycle('system', system, 8);
 
-			expect(seen).toStrictEqual([...seen.slice(0, 3), ...seen.slice(0, 3), ...seen.slice(0, 3)]);
-			expect(new Set(seen)).toStrictEqual(new Set(['dark', 'light', 'system']));
+			expect(seen).not.toContain(system);
+			expect(new Set(seen)).toStrictEqual(
+				new Set([system === 'dark' ? 'light' : 'dark', 'system'])
+			);
+		}
+	});
+
+	it('keeps alternating, and nothing else', () => {
+		for (const system of ['dark', 'light'] as const) {
+			const seen = cycle('system', system, 8);
+
+			expect(seen).toStrictEqual([
+				...seen.slice(0, 2),
+				...seen.slice(0, 2),
+				...seen.slice(0, 2),
+				...seen.slice(0, 2)
+			]);
 		}
 	});
 
@@ -91,15 +111,21 @@ describe('nextTheme', () => {
 		}
 	});
 
-	it('is a change on screen whenever it leaves or returns to following', () => {
+	/*
+	 * With the third state gone, this is now true of every tap rather than only
+	 * of the one leaving `system` — which is the whole point of dropping it.
+	 */
+	it('turns the sheet over on every tap, in both directions', () => {
 		for (const system of ['dark', 'light'] as const) {
-			// Leaving `system` inverts the sheet.
-			expect(resolveTheme(nextTheme('system', system), system)).not.toBe(system);
+			const opposite = system === 'dark' ? 'light' : 'dark';
 
-			// And the tap that returns to it comes from the choice that agrees
-			// with the phone, so returning is the one step that looks like nothing
-			// — by then the sheet is already what the phone asked for.
-			expect(nextTheme(system, system)).toBe('system');
+			// Leaving `system` inverts the sheet.
+			expect(resolveTheme(nextTheme('system', system), system)).toBe(opposite);
+
+			// And so does returning to it, because the only place to return from
+			// is the opposite.
+			expect(nextTheme(opposite, system)).toBe('system');
+			expect(resolveTheme(nextTheme(opposite, system), system)).toBe(system);
 		}
 	});
 });

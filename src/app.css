@@ -312,6 +312,30 @@ button {
 	opacity: var(--faint);
 }
 
+/*
+ * A link, which is the one thing on the sheet that is not just words.
+ *
+ * Underlined with a drawn stroke like every other underline here, but as a
+ * repeating background rather than an inline `<svg>`: a link is inline text,
+ * it wraps, and each of its line boxes wants its own mark. --underline is set
+ * on the document by +layout.svelte and turns over with the theme; the tile
+ * itself is drawn by handUnderlineTile, seeded, in the same hand as the rest.
+ *
+ * No colour and no decoration. `text-decoration: underline` is the one thing
+ * this cannot be — e2e/design.e2e.ts walks the page and fails on any of it,
+ * because a browser's underline is a ruled line and nothing here is ruled.
+ */
+a {
+	color: inherit;
+	text-decoration: none;
+	background-image: var(--underline);
+	background-repeat: repeat-x;
+	background-position: 0 100%;
+	background-size: 44px 6px;
+	/* Room under the words for the stroke to sit in rather than through. */
+	padding-bottom: 3px;
+}
+
 .sr-only {
 	position: absolute;
 	width: 1px;

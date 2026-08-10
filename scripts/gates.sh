@@ -109,14 +109,27 @@ fi
 # background-image means an asset, and the app has none.
 chrome=$(grep -rnF \
 	-e 'box-shadow' \
-	-e 'background-image' \
 	-e '<img' \
 	src 2>/dev/null)
 
 if [ -n "$chrome" ]; then
-	fail "shadow, background-image or <img> in src/" "$chrome"
+	fail "shadow or <img> in src/" "$chrome"
 else
-	pass "no shadows, background-images or <img> elements"
+	pass "no shadows or <img> elements"
+fi
+
+# A background-image means an asset, and the app has none — with one exception.
+# The mark under a link has to repeat per line box, which is the one thing an
+# inline <svg> cannot do, so it is a tile drawn by src/lib/draw and handed over
+# as a custom property. That exact form is allowed and nothing else is: no
+# url(), no gradient, no file.
+backgrounds=$(grep -rn 'background-image' src 2>/dev/null |
+	grep -v 'background-image: var(--underline);')
+
+if [ -n "$backgrounds" ]; then
+	fail "background-image in src/ that is not the drawn link underline" "$backgrounds"
+else
+	pass "no background-images but the drawn link underline"
 fi
 
 if [ "$status" -ne 0 ]; then

@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { langOf } from '$lib/doc/lang';
-	import { LIMITS } from '$lib/doc/limits';
+	import { COUNTER_WITHIN, LIMITS } from '$lib/doc/limits';
+	import { length } from '$lib/doc/clean';
+	import { nearLimit, spill } from '$lib/doc/spill';
 	import { handRect } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
+	import { grow } from '$lib/grow';
 
 	type Props = {
 		/** Returns true if the task was created, so the row can stay open. */
@@ -12,6 +16,11 @@
 		disabled?: boolean;
 		/** Opened by the parent: Enter on a task puts one of these beneath it. */
 		opened?: boolean;
+		/**
+		 * What the row above could not hold. A row opened by running past the
+		 * limit starts with the rest of the sentence already in it.
+		 */
+		initial?: string;
 		/** The only row on the sheet — see the note on `.ghost` below. */
 		lone?: boolean;
 		onclose?: () => void;
@@ -24,6 +33,7 @@
 		seed,
 		disabled = false,
 		opened = false,
+		initial = '',
 		lone = false,
 		onclose,
 		onback
@@ -35,8 +45,13 @@
 	);
 
 	let byTap = $state(false);
-	let draft = $state('');
-	let input = $state<HTMLInputElement | null>(null);
+	/*
+	 * Seeded once and then the row's own. `initial` is what the row above could
+	 * not hold; after that the person is typing, and a later change to the prop
+	 * must not reach in and rewrite what they have written.
+	 */
+	let draft = $state(untrack(() => initial));
+	let input = $state<HTMLTextAreaElement | null>(null);
 
 	/** Open because it was tapped, or because the parent put it here open. */
 	const open = $derived(byTap || opened);
@@ -44,9 +59,18 @@
 	/** Whether the box is drawn at all, rather than kept back. */
 	const shown = $derived(open || lone);
 
-	// Placed already open rather than tapped: take the caret with it.
+	const remaining = $derived(LIMITS.taskText - length(draft));
+	const showCounter = $derived(open && nearLimit(draft, LIMITS.taskText, COUNTER_WITHIN));
+
+	// Placed already open rather than tapped: take the caret with it, and put it
+	// at the end — a row opened by a spill already has the rest of the sentence
+	// in it, and the next character belongs after it.
 	$effect(() => {
-		if (opened) queueMicrotask(() => input?.focus());
+		if (!opened) return;
+		queueMicrotask(() => {
+			input?.focus();
+			input?.setSelectionRange(draft.length, draft.length);
+		});
 	});
 
 	/*
@@ -84,6 +108,22 @@
 		}
 	}
 
+	/*
+	 * The same rule the rows above follow: run out of room and the row fills
+	 * up, the rest starting a fresh one under it. See doc/spill.ts.
+	 */
+	function oninput() {
+		const over = spill(draft, LIMITS.taskText);
+		if (over === null) return;
+
+		draft = over.head;
+		if (onadd(draft)) {
+			tapped();
+			draft = over.tail;
+			queueMicrotask(() => input?.setSelectionRange(draft.length, draft.length));
+		}
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
@@ -109,6 +149,11 @@
 </script>
 
 <li class="row">
+	{#if showCounter}
+		<!-- The same gutter, the same count, as on a task being edited. -->
+		<span class="counter num" aria-live="polite">{remaining}</span>
+	{/if}
+
 	<!--
 		Tappable, because it looks it: an empty box in a 44px target beside a row
 		that opens on a tap is not something to leave inert.
@@ -129,17 +174,17 @@
 			the way a group title already does. Without it the line changes shape
 			the moment it is committed.
 		-->
-		<input
+		<textarea
 			class="text caps"
-			type="text"
+			rows="1"
 			lang={langOf(draft)}
 			bind:this={input}
 			bind:value={draft}
-			maxlength={LIMITS.taskText}
 			aria-label="New task"
 			onblur={() => commit(false)}
+			{oninput}
 			{onkeydown}
-		/>
+			use:grow={draft}></textarea>
 	{:else}
 		<button class="text caps" type="button" onclick={start} {disabled} aria-label="Add a task">
 			…
@@ -148,13 +193,29 @@
 </li>
 
 <style>
+	/* Top-aligned and padded to match, exactly as a task row is. */
 	.row {
+		position: relative;
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 0.25rem;
 		min-height: var(--touch);
 		list-style: none;
 		font-size: var(--size-task);
+	}
+
+	/* The mirror of the ✕ column, as on a task row. */
+	.counter {
+		position: absolute;
+		left: calc(-1 * var(--gutter));
+		top: 0;
+		width: var(--gutter);
+		height: var(--touch);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		opacity: 0.55;
+		font-size: var(--size-small);
 	}
 
 	.box {
@@ -209,6 +270,9 @@
 		min-width: 0;
 		text-align: left;
 		cursor: text;
+		/* First line centred on the box beside it, as on a task row. */
+		padding-top: calc((var(--touch) - 1lh) / 2);
+		padding-bottom: calc((var(--touch) - 1lh) / 2);
 	}
 
 	.text:disabled {
@@ -227,7 +291,11 @@
 		opacity: var(--faint);
 	}
 
-	input.text {
+	textarea.text {
 		outline: none;
+		resize: none;
+		overflow: hidden;
+		display: block;
+		line-height: inherit;
 	}
 </style>

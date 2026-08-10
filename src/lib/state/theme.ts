@@ -29,21 +29,26 @@ export function resolveTheme(choice: Theme, system: Scheme): Scheme {
 }
 
 /**
- * Where the next tap goes: the opposite of the phone, then the one that agrees
- * with it, then back to following it.
+ * Where the next tap goes: away from the phone, and back to it.
  *
- * The first step is the opposite rather than a fixed dark-then-light, because
- * the tap that changes nothing on screen is the tap that reads as a broken
- * button — and on a dark phone, "dark" first is exactly that tap.
+ * Two states, not three. The third was the one that agreed with the phone —
+ * picking "light" on a light phone — and it is a state with nothing to show
+ * for itself: the sheet is identical to following, so the whole of what a tap
+ * did was move a glyph nobody was looking at. Between them, two taps in a row
+ * appeared to do nothing at all.
+ *
+ * What is left is the pair anybody actually wants: the phone's idea, and the
+ * other one. The opposite rather than a fixed dark-then-light, because the tap
+ * that changes nothing on screen is the tap that reads as a broken button —
+ * and on a dark phone, "dark" first is exactly that tap.
  *
  * Which way round it goes therefore depends on the phone, and moves with it: a
- * phone that turns dark at dusk turns this around with it, mid-cycle.
+ * phone that turns dark at dusk turns this around with it. Someone holding the
+ * opposite of a light phone is holding dark; when the phone goes dark at dusk
+ * they are holding light, and one tap still returns them to following.
  */
 export function nextTheme(choice: Theme, system: Scheme): Theme {
-	const opposite: Scheme = system === 'dark' ? 'light' : 'dark';
-
-	if (choice === 'system') return opposite;
-	if (choice === opposite) return system;
+	if (choice === 'system') return system === 'dark' ? 'light' : 'dark';
 
 	return 'system';
 }
