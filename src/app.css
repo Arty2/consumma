@@ -99,6 +99,26 @@
 	--stroke: 1.4;
 	--touch: 44px;
 
+	/* How tall a torn edge is drawn. TornEdge draws its path at this height. */
+	--tear: 16px;
+
+	/*
+	 * Where the buttons in the sheet's corners sit, measured from the edges of
+	 * the viewport.
+	 *
+	 * The menu's ✕ is the burger seen from the other side, so it has to land on
+	 * the burger — but it lives in a fixed panel and the burger lives in the
+	 * page's flow, so nothing in CSS relates the two. These are that relation,
+	 * written once: across, the page's own 1rem plus the sheet's 1.25rem; down,
+	 * the room above the tear plus the tear itself, which is everything between
+	 * the top of the viewport and the row the buttons are on.
+	 *
+	 * Retune them with .page's padding, main's padding or --tear, and not
+	 * otherwise — they are those three numbers and nothing else.
+	 */
+	--corner-x: 2.25rem;
+	--corner-y: calc(2rem + env(safe-area-inset-top) + var(--tear));
+
 	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
 	 *

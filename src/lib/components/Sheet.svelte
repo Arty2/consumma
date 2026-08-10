@@ -248,7 +248,13 @@
 			</button>
 		{/if}
 
-		<TextRule text={newGroupShown} seed="new-group" faint />
+		<!--
+			Faint while it is still an offer, ink as soon as it is being written in.
+			The ellipsis and its rule are one mark in two media and cannot be set
+			apart — but a title being typed is no longer a placeholder, and a full
+			rule under it is what every other title on the sheet gets.
+		-->
+		<TextRule text={newGroupShown} seed="new-group" faint={!newGroupOpen} />
 	</div>
 {/snippet}
 

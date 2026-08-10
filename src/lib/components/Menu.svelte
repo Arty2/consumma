@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
+	import Perforation from './Perforation.svelte';
 	import TextRule from './TextRule.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
@@ -41,7 +42,15 @@
 	let offset = $state(0);
 	let dragStart: { x: number; at: number } | null = null;
 
-	const cross = $derived(handCross(20, { seed: seedFrom('closemenu'), wobble: 0.8 }));
+	/*
+	 * The same size as the burger it stands in for. This is the one control that
+	 * is drawn twice — closed it is three strokes, open it is two — and it has to
+	 * read as one button being looked at from either side, so it keeps the
+	 * burger's size as well as its place.
+	 */
+	const CLOSE = 22;
+
+	const cross = $derived(handCross(CLOSE, { seed: seedFrom('closemenu'), wobble: 0.8 }));
 
 	const summary = $derived(statusText(sync.status, sync.unsent, refused));
 	const valid = $derived(normaliseCode(entered) !== null);
@@ -167,7 +176,7 @@
 	</div>
 
 	<button class="close" type="button" onclick={onclose} aria-label="Close">
-		<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
+		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
 			<path d={cross} class="drawn" />
 		</svg>
 	</button>
@@ -203,6 +212,13 @@
 			{#if error}
 				<p class="error" role="alert">{error}</p>
 			{/if}
+
+			<!--
+				The panel's sections are told apart by a tear across the paper, the
+				same mark Loose ends is. They are already named by their headings;
+				what was missing was the line saying where one stops.
+			-->
+			<div class="tear"><Perforation seed="menu-list" /></div>
 
 			<h2 class="caps">This list</h2>
 			<TextRule text="This list" seed="thislist" centred />
@@ -260,6 +276,8 @@
 					Delete
 				</button>
 			</div>
+
+			<div class="tear"><Perforation seed="menu-join" /></div>
 
 			<h2 class="caps">Join list</h2>
 			<TextRule text="Join list" seed="joinlist" centred />
@@ -324,7 +342,6 @@
 		width: min(24rem, 100%);
 		z-index: 10;
 		background: var(--paper);
-		padding: calc(2rem + env(safe-area-inset-top)) 1.75rem calc(2rem + env(safe-area-inset-bottom));
 		display: flex;
 		flex-direction: column;
 		outline: none;
@@ -344,25 +361,58 @@
 		pointer-events: none;
 	}
 
+	/*
+	 * The inset belongs to the scrolled content, not to the panel around it.
+	 *
+	 * Held on the panel it was a margin pretending to be padding: the scroll
+	 * box stopped short of the panel's edges, so a line of text vanished two
+	 * centimetres before it reached them and reappeared the same distance in.
+	 * Text that fades out in the middle of a panel reads as a bug in the panel.
+	 *
+	 * Here the scroller is the whole panel and the room is its padding, so the
+	 * first line starts where it always did, scrolls the full height, and is
+	 * cut only at the edge of the paper — which is the one place a cut reads as
+	 * the paper ending rather than as the text giving up.
+	 */
 	.scroll {
 		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
+		padding: calc(2rem + env(safe-area-inset-top)) 1.75rem calc(2rem + env(safe-area-inset-bottom));
 	}
 
+	/*
+	 * On the burger, because it is the burger: the button does not move when the
+	 * panel opens, it only changes what it is drawn as. See --corner-x/y.
+	 *
+	 * The page is centred once it is wider than its own max-width, so the
+	 * burger walks inwards from the viewport edge and the ✕ follows it — until
+	 * following would take it off the panel, which is what the min() stops. On
+	 * a phone, where the panel is the whole width, the first term always wins
+	 * and the two land on each other exactly.
+	 */
 	.close {
 		position: absolute;
-		top: calc(1.1rem + env(safe-area-inset-top));
-		right: 1.1rem;
+		top: var(--corner-y);
+		right: min(
+			calc(max(0px, (100vw - 34rem) / 2) + var(--corner-x)),
+			calc(100% - var(--touch) - 1.1rem)
+		);
 		width: var(--touch);
 		height: var(--touch);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		/* Above the content it now scrolls over. */
+		z-index: 1;
 	}
 
+	/*
+	 * Clear of the ✕, which sits lower than it used to now that it stands where
+	 * the burger stands.
+	 */
 	.body {
-		padding-top: 1.5rem;
+		padding-top: 3.5rem;
 		text-align: center;
 	}
 
@@ -480,6 +530,24 @@
 		margin-top: 1rem;
 		font-size: var(--size-title);
 		line-height: 1.4;
+	}
+
+	/*
+	 * Full bleed, so the tear runs to the drawn edges of the panel the way it
+	 * runs to the edges of the sheet — a section break that stopped short of
+	 * both margins would be a rule, and a rule is a different mark.
+	 *
+	 * It takes back the scroller's own side padding. The h2 under it brings its
+	 * own room, so the space belongs to the line above rather than being split
+	 * between the two.
+	 */
+	.tear {
+		margin: 2.5rem -1.75rem 0;
+	}
+
+	/* The tear above already set this section apart. */
+	.tear + h2 {
+		margin-top: 2.5rem;
 	}
 
 	.credit {

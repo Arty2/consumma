@@ -1,9 +1,10 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
+	import Perforation from './Perforation.svelte';
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handCross, handLine } from '$lib/draw/hand';
+	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
 	import { taken, tapped } from '$lib/feel';
@@ -50,18 +51,8 @@
 	/** Set for the length of the pop, so the group leaves rather than vanishes. */
 	let going = $state(false);
 
-	let width = $state(0);
-
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
-	/*
-	 * Measured rather than stretched, like every other drawn line here: a rule
-	 * generated once and scaled to fit comes out with an uneven weight, because a
-	 * stroke under an anisotropic transform is thinner along the squashed axis.
-	 */
-	const perforation = $derived(
-		width > 0 ? handLine(width, { seed: seedFrom(`perf${seed}`), wobble: 1.2, y: 2 }) : ''
-	);
 	const cross = $derived(handCross(20, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
 
 	/** What the rule is drawn under: the title, or the title being typed. */
@@ -148,11 +139,7 @@
 		called what it is called, for anyone who cannot see it.
 	-->
 	<div class="perforation" role="separator" aria-label={title}>
-		<svg bind:clientWidth={width} height="5" aria-hidden="true">
-			{#if width > 0}
-				<path d={perforation} class="drawn drawn--dashed" />
-			{/if}
-		</svg>
+		<Perforation {seed} />
 	</div>
 {:else}
 	<div class="header" class:lifted class:going>
@@ -266,13 +253,6 @@
 	 */
 	.perforation {
 		margin: 0.7rem -1.25rem 0.9rem;
-	}
-
-	.perforation svg {
-		display: block;
-		width: 100%;
-		height: 5px;
-		overflow: visible;
 	}
 
 	.header {
