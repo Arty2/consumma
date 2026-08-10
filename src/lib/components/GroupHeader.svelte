@@ -410,8 +410,13 @@
 	.remove {
 		position: absolute;
 		right: calc(-1 * var(--gutter));
-		/* Off-centre in its column, as on every task below it. */
-		padding-right: var(--gutter-clear);
+		/*
+		 * Centred on the margin that can be seen, not on the box. The drawn edge
+		 * runs down the middle of a box half of --edge wide, so it stops short of
+		 * where the padding does; discounting that puts equal air on both sides
+		 * of the mark instead of crowding it against the line.
+		 */
+		padding-right: calc(var(--edge) / 2);
 		width: var(--gutter);
 		height: var(--touch);
 		display: inline-flex;

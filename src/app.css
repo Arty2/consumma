@@ -103,6 +103,14 @@
 	--tear: 16px;
 
 	/*
+	 * How wide the box a drawn side edge lives in is. SideEdge draws its stroke
+	 * down the middle of that box, so the visible edge of the paper is half of
+	 * this inside the sheet's own padding box — which is not where CSS thinks
+	 * the edge is, and is why anything lining up against it has to say so.
+	 */
+	--edge: 9px;
+
+	/*
 	 * Where the paper is, and how wide.
 	 *
 	 * The sheet and the menu are the same piece of paper seen twice — the panel
@@ -150,21 +158,11 @@
 	 * the paper stops — the one mark on the sheet that is not writing.
 	 *
 	 * It is narrower than `--touch` across, which is the price of the position;
-	 * it keeps the full 44px of height. The mark inside it is smaller again and
-	 * sits off-centre, away from the edge — see --gutter-clear.
+	 * it keeps the full 44px of height. The mark stands in the middle of the
+	 * margin you can see rather than the middle of the box — the drawn edge is
+	 * half of --edge inside the box, so the two middles are not the same place.
 	 */
 	--gutter: var(--paper-inset);
-
-	/*
-	 * How far the ✕ keeps off the drawn edge beside it.
-	 *
-	 * The column ends exactly at the edge, so a mark centred in it lands within
-	 * a pixel or two of the line — and the line is drawn by a hand, so it
-	 * wanders that far on its own. Two marks touching read as one smudge, and
-	 * one of them is the line that says where the paper stops. This is the air
-	 * between them.
-	 */
-	--gutter-clear: 3px;
 
 	/*
 	 * How faint a thing that is not there yet is drawn.

@@ -101,11 +101,19 @@
 	const remaining = $derived(LIMITS.taskText - length(draft));
 	const showCounter = $derived(editing && nearLimit(draft, LIMITS.taskText, COUNTER_WITHIN));
 	/*
-	 * Small enough to sit inside the paper's margin without touching the drawn
-	 * edge beside it. The column is exactly that margin wide, so a mark filling
-	 * it lands on the line that says where the paper stops — two marks in one
-	 * place, one of which is a button. The same size as the group's ✕ above it,
-	 * because they stand in one column and are one thing.
+	 * The ✕ stands in the middle of the paper's own right margin, and its size
+	 * is what decides how much air is left either side of it.
+	 *
+	 * The margin that can be seen is narrower than the padding: the drawn edge
+	 * runs down the middle of its own box, so it stops short of where the
+	 * padding does. Between the words and that line there is about fifteen and
+	 * a half pixels, and this leaves roughly four either side of the mark. It
+	 * is not larger because at fifteen the arm reached the line — and the line
+	 * is drawn by a hand that wanders about as far again. Two marks touching
+	 * read as one smudge, and one of them says where the paper stops.
+	 *
+	 * The same size as the group's ✕ above it, because they stand in one column
+	 * and are one thing.
 	 */
 	const CROSS = 13;
 
@@ -585,8 +593,13 @@
 	.remove {
 		position: absolute;
 		right: calc(-1 * var(--gutter));
-		/* Off-centre in its column, so the mark keeps clear of the drawn edge. */
-		padding-right: var(--gutter-clear);
+		/*
+		 * Centred on the margin that can be seen, not on the box. The drawn edge
+		 * runs down the middle of a box half of --edge wide, so it stops short of
+		 * where the padding does; discounting that puts equal air on both sides
+		 * of the mark instead of crowding it against the line.
+		 */
+		padding-right: calc(var(--edge) / 2);
 		/*
 		 * On the first line, beside the box — a task that wraps keeps its ✕
 		 * where the row starts rather than letting it slide down beside the
