@@ -54,7 +54,7 @@
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
 	/* The same mark, the same size, as the ✕ on every done task below it. */
-	const CROSS = 13;
+	const CROSS = 11;
 
 	const cross = $derived(handCross(CROSS, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
 
@@ -410,18 +410,24 @@
 	.remove {
 		position: absolute;
 		right: calc(-1 * var(--gutter));
-		/*
-		 * Centred on the margin that can be seen, not on the box. The drawn edge
-		 * runs down the middle of a box half of --edge wide, so it stops short of
-		 * where the padding does; discounting that puts equal air on both sides
-		 * of the mark instead of crowding it against the line.
-		 */
-		padding-right: calc(var(--edge) / 2);
 		width: var(--gutter);
 		height: var(--touch);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		/*
+		 * Centred on the margin that can be seen, not on the box: the paper's
+		 * visible edge is --edge-face inside its padding box.
+		 */
+		padding-right: var(--edge-face);
+	}
+
+	/*
+	 * The mark alone steps in; the button does not, so the tap area stays out
+	 * in the margin — see --cross-step.
+	 */
+	.remove svg {
+		translate: calc(-1 * var(--cross-step)) 0;
 	}
 
 	/* Drawn, but not offered: the group still has something in it to do. */

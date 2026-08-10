@@ -111,6 +111,44 @@
 	--edge: 9px;
 
 	/*
+	 * How far inside the padding box the edge's nearest ink can actually come.
+	 *
+	 * Three things, and leaving any of them out puts a mark against the line.
+	 * Half of --edge, because the stroke runs down the middle of its box. Half
+	 * a stroke, because the stroke has width and its face is nearer than its
+	 * centre. And half of SideEdge's own wobble — the edge is drawn by a hand
+	 * and wanders about a pixel either way down its length, so the gap a mark
+	 * has is the gap at the line's nearest excursion, not at its average.
+	 *
+	 * The last term is handVertical's wobble halved, and it is written out
+	 * because CSS cannot read it. Retune it with the wobble in SideEdge.
+	 */
+	--edge-face: calc(var(--edge) / 2 + var(--stroke) * 0.5px + 1.1px);
+
+	/*
+	 * How far the ✕ steps in from the paper's edge, over and above sitting in
+	 * the middle of the margin.
+	 *
+	 * Centred, it is centred — measured, two and a half pixels of air on each
+	 * side — and it still reads as pinned to the edge, because the margin is
+	 * fifteen pixels and the mark paints eight of them. There is no arranging
+	 * that gap into looking generous; the only thing that helps is standing
+	 * further in.
+	 *
+	 * As far as it can go and still clear a price. The mark paints about eight
+	 * pixels of a fifteen-pixel margin, so stepping in by this much roughly
+	 * doubles the air on the edge side — two and a half becomes five and a
+	 * half — and leaves the ink stopping exactly where the last digit does.
+	 * A full half-glyph, five pixels, puts the ✕ through the final numeral:
+	 * a price is written for reading against a shelf and is the one thing on
+	 * the row that must not be struck through.
+	 *
+	 * It moves the mark only. The hit area stays out in the margin, so tapping
+	 * the end of a price still opens the row rather than deleting it.
+	 */
+	--cross-step: 2.5px;
+
+	/*
 	 * Where the paper is, and how wide.
 	 *
 	 * The sheet and the menu are the same piece of paper seen twice — the panel

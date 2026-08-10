@@ -105,17 +105,20 @@
 	 * is what decides how much air is left either side of it.
 	 *
 	 * The margin that can be seen is narrower than the padding: the drawn edge
-	 * runs down the middle of its own box, so it stops short of where the
-	 * padding does. Between the words and that line there is about fifteen and
-	 * a half pixels, and this leaves roughly four either side of the mark. It
-	 * is not larger because at fifteen the arm reached the line — and the line
-	 * is drawn by a hand that wanders about as far again. Two marks touching
-	 * read as one smudge, and one of them says where the paper stops.
+	 * runs down the middle of its own box and has a stroke's width of its own,
+	 * so it stops a good five pixels short of where the padding does. Fifteen
+	 * are left, and handCheck draws its ink across the middle 56% of whatever
+	 * size it is given, jittering each end by 6% of it. Eleven therefore paints
+	 * about seven and a half and leaves three and a half either side, with the
+	 * jitter worth well under a pixel of that. Thirteen left the arm within a
+	 * pixel and a half of the line — and the line wanders about as far again,
+	 * so the two met. Two marks touching read as one smudge, and one of them
+	 * says where the paper stops.
 	 *
 	 * The same size as the group's ✕ above it, because they stand in one column
 	 * and are one thing.
 	 */
-	const CROSS = 13;
+	const CROSS = 11;
 
 	const cross = $derived(handCross(CROSS, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
 
@@ -594,13 +597,6 @@
 		position: absolute;
 		right: calc(-1 * var(--gutter));
 		/*
-		 * Centred on the margin that can be seen, not on the box. The drawn edge
-		 * runs down the middle of a box half of --edge wide, so it stops short of
-		 * where the padding does; discounting that puts equal air on both sides
-		 * of the mark instead of crowding it against the line.
-		 */
-		padding-right: calc(var(--edge) / 2);
-		/*
 		 * On the first line, beside the box — a task that wraps keeps its ✕
 		 * where the row starts rather than letting it slide down beside the
 		 * middle of a sentence. The same reason the box is top-aligned.
@@ -611,5 +607,20 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
+		/*
+		 * Centred on the margin that can be seen, not on the box: the paper's
+		 * visible edge is --edge-face inside its padding box, and measuring to
+		 * the stroke's centre instead left the mark crowding the line.
+		 */
+		padding-right: var(--edge-face);
+	}
+
+	/*
+	 * The mark alone steps in; the button does not. Translated rather than laid
+	 * out, so the tap area stays out in the margin and the end of a price still
+	 * belongs to the row — see --cross-step.
+	 */
+	.remove svg {
+		translate: calc(-1 * var(--cross-step)) 0;
 	}
 </style>
