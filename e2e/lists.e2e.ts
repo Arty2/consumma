@@ -301,6 +301,64 @@ test('the menu keeps its ✕ reachable once the switcher shares its row', async 
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+test('a long name gives way in the pill, the code never does, and the rule follows both', async ({
+	page
+}) => {
+	// A code planted rather than synced: there is no server behind the preview,
+	// and what is under test is what the pill does with one, not how it got it.
+	await page.evaluate(() => localStorage.setItem('consumma:code', '5e6b7c1a93f2'));
+	await page.reload();
+
+	await addTask(page, 'Bread');
+	await page.locator('section .title').first().dblclick();
+	await page
+		.getByRole('textbox', { name: 'Group title' })
+		.fill('A very long list name indeed that must give way');
+	await page.getByRole('textbox', { name: 'Group title' }).press('Enter');
+	await page.keyboard.press('Escape');
+
+	await openMenu(page);
+	const dialog = page.getByRole('dialog', { name: 'Menu' });
+
+	// Four characters, whole, however little room the name is left.
+	await expect(dialog.locator('.pill .code')).toHaveText('— 93f2');
+
+	const geo = await page.evaluate(() => {
+		const dialogEl = document.querySelector('[role="dialog"]')!;
+		const pill = dialogEl.querySelector('button[aria-haspopup="listbox"]') as HTMLElement;
+		const label = pill.querySelector('.label') as HTMLElement;
+		const code = pill.querySelector('.code') as HTMLElement;
+		const rule = dialogEl.querySelector('svg.rule')!.getBoundingClientRect();
+		const box = pill.getBoundingClientRect();
+		const close = document.querySelector('.close')!.getBoundingClientRect();
+
+		return {
+			nameClipped: label.scrollWidth > label.clientWidth,
+			codeClipped: code.scrollWidth > code.clientWidth,
+			codeWidth: code.getBoundingClientRect().width,
+			pillMid: (box.left + box.right) / 2,
+			pillWidth: box.width,
+			pillRight: box.right,
+			ruleMid: (rule.left + rule.right) / 2,
+			ruleWidth: rule.width,
+			closeLeft: close.left
+		};
+	});
+
+	// The name is what an ellipsis takes; the code is drawn in full.
+	expect(geo.nameClipped).toBe(true);
+	expect(geo.codeClipped).toBe(false);
+	expect(geo.codeWidth).toBeGreaterThan(0);
+
+	// The rule is under the pill rather than off beside it, and no wider than
+	// the words it marks — a pen underlines the word, not the row.
+	expect(Math.abs(geo.ruleMid - geo.pillMid)).toBeLessThan(2);
+	expect(geo.ruleWidth).toBeLessThanOrEqual(geo.pillWidth + 1);
+
+	// And it never reaches the ✕ it shares a row with.
+	expect(geo.pillRight).toBeLessThanOrEqual(geo.closeLeft + 1);
+});
+
 test('a list nobody wrote on is forgotten as soon as it is left', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await newList(page);

@@ -197,16 +197,23 @@
 {#if shown}
 	<div class="wrap {context}" bind:this={root}>
 		<div class="switcher {context}">
+			<!--
+				Two spans rather than the one string the rule is measured from: the
+				name is the part that may run long and the only part allowed to give,
+				so the code — four characters that are the whole point of showing it —
+				is never what an ellipsis eats. `lang` rides the name alone; a hex
+				code has no language to declare.
+			-->
 			<button
 				type="button"
 				class="pill caps"
-				lang={langOf(label)}
 				aria-expanded={open}
 				aria-haspopup="listbox"
 				onclick={ontap}
 				ondblclick={onsecondtap}
 			>
-				<span class="label">{label}</span>
+				<span class="label" lang={langOf(activeName)}>{activeName}</span>
+				{#if activeCode}<span class="code">— {activeCode}</span>{/if}
 				<svg
 					class="chevron"
 					viewBox="0 0 {CHEVRON} {CHEVRON}"
@@ -217,7 +224,13 @@
 					<path d={chevron} class="drawn" />
 				</svg>
 			</button>
-			<TextRule text={label} seed={`listswitch-${context}`} />
+			<!--
+				Centred in the menu, where `.body` centres the pill itself — a rule
+				left-aligned in a box whose contents are centred lands under nothing.
+				On the sheet the pill starts at its box's left edge and the rule
+				follows it there, which is what TextRule does by default.
+			-->
+			<TextRule text={label} seed={`listswitch-${context}`} centred={context === 'menu'} />
 		</div>
 
 		<!--
@@ -261,6 +274,14 @@
 		translate: 0 -5px;
 	}
 
+	/*
+	 * Bold on the pill rather than on the name alone, so the code beside it is
+	 * set the same way — the two are one label, read as one thing. It reads
+	 * closer to the stroke weight of the icons it sits beside in the corner
+	 * row; Graphe's regular weight is thin next to a 1.4px drawn stroke.
+	 * Synthetic bold, since the face has only the one weight, and the hand is
+	 * still the only face on the page.
+	 */
 	.pill {
 		display: inline-flex;
 		align-items: center;
@@ -269,6 +290,12 @@
 		min-height: var(--touch);
 		font-family: var(--hand);
 		font-size: var(--size-small);
+		font-weight: 700;
+	}
+
+	/* Four characters, and never the ones that go — see the markup above. */
+	.pill .code {
+		flex: none;
 	}
 
 	/*
@@ -283,18 +310,16 @@
 	}
 
 	/*
-	 * The label reads bold, closer to the stroke weight of the icons it sits
-	 * beside in the corner row — Graphe's regular weight is thin enough next
-	 * to a 1.4px drawn stroke that the pill read lighter than everything
-	 * around it. Synthetic bold, since the face has only the one weight; the
-	 * hand is still the only face on the page.
+	 * The one part of the pill that gives. `min-width: 0` is what lets a flex
+	 * item shrink below its own text's width in the first place; everything
+	 * beside it is `flex: none`, so the name is what an ellipsis takes.
 	 */
 	.label {
+		flex: 0 1 auto;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		min-width: 0;
-		font-weight: 700;
 	}
 
 	.chevron {
@@ -310,31 +335,47 @@
 	 * there from the first paint, whether or not the panel has been scrolled.
 	 * A solid ground stops scrolled text from showing through it.
 	 *
-	 * `margin-right` keeps its own box, and so the centred text inside it,
-	 * clear of the ✕'s column — the two share a row, and without this the
-	 * pill's opaque ground would sit right over the mark (Menu.svelte's own
-	 * z-index keeps it clickable regardless, but covering it from view would
-	 * still read as a bug).
+	 * It spans the panel rather than stopping short of the ✕, so its ground
+	 * covers the whole row it sticks to — an inset box left scrolled text
+	 * showing through beside it. The pill inside is what keeps clear of the
+	 * mark; see below.
 	 */
 	.switcher.menu {
 		position: sticky;
 		top: var(--tear);
 		margin-top: var(--tear);
-		margin-right: var(--touch);
 		margin-bottom: 1.5rem;
 		z-index: 1;
 		background: var(--paper);
+		/* One number, two users — the pill and the rule under it. */
+		--pill-max: calc(100% - 2 * var(--touch));
 	}
 
 	/*
-	 * `.margin-right` above only reserves the room; a `display: inline-flex`
-	 * pill still sizes to its own content regardless of how little of that
-	 * room is left, and a long enough active name pushed straight through it
-	 * into the ✕'s own column. Capped to the space `.switcher.menu` actually
-	 * has, so `.label`'s own ellipsis (below) has a width to truncate against.
+	 * The rule is measured off the label's own text, but the box it is measured
+	 * in is what caps that measurement — TextRule's hidden copy is `max-width:
+	 * 100%`, so left to the full panel a long name reported the panel's width
+	 * and the rule ran a touch target past the pill at each end. A pen
+	 * underlines the word, not the row.
+	 */
+	.switcher.menu :global(.ruled) {
+		max-width: var(--pill-max);
+		margin-inline: auto;
+	}
+
+	/*
+	 * Centred on the panel, and never wide enough to reach the ✕.
+	 *
+	 * `.body` centres the pill for us — it is an inline-flex box in a block
+	 * that sets `text-align: center` — but an inline-flex box sizes to its own
+	 * content however little room is left, so a long enough name ran straight
+	 * under the mark. A touch target's width held back at each end keeps it
+	 * clear symmetrically, which is also what lets it stay centred on the same
+	 * middle as everything else in the panel: taking the room off one side
+	 * only would put the pill, and the rule under it, half a ✕ left of centre.
 	 */
 	.switcher.menu .pill {
-		max-width: 100%;
+		max-width: var(--pill-max);
 	}
 
 	/*
