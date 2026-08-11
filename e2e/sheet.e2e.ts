@@ -741,7 +741,13 @@ test('what has lost its group is ruled off rather than headed', async ({ page })
 	await expect(page.getByRole('button', { name: 'Loose ends' })).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Add a task' })).toHaveCount(1);
 	await expect(page.getByRole('button', { name: /^(Collapse|Expand) group/ })).toHaveCount(1);
-	await expect(page.locator('section.group svg.rule')).toHaveCount(1);
+	// The real group still carries its drawn underline; the perforation above
+	// has nothing analogous, being a line rather than a title.
+	expect(
+		await page
+			.locator('section.group .title')
+			.evaluate((el) => getComputedStyle(el).backgroundImage)
+	).not.toBe('none');
 
 	/*
 	 * And the way to make a group belongs above the line, among the ones anyone

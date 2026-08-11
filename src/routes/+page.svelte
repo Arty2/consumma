@@ -143,6 +143,14 @@
 </script>
 
 <div class="page">
+	<!--
+		Above the whole receipt rather than inside it — the switcher answers
+		which list this is before anything else on the page does, and that
+		includes the paper itself. Only ever here once there is a second list to
+		choose between — see ListSwitcher.
+	-->
+	<ListSwitcher />
+
 	<!-- Room above the tear, so the stroke is never clipped by the viewport. -->
 	<div class="top">
 		<TornEdge seed="top" />
@@ -155,13 +163,6 @@
 	<main data-sheet>
 		<SideEdge seed="left" side="left" />
 		<SideEdge seed="right" side="right" />
-
-		<!--
-			Only ever here once there is a second list to choose between — see
-			ListSwitcher. It stands first, above even the corner buttons, because
-			it answers which list this is before anything else on the page does.
-		-->
-		<ListSwitcher />
 
 		<!--
 			Sync on its own at the left, because it is the one that comes and goes;

@@ -1,13 +1,13 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
 	import Perforation from './Perforation.svelte';
-	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
 	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
 	import { taken, tapped } from '$lib/feel';
+	import { grow } from '$lib/grow';
 
 	type Props = {
 		title: string;
@@ -57,9 +57,6 @@
 	const CROSS = 11;
 
 	const cross = $derived(handCross(CROSS, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
-
-	/** What the rule is drawn under: the title, or the title being typed. */
-	const shown = $derived(editing ? draft : title === '' ? '…' : title);
 
 	/**
 	 * Long enough to be a second tap, short enough not to catch two decisions.
@@ -182,6 +179,30 @@
 		<Perforation {seed} />
 	</div>
 {:else}
+	<!--
+		Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
+		[…], the same ellipsis an untitled group and the add row use for "there
+		is more here". Graphe has no brackets and falls back for them,
+		deliberately. Do not swap in characters it does have.
+
+		The mousedown guard matters while editing — a mousedown on the icon
+		there must not steal focus from the field, or the blur it causes
+		commits the row out from under the tap — and costs nothing in the
+		display state, where there is no field to blur.
+	-->
+	{#snippet foldIcon()}
+		<button
+			class="icon"
+			type="button"
+			onclick={ontoggle}
+			onmousedown={(event) => event.preventDefault()}
+			aria-expanded={!collapsed}
+			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+		>
+			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
+		</button>
+	{/snippet}
+
 	<div class="header" class:lifted class:going>
 		{#if lifted}
 			<!-- No shadow is available, so the lift is a dashed outline and a tilt. -->
@@ -190,66 +211,63 @@
 
 		{#if editing}
 			<!-- svelte-ignore a11y_autofocus -->
-			<input
+			<textarea
 				class="title caps"
-				type="text"
+				rows="1"
 				lang={langOf(draft)}
 				bind:value={draft}
+				use:grow={draft}
 				maxlength={LIMITS.groupTitle}
 				aria-label="Group title"
 				autofocus
 				onblur={commit}
-				{onkeydown}
-			/>
+				{onkeydown}></textarea>
+			{@render foldIcon()}
 		{:else}
 			<!--
-				The name. One tap folds the group, two open the name for changing,
-				and a long press picks the group up — the same gesture that lifts a
-				task, on the same kind of row.
+				The name and the fold control share one inline flow rather than
+				sitting in the header's own flex row, so the icon lands right after
+				the last line of a wrapped title instead of floating beside the
+				middle of the block. Two elements with nothing between them in the
+				markup — the gap the eye reads is margin on the icon, not a text
+				node.
+
+				One tap folds the group, two open the name for changing, and a long
+				press picks the group up — the same gesture that lifts a task, on
+				the same kind of row. The icon still folds on one tap and does
+				nothing else, for anyone who would rather aim at it.
 			-->
-			<button
-				class="title caps"
-				class:untitled={title === ''}
-				type="button"
-				lang={langOf(title)}
-				aria-label={title === '' ? 'Untitled group' : title}
-				onclick={ontap}
-				ondblclick={onsecondtap}
-				onkeydown={(event) => event.key === 'F2' && startEditing()}
-				use:dragGroup={{ groupId: seed, enabled: !synthetic, onDrop: onreorder }}
-			>
-				{title === '' ? '…' : title}
-			</button>
+			<!--
+				A span with a role rather than a real <button>: Chromium keeps a
+				button's background as one box painted once at the bottom of the
+				whole element, even set to `display: inline`, because a button
+				stays a replaced control internally regardless of what its own
+				CSS display says — the underline never picked up a second
+				fragment for a second line. A span has no such box of its own to
+				defend, so the same background genuinely repeats per line.
+			-->
+			<span class="title-wrap">
+				<span
+					class="title caps"
+					class:untitled={title === ''}
+					role="button"
+					tabindex="0"
+					lang={langOf(title)}
+					aria-label={title === '' ? 'Untitled group' : title}
+					onclick={ontap}
+					ondblclick={onsecondtap}
+					onkeydown={(event) => {
+						if (event.key === 'F2') startEditing();
+						else if (event.key === 'Enter' || event.key === ' ') {
+							event.preventDefault();
+							ontap();
+						}
+					}}
+					use:dragGroup={{ groupId: seed, enabled: !synthetic, onDrop: onreorder }}
+					>{title === '' ? '…' : title}</span
+				>{@render foldIcon()}
+			</span>
 		{/if}
-
-		<!--
-			Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
-			[…], the same ellipsis an untitled group and the add row use for "there
-			is more here".
-
-			Beside the name rather than at the end of the row, so that the total
-			below is the last thing on the line and lands in the same column as the
-			prices it is the sum of.
-
-			It follows the name whether the name is a word or a field being typed in,
-			so while renaming it stands at the end of the field rather than against
-			the letters. It used to give up its square to the delete; with the
-			delete out in the gutter there is nothing to give up, and the header is
-			three controls that each do one thing.
-
-			Graphe has no brackets and falls back for them, deliberately. Do not
-			swap in characters it does have.
-		-->
-		<button
-			class="icon"
-			type="button"
-			onclick={ontoggle}
-			onmousedown={(event) => editing && event.preventDefault()}
-			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
-		>
-			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
-		</button>
 
 		<!--
 			What the group still costs. Done tasks are bought and do not count; half
@@ -282,9 +300,6 @@
 			</button>
 		{/if}
 	</div>
-
-	<!-- Drawn rather than a border, and only as wide as the title. -->
-	<TextRule text={shown} {seed} />
 {/if}
 
 <style>
@@ -305,6 +320,17 @@
 		min-height: var(--touch);
 		/* The total lands over the prices, so it stops where they stop. */
 		padding-right: var(--corner-ink);
+		/*
+		 * The icon is --touch tall and now sits inline with the title text
+		 * rather than beside it as a separate flex item, so it sets the shared
+		 * line's height — taller than the text's own. That leaves the row's
+		 * own box, and so the row after it, sitting below where the
+		 * underline actually is. TextRule's rule pulled itself up by the same
+		 * kind of fixed amount for the same reason; this is that pull, moved
+		 * here now that the underline has no element of its own to carry it.
+		 * Measured in a browser, not derived — retune it with the face.
+		 */
+		margin-bottom: -0.5rem;
 	}
 
 	.lifted {
@@ -342,18 +368,34 @@
 		}
 	}
 
-	/*
-	 * As wide as the name and no wider, so the icon sits against it. Never
-	 * narrower than a touch target, because an untitled group is one ellipsis
-	 * and that still has to be tappable.
-	 */
 	.title {
-		flex: 0 1 auto;
-		min-width: var(--touch);
 		font-family: var(--hand);
 		font-size: var(--size-title);
 		text-align: left;
 		overflow-wrap: anywhere;
+	}
+
+	/*
+	 * Genuinely inline: a plain inline box is fragmented per line by the box
+	 * model, which is what lets this be underlined the same way a link is —
+	 * the one other place in the app that needs a mark repeating per line
+	 * box rather than a single measured <svg> re-drawn on every reflow.
+	 * `<span>` rather than `<button>` for the same reason (see the markup
+	 * comment above): a button keeps its background painted once, whatever
+	 * its own `display` says.
+	 *
+	 * Never narrower than a touch target, because an untitled group is one
+	 * ellipsis and that still has to be tappable.
+	 */
+	span.title {
+		display: inline;
+		min-width: var(--touch);
+		cursor: pointer;
+		background-image: var(--underline);
+		background-repeat: repeat-x;
+		background-position: 0 100%;
+		background-size: 44px 6px;
+		padding-bottom: 3px;
 		/* The drag owns vertical movement here, as it does on a task row. */
 		touch-action: pan-x;
 		user-select: none;
@@ -361,18 +403,35 @@
 	}
 
 	/*
+	 * The title and the icon flow as one inline unit, so the icon lands
+	 * right after the title's own last wrapped line. Blockified anyway once
+	 * it is a flex item of .header — the point is what it does to its
+	 * children, not to itself.
+	 */
+	.title-wrap {
+		display: inline;
+		flex: 0 1 auto;
+		min-width: 0;
+	}
+
+	/*
 	 * Typing a title should look like the title it becomes: same face, same
-	 * size, same caps. The uppercase is CSS only, so the value keeps whatever
+	 * size, same caps, and — a textarea rather than a single-line field — the
+	 * same wrap. The uppercase is CSS only, so the value keeps whatever
 	 * casing was typed and the markdown export does too.
 	 */
 	/* Typing needs the row, so the field takes it back while it is open. */
-	input.title {
+	textarea.title {
 		flex: 1 1 auto;
 		min-width: 0;
 		outline: none;
 		cursor: text;
 		user-select: text;
 		-webkit-user-select: text;
+		resize: none;
+		overflow: hidden;
+		display: block;
+		line-height: inherit;
 	}
 
 	.untitled {
@@ -402,6 +461,15 @@
 		justify-content: center;
 		font-family: var(--hand);
 		font-size: var(--size-title);
+	}
+
+	/*
+	 * Inside .title-wrap the icon is an inline sibling of the title text
+	 * rather than a flex item, so .header's own `gap` never reaches it —
+	 * this is what stands in for that gap there.
+	 */
+	.title-wrap .icon {
+		margin-left: 0.25rem;
 	}
 
 	/*

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
+	import ListSwitcher from './ListSwitcher.svelte';
 	import Perforation from './Perforation.svelte';
 	import TextRule from './TextRule.svelte';
 	import { trap } from '$lib/a11y/trap';
@@ -10,7 +11,6 @@
 	import { seedFrom } from '$lib/draw/rng';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
-	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
 
@@ -113,17 +113,6 @@
 		copied = sync.code ? await copy(formatCode(sync.code)) : false;
 	}
 
-	/*
-	 * The switcher pill only ever appears once a second list exists, so this
-	 * is where that second list is made — the only place reachable while
-	 * there is still just the one. Once it exists, the pill's own "+ New
-	 * list" row calls the same function.
-	 */
-	function onNewList() {
-		lists.createList();
-		onclose();
-	}
-
 	/**
 	 * A phone has no console to open. This is the same trail, read off the
 	 * device it happened on rather than a screen nobody here has — copied as
@@ -209,6 +198,15 @@
 	<div class="scroll">
 		<div class="body">
 			<!--
+				Answers which list this is before anything else in the panel does —
+				the same reason it stands first above the sheet. Always shown here,
+				unlike its copy above the sheet: with the button that used to make a
+				second list gone, this is the only place left to reach one from while
+				there is still just the first.
+			-->
+			<ListSwitcher context="menu" onafterselect={onclose} />
+
+			<!--
 				Two sentences, never one. How much is waiting is what people want to
 				know; whether the list could be reached is a condition, not a failure,
 				and folding it into the same line made "Offline" read like an error.
@@ -272,13 +270,6 @@
 				-->
 				<p class="note">Only on this device. Sync it to get a code you can share.</p>
 			{/if}
-
-			<div class="pair">
-				<button type="button" class="caps boxed" onclick={onNewList}>
-					<HandRect seed="btnnewlist" wobble={1.4} radius={3} />
-					New list
-				</button>
-			</div>
 
 			<div class="pair apart">
 				<button type="button" class="caps boxed" onclick={onimport}>

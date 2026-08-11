@@ -2,7 +2,7 @@
 	import HandRect from './HandRect.svelte';
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
-	import { handChevron } from '$lib/draw/hand';
+	import { handChevron, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
 	import { sheet } from '$lib/state/doc.svelte';
@@ -11,18 +11,32 @@
 	import { sync } from '$lib/state/sync.svelte';
 
 	/*
-	 * Only ever on screen once there is a second list to choose between — a
-	 * device with one list never renders this at all, so it stays exactly the
-	 * page it always was. Reads like the group title it stands above: same
-	 * face, same caps, a hand-drawn rule under it.
+	 * Two homes for the same control: above the sheet, where it only ever
+	 * appears once there is a second list to choose between, and inside the
+	 * Menu, where it stands in for the button that used to make that second
+	 * list — so it has to be there even at one, or there would be nowhere
+	 * left to reach a second from. `context` tells the two apart: whether it
+	 * is shown at all, whether it claims the room above the corner buttons,
+	 * and what its seeds are namespaced by, so two boxes drawn at once —
+	 * possible in the DOM even though the sheet is never visible behind an
+	 * open Menu — are never the same box.
 	 */
+	type Props = {
+		context?: 'sheet' | 'menu';
+		onafterselect?: () => void;
+	};
+
+	let { context = 'sheet', onafterselect }: Props = $props();
 
 	let open = $state(false);
 	let root: HTMLElement | undefined = $state();
+	let dropdownWidth = $state(0);
+
+	const shown = $derived(context === 'menu' ? true : lists.visible);
 
 	const CHEVRON = 12;
 	const chevron = $derived(
-		handChevron(CHEVRON, !open, { seed: seedFrom('listswitch'), wobble: 0.8 })
+		handChevron(CHEVRON, !open, { seed: seedFrom(`listswitch-${context}`), wobble: 0.8 })
 	);
 
 	const activeName = $derived(nameFor(sheet.doc));
@@ -31,6 +45,13 @@
 	const label = $derived(activeCode ? `${activeName} — ${activeCode}` : activeName);
 
 	const sorted = $derived([...lists.entries].sort((a, b) => b.lastUsedAt - a.lastUsedAt));
+
+	/** One line, drawn once and reused between every row — separators, not boxes. */
+	const dividerPath = $derived(
+		dropdownWidth > 0
+			? handLine(dropdownWidth, { seed: seedFrom(`listsep-${context}`), wobble: 0.8, y: 2 })
+			: ''
+	);
 
 	function nameOf(entry: ListEntry): string {
 		return entry.id === lists.current ? activeName : lists.nameOf(entry);
@@ -51,12 +72,21 @@
 			tapped();
 		}
 		open = false;
+		onafterselect?.();
 	}
 
 	function onnew() {
 		lists.createList();
 		tapped();
 		open = false;
+		onafterselect?.();
+	}
+
+	// A real button gets Enter for free; a plain row has to ask.
+	function onrowkeydown(event: KeyboardEvent, id: string) {
+		if (event.key !== 'Enter') return;
+		event.preventDefault();
+		pick(id);
 	}
 
 	// Outside tap or Escape closes it — a small popover, not a full panel, so
@@ -81,10 +111,43 @@
 			document.removeEventListener('keydown', onkeydown);
 		};
 	});
+
+	/*
+	 * The toast and the Menu's own ✕ both stand relative to where the corner
+	 * buttons actually render, via --corner-y — and this pill, shown above
+	 * them, is the one thing that moves them down. Only the sheet's own copy
+	 * sits where the corner row does; the Menu's copy has nothing to do with
+	 * the burger's position and must never write this.
+	 *
+	 * `switcherHeight` comes from `bind:clientHeight` below rather than a
+	 * ResizeObserver of our own — the same reflow-tracking Svelte already
+	 * ships for every `bind:clientWidth` elsewhere (TextRule, Perforation,
+	 * this file's own `.measure`), so this reuses that instead of paying for
+	 * a second copy.
+	 */
+	let switcherHeight = $state(0);
+
+	$effect(() => {
+		const on = context === 'sheet' && shown && root;
+		const mb = on ? parseFloat(getComputedStyle(root!).marginBottom) || 0 : 0;
+		document.documentElement.style.setProperty('--switcher-h', `${on ? switcherHeight + mb : 0}px`);
+	});
 </script>
 
-{#if lists.visible}
-	<div class="switcher" bind:this={root}>
+{#snippet divider()}
+	<svg
+		class="divider"
+		viewBox="0 0 {dropdownWidth} 3"
+		width={dropdownWidth}
+		height="3"
+		aria-hidden="true"
+	>
+		{#if dividerPath}<path d={dividerPath} class="drawn" />{/if}
+	</svg>
+{/snippet}
+
+{#if shown}
+	<div class="switcher {context}" bind:this={root} bind:clientHeight={switcherHeight}>
 		<button
 			type="button"
 			class="pill caps"
@@ -104,29 +167,32 @@
 				<path d={chevron} class="drawn" />
 			</svg>
 		</button>
-		<TextRule text={label} seed="listswitch" />
+		<TextRule text={label} seed={`listswitch-${context}`} />
 
 		{#if open}
-			<div class="dropdown" role="listbox" aria-label="Lists">
-				{#each sorted as entry (entry.id)}
+			<div class="dropdown" role="listbox" aria-label="Lists" bind:clientWidth={dropdownWidth}>
+				{#each sorted as entry, i (entry.id)}
+					{#if i > 0}{@render divider()}{/if}
 					{@const rowName = nameOf(entry)}
 					{@const rowCode = codeOf(entry)}
-					<button
-						type="button"
-						class="row caps boxed"
+					<div
+						class="row caps"
 						role="option"
+						tabindex="0"
 						aria-selected={entry.id === lists.current}
 						onclick={() => pick(entry.id)}
+						onkeydown={(event) => onrowkeydown(event, entry.id)}
 					>
-						<HandRect seed={`listrow${entry.id}`} wobble={1.4} radius={3} />
 						<span class="name" lang={langOf(rowName)}>{rowName}</span>
-						{#if rowCode}<span class="code num">{rowCode}</span>{/if}
-					</button>
+						{#if rowCode}<span class="code">{rowCode}</span>{/if}
+					</div>
 				{/each}
 
+				{#if sorted.length > 0}{@render divider()}{/if}
+
 				<button type="button" class="row new caps boxed" onclick={onnew}>
-					<HandRect seed="listrownew" wobble={1.4} radius={3} />
-					+ New list
+					<HandRect seed={`listrownew-${context}`} wobble={1.4} radius={3} />
+					New list
 				</button>
 			</div>
 		{/if}
@@ -137,6 +203,20 @@
 	.switcher {
 		position: relative;
 		margin-bottom: 0.75rem;
+	}
+
+	/*
+	 * Above the sheet, this sits outside <main> now, so it only inherits the
+	 * page's own --paper-x, not the sheet's extra --paper-inset. Without this
+	 * it reads noticeably less inset than the sheet's own left margin.
+	 *
+	 * Centred explicitly: the pill is an inline-flex box and left-aligns by
+	 * default. Menu.svelte's own `.body` already centres everything in it,
+	 * so its copy needs nothing extra here.
+	 */
+	.switcher.sheet {
+		padding-inline: var(--paper-inset);
+		text-align: center;
 	}
 
 	.pill {
@@ -166,12 +246,27 @@
 		background: var(--paper);
 	}
 
+	/*
+	 * Menu.svelte's own panel scrolls (`.scroll { overflow-y: auto; }`), and
+	 * an absolutely positioned dropdown taller than what's left of that
+	 * scroll box is clipped — its lower rows would sit there unreachable
+	 * rather than merely out of sight, unlike on the sheet where <main> has
+	 * no overflow and the dropdown genuinely floats free. In flow instead,
+	 * it just pushes the rest of the panel down.
+	 */
+	.switcher.menu .dropdown {
+		position: static;
+		z-index: auto;
+	}
+
 	.row {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
 		width: 100%;
+		min-height: var(--touch);
 		text-align: left;
+		cursor: pointer;
 	}
 
 	.row .code {
@@ -181,5 +276,12 @@
 	.row.new {
 		justify-content: center;
 		opacity: var(--faint);
+	}
+
+	.divider {
+		display: block;
+		width: 100%;
+		height: 3px;
+		overflow: visible;
 	}
 </style>

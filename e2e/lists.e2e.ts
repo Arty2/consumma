@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fromMenu } from './menu';
+import { fromMenu, openMenu } from './menu';
 
 /*
  * The switcher: a device can remember more than one list, and the pill above
@@ -36,10 +36,17 @@ function dropdown(page: Page) {
 	return page.getByRole('listbox', { name: 'Lists' });
 }
 
-/** New list in the menu is the only way to reach a second list at all — the
- *  pill that would otherwise offer it is not on the page until one exists. */
+/**
+ * New list in the menu is the only way to reach a second list at all — the
+ * pill that would otherwise offer it is not on the page until one exists.
+ * The menu carries its own always-shown copy of the switcher for exactly
+ * this reason; its dropdown is where "New list" lives now.
+ */
 async function newList(page: Page) {
-	await fromMenu(page, 'New list');
+	await openMenu(page);
+	const dialog = page.getByRole('dialog', { name: 'Menu' });
+	await dialog.locator('button[aria-haspopup="listbox"]').click();
+	await dialog.getByRole('button', { name: 'New list', exact: true }).click();
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 }
 
@@ -159,4 +166,56 @@ test('deleting every list leaves no trace, and the next edit lands under the sam
 	await addTask(page, 'Eggs');
 	const after = await page.evaluate(() => Object.keys(localStorage));
 	expect(after).toContain('consumma:doc');
+});
+
+test('the toast still lands below the corner buttons once the switcher pushes them down', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+	await addTask(page, 'Milk');
+
+	await task(page, 'Milk').click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	// The row pops before it actually goes, so the undo toast lands a beat
+	// after the click rather than in the same tick.
+	await page.locator('.toast').waitFor();
+
+	const where = await page.evaluate(() => {
+		const toast = document.querySelector('.toast')!.getBoundingClientRect();
+		const burger = document.querySelector('[aria-label^="Menu"]')!.getBoundingClientRect();
+		return { top: toast.top, corner: burger.bottom };
+	});
+
+	expect(where.top).toBeGreaterThanOrEqual(where.corner);
+});
+
+test('a dropdown row switches with the keyboard, not just a tap', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+	await addTask(page, 'Milk');
+
+	await switcherPill(page).click();
+	await dropdown(page).getByRole('option', { selected: false }).focus();
+	await page.keyboard.press('Enter');
+
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(task(page, 'Milk')).toHaveCount(0);
+});
+
+test('a third list can be made from the menu without the sheet’s own pill causing ambiguity', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+	await addTask(page, 'Milk');
+
+	// The sheet's own pill is already on the page (2 lists exist) by the time
+	// the menu opens for a second "New list" — the one call site where an
+	// unscoped locator would find both the sheet's copy and the menu's.
+	await newList(page);
+	await addTask(page, 'Eggs');
+
+	await switcherPill(page).click();
+	await expect(dropdown(page).getByRole('option')).toHaveCount(3);
 });

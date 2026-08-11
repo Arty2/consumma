@@ -46,6 +46,11 @@
 		 */
 		width: min(24rem, calc(100vw - 4rem));
 		padding: 0.5rem 1rem;
+		/*
+		 * Inverted from the sheet rather than matching it: this sits in front
+		 * of the paper, not on it, and the colours say so.
+		 */
+		color: var(--paper);
 	}
 
 	/*
@@ -72,7 +77,7 @@
 		position: absolute;
 		inset: -0.3rem;
 		translate: 0 calc(-1 * var(--cap-lift));
-		background: var(--paper);
+		background: var(--ink);
 		z-index: -1;
 	}
 
@@ -84,5 +89,15 @@
 	 */
 	.toast :global(svg.rect) {
 		translate: 0 calc(-1 * var(--cap-lift));
+	}
+
+	/* The box's own outline inverts with the ground it now sits on. */
+	.toast :global(svg.rect path.drawn) {
+		stroke: var(--paper);
+	}
+
+	/* Otherwise an ink ring on an ink ground is nothing anyone can see. */
+	.toast button:focus-visible {
+		outline-color: var(--paper);
 	}
 </style>
