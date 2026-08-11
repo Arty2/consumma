@@ -650,5 +650,13 @@
 	 */
 	.dedication {
 		font-style: italic;
+		/*
+		 * The last line in the panel, and `.scroll` clips at the paper's own
+		 * edge — without this the dedication sits flush against it once
+		 * someone has scrolled all the way down. One line's own height, at
+		 * this line's own size, so the room below it reads as a line rather
+		 * than as a gap that just happens to be there.
+		 */
+		margin-bottom: 1.4em;
 	}
 </style>
