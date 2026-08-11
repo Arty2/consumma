@@ -707,12 +707,19 @@
 	}
 
 	/*
-	 * The tear brings its own room above, so the footer adds none of its own.
-	 * It used to open with three asterisks and 3rem of padding; the mark now
-	 * spaces itself the way the other two do.
+	 * The tear brings its own room above, so the footer adds none of its own
+	 * at the top. It used to open with three asterisks and 3rem of padding;
+	 * the mark now spaces itself the way the other two do.
+	 *
+	 * Below, `.scroll` clips at the paper's own edge — without room here the
+	 * credit sits flush against it once someone has scrolled all the way
+	 * down, whatever its last line happens to be. One line's own height, at
+	 * the credit's own size, so the room below it reads as a line rather
+	 * than as a gap that just happens to be there.
 	 */
 	.credit {
 		padding-top: 0;
+		margin-bottom: 1.4em;
 	}
 
 	.credit p {
@@ -733,13 +740,5 @@
 	 */
 	.dedication {
 		font-style: italic;
-		/*
-		 * The last line in the panel, and `.scroll` clips at the paper's own
-		 * edge — without this the dedication sits flush against it once
-		 * someone has scrolled all the way down. One line's own height, at
-		 * this line's own size, so the room below it reads as a line rather
-		 * than as a gap that just happens to be there.
-		 */
-		margin-bottom: 1.4em;
 	}
 </style>
