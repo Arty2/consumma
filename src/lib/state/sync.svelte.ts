@@ -206,10 +206,23 @@ export class SyncState {
 		}
 	}
 
+	/**
+	 * Whether there is anything here worth a code.
+	 *
+	 * A list nobody has written on is the opening group and nothing else —
+	 * scaffolding, not a list. Syncing it would put an empty document on the
+	 * server and mint a code for it, so a device that had done nothing but tap
+	 * New list would be handing out an address to nothing. Having a code
+	 * already is enough on its own: that list has been somewhere, and pulling
+	 * what others have added to it is exactly what a sync is for.
+	 */
+	syncable: boolean = $derived(sheet.written || this.code !== null);
+
 	/** Everything happens here, and only when someone asks for it. */
 	async sync(options: { force?: boolean } = {}): Promise<SyncOutcome | null> {
 		if (this.busy) return null;
 		if (!options.force && this.cooling) return null;
+		if (!this.syncable) return null;
 
 		/*
 		 * The first sync is where a code comes from. Written down before the

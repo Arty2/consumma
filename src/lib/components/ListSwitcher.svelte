@@ -163,8 +163,14 @@
 {/snippet}
 
 {#snippet rows()}
-	{#each sorted as entry, i (entry.id)}
-		{#if i > 0}{@render divider()}{/if}
+	<!--
+		A line above every row, the first one included: the list reads as a set
+		of ruled entries rather than as a heading with rules under it, and the
+		topmost row needs its own line to be closed off at the top the way the
+		rest are.
+	-->
+	{#each sorted as entry (entry.id)}
+		{@render divider()}
 		{@const rowName = nameOf(entry)}
 		{@const rowCode = codeOf(entry)}
 		<div
@@ -391,10 +397,33 @@
 		flex: none;
 	}
 
+	/*
+	 * On the middle of the row, rather than on the middle of its own line box.
+	 *
+	 * Graphe's capitals ride high in their line box, so a row centred by the
+	 * flexbox puts the letters above its middle — the same fact every drawn
+	 * mark beside capitals corrects for by lifting, seen from the other side
+	 * and so corrected the other way. Only the rows that are read: `.row.new`
+	 * is a boxed button, and `.boxed`'s own drawn rectangle already lifts to
+	 * sit on the words, so moving the words would part the two.
+	 */
+	.row:not(.new) > span {
+		translate: 0 var(--cap-lift);
+	}
+
+	/*
+	 * Ink, not faint. It is the one thing here that makes something rather
+	 * than choosing between things already made, and a drawn box around dimmed
+	 * words read as a button that was not available yet.
+	 *
+	 * Set apart from the rows above by more room than they keep between
+	 * themselves, so it reads as the end of the list rather than one more
+	 * entry in it.
+	 */
 	.row.new {
 		justify-content: center;
-		opacity: var(--faint);
 		min-height: 2.25rem;
+		margin-top: 0.75rem;
 	}
 
 	.divider {

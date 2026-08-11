@@ -637,8 +637,14 @@
 	 * The mark alone steps in; the button does not. Translated rather than laid
 	 * out, so the tap area stays out in the margin and the end of a price still
 	 * belongs to the row — see --cross-step.
+	 *
+	 * It lifts by --cap-lift for the same reason the checkbox at the other end
+	 * of the row does: both are centred in a --touch box that starts at the top
+	 * of the row, but the checkbox is then lifted to sit level with the
+	 * capitals, so a ✕ left on the box's own middle sat a few pixels below it.
+	 * Two marks at either end of one line have to agree on where that line is.
 	 */
 	.remove svg {
-		translate: calc(-1 * var(--cross-step)) 0;
+		translate: calc(-1 * var(--cross-step)) calc(-1 * var(--cap-lift));
 	}
 </style>

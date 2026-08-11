@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { handArrow, handRefresh, handSlashedCircle } from '$lib/draw/hand';
+	import { handArrow, handRefresh, handSlashedCircle, type HandOptions } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
-	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -22,27 +21,51 @@
 
 	const SIZE = 22;
 
-	// Drawn once each, so the strokes do not twitch as the count changes.
-	const arrow = handArrow(SIZE, { seed: seedFrom('arrow'), wobble: 0.7 });
-	const refresh = handRefresh(SIZE, { seed: seedFrom('refresh'), wobble: 0.7 });
-	const slash = handSlashedCircle(SIZE, { seed: seedFrom('offline'), wobble: 0.7 });
+	/**
+	 * How many times each mark is drawn, and how long each drawing is held.
+	 *
+	 * The same hand, drawing the same mark four times over: no two strokes come
+	 * out identical, and cycling between them is what makes a line look alive
+	 * on paper — the boil that hand-drawn animation has always had, rather than
+	 * a shape being scaled or faded by a machine.
+	 *
+	 * Four is what the technique uses: enough that the loop does not read as a
+	 * flicker between two states, few enough that each drawing is on screen
+	 * long enough to be seen as a drawing. `900 / 4` keeps the one duration the
+	 * whole corner already works to.
+	 */
+	const FRAMES = 4;
+	const BEAT_MS = 900 / FRAMES;
+
+	/*
+	 * Drawn once each, up front, so the strokes never twitch as the count
+	 * changes — the cycling below picks between drawings that already exist
+	 * rather than making new ones. The first frame keeps the bare seed, so a
+	 * mark standing still is the same mark it has always been.
+	 */
+	const boil = (draw: (size: number, options: HandOptions) => string, name: string): string[] =>
+		Array.from({ length: FRAMES }, (_, i) =>
+			draw(SIZE, { seed: seedFrom(i === 0 ? name : `${name}${i}`), wobble: 0.7 })
+		);
+
+	const arrow = boil(handArrow, 'arrow');
+	const refresh = boil(handRefresh, 'refresh');
+	const slash = boil(handSlashedCircle, 'offline');
 
 	const waiting = $derived(sync.unsent > 0);
 	const offline = $derived(sync.status === 'offline');
 
 	/*
-	 * Nothing written and no code: there is nothing to send and nothing to fetch,
-	 * so there is nothing to offer. Staleness alone would otherwise put the
-	 * button on the page for someone who has just arrived, because a device that
-	 * has never synced has been not-syncing since the epoch.
-	 */
-	const nothingYet = $derived(!sheet.written && !sync.code);
-
-	/*
 	 * Being unreachable is worth showing on its own. Everything is safe on the
 	 * device either way, but "it did not go" is not something to find out later.
+	 *
+	 * `sync.syncable` is the same question the SYNC panel's own button asks:
+	 * nothing written and no code means there is nothing to send and no list to
+	 * fetch, so there is nothing to offer. Staleness alone would otherwise put
+	 * this button on the page for someone who has just arrived, because a
+	 * device that has never synced has been not-syncing since the epoch.
 	 */
-	const shown = $derived(!nothingYet && (offline || waiting || sync.stale));
+	const shown = $derived(sync.syncable && (offline || waiting || sync.stale));
 
 	/*
 	 * Asked in JS rather than left to a media query, as every animation here is:
@@ -54,6 +77,34 @@
 
 	/** While a sync is actually in flight — from here or from the menu. */
 	const working = $derived(sync.busy && !still());
+
+	/*
+	 * Which of the four drawings is on screen. Zero whenever nothing is in
+	 * flight, so a mark standing still is always the same mark — the boil is
+	 * something the button does while it works, not a state it is left in.
+	 *
+	 * `working` already asks `prefers-reduced-motion` (see `still()`), so a
+	 * device that wants no motion never starts the interval and the mark holds
+	 * its first drawing.
+	 */
+	let frame = $state(0);
+
+	$effect(() => {
+		if (!working) {
+			frame = 0;
+			return;
+		}
+
+		/*
+		 * Counted locally rather than off `frame` itself, so the callback only
+		 * ever writes reactive state and never reads it — the mistake that took
+		 * this tree's reactivity down once already (see sync.svelte.ts's
+		 * `refresh`) was an effect that did both.
+		 */
+		let next = 0;
+		const tick = setInterval(() => (frame = next = (next + 1) % FRAMES), BEAT_MS);
+		return () => clearInterval(tick);
+	});
 
 	/*
 	 * On its way out after a sync that left nothing to offer.
@@ -141,7 +192,7 @@
 			height={SIZE}
 			aria-hidden="true"
 		>
-			<path d={offline ? slash : waiting ? arrow : refresh} class="drawn" />
+			<path d={(offline ? slash : waiting ? arrow : refresh)[frame]} class="drawn" />
 		</svg>
 	</button>
 {/if}
@@ -166,35 +217,28 @@
 
 	/*
 	 * One beat for every mark this button draws, so the corner reads as one
-	 * thing working rather than as two different ideas about waiting. The
-	 * circular arrow turns, because it is a stroke that came round and turning
-	 * is what it already means. The outbox arrow cannot turn without pointing
-	 * somewhere it does not mean, and the crossed circle turning would read as
-	 * a mark being scribbled out, so both of those breathe on the same count
-	 * instead — opacity and scale, as everywhere else here.
+	 * thing working rather than as two different ideas about waiting.
+	 *
+	 * What every mark does while it works is boil — the same mark drawn four
+	 * times over, cycled, the way hand-drawn animation has always made a line
+	 * look alive. That is done in the markup rather than here, because it is a
+	 * change of drawing rather than a change of shape, and CSS cannot swap one
+	 * path for another. It replaced a pulse, which grew and faded the mark
+	 * mechanically: the one thing on this sheet that never looked drawn.
+	 *
+	 * The circular arrow turns on top of it, because it is a stroke that came
+	 * round and turning is what it already means. The outbox arrow cannot turn
+	 * without pointing somewhere it does not mean, and the crossed circle
+	 * turning would read as a mark being scribbled out — so those two boil and
+	 * nothing more, on the same count.
 	 */
-	.working {
-		animation-duration: 900ms;
-		animation-iteration-count: infinite;
-		animation-name: pulse;
-		animation-timing-function: ease-in-out;
-	}
-
 	.working.turning {
-		animation-name: turn;
-		animation-timing-function: linear;
+		animation: turn 900ms linear infinite;
 	}
 
 	@keyframes turn {
 		to {
 			rotate: 360deg;
-		}
-	}
-
-	@keyframes pulse {
-		50% {
-			opacity: 0.4;
-			scale: 0.86;
 		}
 	}
 

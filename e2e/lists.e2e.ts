@@ -301,6 +301,45 @@ test('the menu keeps its ✕ reachable once the switcher shares its row', async 
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
+test('a list nobody wrote on is forgotten as soon as it is left', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	// Two lists, so the pill has earned its place.
+	await expect(switcherPill(page)).toBeVisible();
+
+	// Back to the written one without putting anything on the blank one.
+	await switcherPill(page).click();
+	await dropdown(page).getByRole('option', { selected: false }).click();
+
+	await expect(task(page, 'Bread')).toBeVisible();
+
+	// The blank one went with the leaving: one list left, so the pill goes too.
+	await expect(switcherPill(page)).toHaveCount(0);
+
+	// And the index that recorded it goes with it, back to exactly the keys a
+	// device that never had a second list writes.
+	const keys = await page.evaluate(() => Object.keys(localStorage));
+	expect(keys).not.toContain('consumma:lists');
+	expect(keys).toContain('consumma:doc');
+});
+
+test('a list with nothing written on it cannot be synced', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	// Sitting on the blank list: there is nothing to send, and minting a code
+	// for it would hand out the address of an empty sheet.
+	await openMenu(page);
+	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeDisabled();
+
+	// One word on it and it is a list like any other.
+	await page.getByRole('button', { name: 'Close' }).click();
+	await addTask(page, 'Milk');
+	await openMenu(page);
+	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeEnabled();
+});
+
 test('a long list name truncates in a row rather than overflowing it, in either context', async ({
 	page
 }) => {

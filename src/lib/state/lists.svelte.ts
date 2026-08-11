@@ -87,16 +87,58 @@ export class Lists {
 		const target = this.entries.find((entry) => entry.id === id);
 		if (!target) return;
 
+		/*
+		 * Read before anything is re-pointed: `sheet.written` is about the list
+		 * being left, and `sheet.switchTo` below replaces it with the one being
+		 * opened.
+		 */
+		const leaving = this.current;
+		const leavingWritten = sheet.written;
+
 		this.entries = this.entries.map((entry) =>
 			entry.id === id ? { ...entry, lastUsedAt: Date.now() } : entry
 		);
 		this.current = id;
+		this.#dropIfBlank(leaving, leavingWritten);
 		this.#persist();
 
 		const keys = keysFor(target.legacy ? null : target.id);
 		sheet.switchTo(keys);
 		sync.switchTo(keys);
 		ui.switchTo(keys);
+	}
+
+	/**
+	 * Forgets a list nobody ever wrote on, as it is left.
+	 *
+	 * A new list is scaffolding until something is put on it — the same
+	 * opening group a first-ever visit draws, which `Sheet` deliberately does
+	 * not save. Remembering it anyway meant tapping "New list", looking at it
+	 * and going back left an untitled empty list in the switcher for good, and
+	 * a `consumma:lists` key recording it. It writes nothing, so there is
+	 * nothing of it to keep.
+	 *
+	 * The legacy entry is never dropped: it holds the bare keys a
+	 * single-list device has always used, and it is the one entry whose
+	 * absence would change where an unrelated list is stored. It does not need
+	 * dropping either — once every namespaced list beside it is gone, the
+	 * index itself goes and the device is back to exactly the shape it had
+	 * before it ever had two.
+	 */
+	#dropIfBlank(id: string | null, written: boolean): void {
+		if (id === null || written) return;
+
+		const entry = this.entries.find((candidate) => candidate.id === id);
+		if (!entry || entry.legacy) return;
+
+		this.entries = this.entries.filter((candidate) => candidate.id !== id);
+
+		// Nothing wrote a doc, but a group folded on the way past would have
+		// left one key behind of its own.
+		const keys = keysFor(entry.id);
+		for (const key of [keys.doc, keys.code, keys.version, keys.synced, keys.collapsed]) {
+			remove(key);
+		}
 	}
 
 	/**
@@ -152,8 +194,28 @@ export class Lists {
 		this.switchTo(survivor.id);
 	}
 
+	/**
+	 * Writes the index — or takes it away again.
+	 *
+	 * One entry left and it is the legacy one means every list this device
+	 * made beside the original has been dropped, and the original is already
+	 * living under the bare keys a device with a single list has always used.
+	 * There is nothing left for an index to say, so it goes rather than
+	 * lingering as the one record that this device once had two. That leaves
+	 * exactly the state a device that never had a second list is in — which is
+	 * what `deleteCurrent` reaches for too, and what makes it reachable at all
+	 * without ever moving a list between key-sets.
+	 */
 	#persist(): void {
 		if (this.current === null) return;
+
+		if (this.entries.length === 1 && this.entries[0].legacy) {
+			remove(KEYS.lists);
+			this.entries = [];
+			this.current = null;
+			return;
+		}
+
 		write(KEYS.lists, JSON.stringify({ v: 1, current: this.current, lists: this.entries }));
 	}
 }

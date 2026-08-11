@@ -220,10 +220,15 @@
 				<p class="detail">{summary.detail}</p>
 			{/if}
 
+			<!--
+				Nothing written and no code: there is nothing to send and no list to
+				fetch, so the button says so by being unavailable rather than
+				minting a code for an empty sheet — see `sync.syncable`.
+			-->
 			<button
 				type="button"
 				class="caps boxed action"
-				disabled={sync.busy || sync.cooling}
+				disabled={sync.busy || sync.cooling || !sync.syncable}
 				onclick={syncNow}
 			>
 				<HandRect seed="btnsync" wobble={1.4} radius={3} />
