@@ -43,7 +43,12 @@
 	const activeName = $derived(nameFor(sheet.doc));
 	/** Only once the active list has actually been somewhere — see §non-negotiables. */
 	const activeCode = $derived(sync.code ? sync.code.slice(-4) : null);
-	const label = $derived(activeCode ? `${activeName} — ${activeCode}` : activeName);
+	/**
+	 * What the rule under the pill is measured from, so it has to read as the
+	 * pill reads: the two are set in separate spans with a gap between them
+	 * (see the markup), and a plain space is what stands in for that gap here.
+	 */
+	const label = $derived(activeCode ? `${activeName} ${activeCode}` : activeName);
 
 	const sorted = $derived([...lists.entries].sort((a, b) => b.lastUsedAt - a.lastUsedAt));
 
@@ -218,7 +223,7 @@
 				ondblclick={onsecondtap}
 			>
 				<span class="label" lang={langOf(activeName)}>{activeName}</span>
-				{#if activeCode}<span class="tail">— {activeCode}</span>{/if}
+				{#if activeCode}<span class="tail">{activeCode}</span>{/if}
 				<svg
 					class="chevron"
 					viewBox="0 0 {CHEVRON} {CHEVRON}"

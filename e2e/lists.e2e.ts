@@ -323,7 +323,7 @@ test('a long name gives way in the pill, the code never does, and the rule follo
 	// Four characters, whole, however little room the name is left. Named
 	// `.tail` rather than `.code` so it never collides with the panel's own
 	// full-code display — see ListSwitcher.svelte.
-	await expect(dialog.locator('.pill .tail')).toHaveText('— 93f2');
+	await expect(dialog.locator('.pill .tail')).toHaveText('93f2');
 	// And exactly one `.code` on the panel, which is that full display.
 	await expect(dialog.locator('.code')).toHaveCount(1);
 
