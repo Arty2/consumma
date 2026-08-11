@@ -320,26 +320,30 @@ test('a long name gives way in the pill, the code never does, and the rule follo
 	await openMenu(page);
 	const dialog = page.getByRole('dialog', { name: 'Menu' });
 
-	// Four characters, whole, however little room the name is left.
-	await expect(dialog.locator('.pill .code')).toHaveText('— 93f2');
+	// Four characters, whole, however little room the name is left. Named
+	// `.tail` rather than `.code` so it never collides with the panel's own
+	// full-code display — see ListSwitcher.svelte.
+	await expect(dialog.locator('.pill .tail')).toHaveText('— 93f2');
+	// And exactly one `.code` on the panel, which is that full display.
+	await expect(dialog.locator('.code')).toHaveCount(1);
 
 	const geo = await page.evaluate(() => {
 		const dialogEl = document.querySelector('[role="dialog"]')!;
 		const pill = dialogEl.querySelector('button[aria-haspopup="listbox"]') as HTMLElement;
 		const label = pill.querySelector('.label') as HTMLElement;
-		const code = pill.querySelector('.code') as HTMLElement;
+		const tail = pill.querySelector('.tail') as HTMLElement;
 		const rule = dialogEl.querySelector('svg.rule')!.getBoundingClientRect();
 		const box = pill.getBoundingClientRect();
 		const close = document.querySelector('.close')!.getBoundingClientRect();
 
 		return {
 			nameClipped: label.scrollWidth > label.clientWidth,
-			codeClipped: code.scrollWidth > code.clientWidth,
-			codeWidth: code.getBoundingClientRect().width,
-			pillMid: (box.left + box.right) / 2,
+			codeClipped: tail.scrollWidth > tail.clientWidth,
+			codeWidth: tail.getBoundingClientRect().width,
+			pillLeft: box.left,
 			pillWidth: box.width,
 			pillRight: box.right,
-			ruleMid: (rule.left + rule.right) / 2,
+			ruleLeft: rule.left,
 			ruleWidth: rule.width,
 			closeLeft: close.left
 		};
@@ -350,9 +354,10 @@ test('a long name gives way in the pill, the code never does, and the rule follo
 	expect(geo.codeClipped).toBe(false);
 	expect(geo.codeWidth).toBeGreaterThan(0);
 
-	// The rule is under the pill rather than off beside it, and no wider than
-	// the words it marks — a pen underlines the word, not the row.
-	expect(Math.abs(geo.ruleMid - geo.pillMid)).toBeLessThan(2);
+	// The rule starts where the pill starts — both left, as the rows they open
+	// are — and is no wider than the words it marks: a pen underlines the
+	// word, not the row.
+	expect(Math.abs(geo.ruleLeft - geo.pillLeft)).toBeLessThan(2);
 	expect(geo.ruleWidth).toBeLessThanOrEqual(geo.pillWidth + 1);
 
 	// And it never reaches the ✕ it shares a row with.

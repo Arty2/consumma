@@ -203,6 +203,11 @@
 				so the code — four characters that are the whole point of showing it —
 				is never what an ellipsis eats. `lang` rides the name alone; a hex
 				code has no language to declare.
+
+				Called `tail` rather than `code`: Menu.svelte shows the whole code
+				in a `<p class="code">` of its own, and a second `.code` on the
+				same panel makes every `page.locator('.code')` in the suite match
+				two elements — which is exactly how six tests came to fail at once.
 			-->
 			<button
 				type="button"
@@ -213,7 +218,7 @@
 				ondblclick={onsecondtap}
 			>
 				<span class="label" lang={langOf(activeName)}>{activeName}</span>
-				{#if activeCode}<span class="code">— {activeCode}</span>{/if}
+				{#if activeCode}<span class="tail">— {activeCode}</span>{/if}
 				<svg
 					class="chevron"
 					viewBox="0 0 {CHEVRON} {CHEVRON}"
@@ -225,12 +230,10 @@
 				</svg>
 			</button>
 			<!--
-				Centred in the menu, where `.body` centres the pill itself — a rule
-				left-aligned in a box whose contents are centred lands under nothing.
-				On the sheet the pill starts at its box's left edge and the rule
-				follows it there, which is what TextRule does by default.
+				Left in both homes, which is what TextRule does by default: the pill
+				starts at its box's left edge and the rule follows it there.
 			-->
-			<TextRule text={label} seed={`listswitch-${context}`} centred={context === 'menu'} />
+			<TextRule text={label} seed={`listswitch-${context}`} />
 		</div>
 
 		<!--
@@ -294,8 +297,21 @@
 	}
 
 	/* Four characters, and never the ones that go — see the markup above. */
-	.pill .code {
+	.pill .tail {
 		flex: none;
+	}
+
+	/*
+	 * TextRule measures a hidden copy of the words to find how wide to draw,
+	 * and sets that copy in `--size-title` — which is what a group title is
+	 * set in, and what every other caller of it is. This pill is `--size-small`
+	 * and bold, so left alone the copy measured half again too wide and the
+	 * rule ran well past the end of the words. The copy has to be set the way
+	 * the words it stands for are.
+	 */
+	.switcher :global(.sizer) {
+		font-size: var(--size-small);
+		font-weight: 700;
 	}
 
 	/*
@@ -347,32 +363,35 @@
 		margin-bottom: 1.5rem;
 		z-index: 1;
 		background: var(--paper);
-		/* One number, two users — the pill and the rule under it. */
-		--pill-max: calc(100% - 2 * var(--touch));
+		/*
+		 * Left, against the panel's own centred prose. It answers which list
+		 * this is, and it is read the way the rows it opens are — which are
+		 * left too, as every line of writing in this app is.
+		 */
+		text-align: left;
+		/*
+		 * One number, two users — the pill and the rule under it. A touch
+		 * target held back on the right alone, because that is the side the ✕
+		 * is on and the pill now starts hard against the left.
+		 */
+		--pill-max: calc(100% - var(--touch));
 	}
 
 	/*
 	 * The rule is measured off the label's own text, but the box it is measured
 	 * in is what caps that measurement — TextRule's hidden copy is `max-width:
 	 * 100%`, so left to the full panel a long name reported the panel's width
-	 * and the rule ran a touch target past the pill at each end. A pen
-	 * underlines the word, not the row.
+	 * and the rule ran a touch target past the pill. A pen underlines the
+	 * word, not the row.
 	 */
 	.switcher.menu :global(.ruled) {
 		max-width: var(--pill-max);
-		margin-inline: auto;
 	}
 
 	/*
-	 * Centred on the panel, and never wide enough to reach the ✕.
-	 *
-	 * `.body` centres the pill for us — it is an inline-flex box in a block
-	 * that sets `text-align: center` — but an inline-flex box sizes to its own
-	 * content however little room is left, so a long enough name ran straight
-	 * under the mark. A touch target's width held back at each end keeps it
-	 * clear symmetrically, which is also what lets it stay centred on the same
-	 * middle as everything else in the panel: taking the room off one side
-	 * only would put the pill, and the rule under it, half a ✕ left of centre.
+	 * Never wide enough to reach the ✕ it shares a row with. An inline-flex
+	 * box sizes to its own content however little room is left, so without
+	 * this a long enough name ran straight under the mark.
 	 */
 	.switcher.menu .pill {
 		max-width: var(--pill-max);
