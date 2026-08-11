@@ -59,7 +59,10 @@ export async function getRoom(roomId: string, etag: string | null): Promise<GetR
 	}
 
 	if (response.status === 304) {
-		trace('GET 304');
+		// The whole reason a stale device can look empty forever: this says
+		// nothing changed since the version already cached here, not that
+		// there is nothing there.
+		trace(`GET 304, still at ${etag ?? 'no etag sent'}`);
 		return { status: 'unchanged' };
 	}
 	if (response.status === 404) {
@@ -81,6 +84,8 @@ export async function putRoom(
 	body: { baseV: number; blob: string }
 ): Promise<PutResult> {
 	let response: Response;
+	// What was actually sent, on every line below — success or not.
+	const sent = `PUT baseV${body.baseV} ${body.blob.length}b`;
 
 	try {
 		response = await fetch(`/api/room/${roomId}`, {
@@ -90,31 +95,31 @@ export async function putRoom(
 			cache: 'no-store'
 		});
 	} catch (error) {
-		trace(`PUT: ${errorText(error)}`);
+		trace(`${sent}: ${errorText(error)}`);
 		return { status: 'offline' };
 	}
 
 	if (response.status === 413) {
-		trace('PUT 413');
+		trace(`${sent}: 413 too large`);
 		return { status: 'too-large' };
 	}
 
 	if (response.status === 409) {
 		const room = snapshot(await response.json().catch(() => null));
-		trace(room ? `PUT 409 v${room.v}` : 'PUT 409 unparsable');
+		trace(room ? `${sent}: 409, server is at v${room.v}` : `${sent}: 409 unparsable`);
 		// The current state travels with the conflict, so a retry needs no extra
 		// round trip.
 		return room ? { status: 'conflict', room } : { status: 'refused', code: 409 };
 	}
 
 	if (!response.ok) {
-		trace(`PUT ${response.status}`);
+		trace(`${sent}: ${response.status}`);
 		return { status: 'refused', code: response.status };
 	}
 
 	const value = await response.json().catch(() => null);
 	const v = (value as { v?: unknown } | null)?.v;
 
-	trace(typeof v === 'number' ? `PUT 200 v${v}` : 'PUT 200 unparsable');
+	trace(typeof v === 'number' ? `${sent}: 200, now v${v}` : `${sent}: 200 unparsable`);
 	return typeof v === 'number' ? { status: 'ok', v } : { status: 'refused', code: response.status };
 }

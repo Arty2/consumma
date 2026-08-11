@@ -366,6 +366,30 @@ test('the debug log is off by default, and shows what a sync attempt did once tu
 	await expect(page.getByRole('button', { name: 'Debug log: On' })).toBeVisible();
 });
 
+test('the debug log shows what a push actually sent, and its result', async ({ page }) => {
+	await page.route('**/api/room/**', api);
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await openMenu(page);
+	await page.getByRole('button', { name: 'Debug log: Off' }).click();
+	await page.keyboard.press('Escape');
+
+	await addTask(page, 'Bread');
+	await openMenu(page);
+
+	const button = page.getByRole('button', { name: /^Sync now/ });
+	await expect(button).toBeEnabled();
+	await button.click();
+	await expect(page.getByText('Everything is synced.')).toBeVisible();
+
+	// What was sent — the version it was based on and the size of the
+	// ciphertext — travels on the same line as what came back.
+	const lines = await page.locator('[role="log"][aria-label="Debug log"] p').allTextContents();
+	expect(lines.some((line) => /^PUT baseV\d+ \d+b: 200, now v\d+$/.test(line))).toBe(true);
+});
+
 test('the code is typed into twelve places, one underline each', async ({ page }) => {
 	await page.route('**/api/room/**', api);
 	await page.goto('/');
