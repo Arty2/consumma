@@ -657,8 +657,16 @@
 	 * read a line at a time, in order, and centring would make every line a
 	 * different width to find the start of.
 	 */
+	/*
+	 * A plain CSS border, not a drawn one: this is a technical readout, not a
+	 * mark on the sheet, and a dashed rule around it reads as a terminal's own
+	 * frame rather than as paper. Monospace for the same reason — a log is
+	 * lines of data lining up, not words in a hand.
+	 */
 	.log {
 		margin-top: 1rem;
+		padding: 0.75rem;
+		border: 1px dashed var(--ink);
 		text-align: left;
 		max-height: 40vh;
 		overflow-y: auto;
@@ -666,9 +674,14 @@
 
 	.entry {
 		margin: 0 0 0.6rem;
-		font-size: var(--size-small);
+		font-family: var(--mono);
+		font-size: calc(var(--size-small) * var(--mono-scale));
 		line-height: 1.4;
 		overflow-wrap: anywhere;
+	}
+
+	.entry:last-child {
+		margin-bottom: 0;
 	}
 
 	/*

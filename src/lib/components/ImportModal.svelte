@@ -143,12 +143,13 @@
 		font-size: var(--size-title);
 	}
 
+	/* Monospace: this is a paste box for raw text, not a place to write. */
 	textarea {
 		width: 100%;
 		padding: 0.5rem;
 		border: 1px dashed var(--ink);
-		font-family: var(--hand);
-		font-size: var(--size-body);
+		font-family: var(--mono);
+		font-size: calc(var(--size-body) * var(--mono-scale));
 		resize: vertical;
 	}
 
