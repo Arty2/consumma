@@ -267,9 +267,16 @@
 	 * same row between sync and the pair on the right, rather than a row of
 	 * its own — one line of controls, not two.
 	 */
+	/*
+	 * Double the writing's own inset, the same rhythm the menu's own sections
+	 * space themselves by (see Menu.svelte's `.tear`/`h2`) — without it the
+	 * first group's title sat flush under the buttons, reading as part of the
+	 * same row rather than the start of the sheet.
+	 */
 	.corner {
 		display: flex;
 		align-items: center;
+		margin-bottom: calc(var(--paper-inset) * 2);
 	}
 
 	/*

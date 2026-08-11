@@ -219,3 +219,84 @@ test('a third list can be made from the menu without the sheet’s own pill caus
 	await switcherPill(page).click();
 	await expect(dropdown(page).getByRole('option')).toHaveCount(3);
 });
+
+test('double-tapping the pill cycles to the next list, without opening the dropdown', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+	await addTask(page, 'Milk');
+
+	// Currently on the second list. A double tap jumps straight to the other
+	// one — no dropdown, no click on a row.
+	await switcherPill(page).dblclick();
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(dropdown(page)).toHaveCount(0);
+
+	await switcherPill(page).dblclick();
+	await expect(task(page, 'Milk')).toBeVisible();
+});
+
+test('a single tap still opens the dropdown, after the pause that leaves room for a second tap', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	await switcherPill(page).click();
+	await expect(dropdown(page)).toBeVisible();
+});
+
+test('the pill reads bolder than the surrounding chrome', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	const weight = await switcherPill(page)
+		.locator('.label')
+		.evaluate((el) => getComputedStyle(el).fontWeight);
+	expect(Number(weight)).toBeGreaterThan(400);
+});
+
+test('opening the sheet’s own pill covers the page, the same as SYNC or IMPORT', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	await switcherPill(page).click();
+	const modal = page.getByRole('dialog', { name: 'Switch list' });
+	await expect(modal).toBeVisible();
+	await expect(dropdown(page)).toBeVisible();
+
+	// A real modal, not a small popover: Escape closes it, the same as every
+	// other panel in the app.
+	await page.keyboard.press('Escape');
+	await expect(modal).toHaveCount(0);
+});
+
+test('the menu’s own rows stay left-aligned, the same as the sheet’s', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	await openMenu(page);
+	const dialog = page.getByRole('dialog', { name: 'Menu' });
+	await dialog.locator('button[aria-haspopup="listbox"]').click();
+	await dialog.getByRole('listbox', { name: 'Lists' }).waitFor();
+
+	const align = await dialog
+		.getByRole('option')
+		.first()
+		.evaluate((el) => getComputedStyle(el).justifyContent);
+	expect(align).not.toBe('center');
+});
+
+test('the menu keeps its ✕ reachable once the switcher shares its row', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	await openMenu(page);
+	// Would have thrown during the click itself if the switcher's own ground
+	// intercepted the tap meant for the ✕ underneath it.
+	await page.getByRole('button', { name: 'Close' }).click();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+});

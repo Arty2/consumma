@@ -1,5 +1,6 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
+	import Modal from './Modal.svelte';
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { handChevron, handLine } from '$lib/draw/hand';
@@ -46,6 +47,15 @@
 
 	const sorted = $derived([...lists.entries].sort((a, b) => b.lastUsedAt - a.lastUsedAt));
 
+	/**
+	 * Long enough to be a second tap, short enough not to catch two decisions.
+	 * The same window every other double-tap in the app uses — it is the same
+	 * finger.
+	 */
+	const DOUBLE_TAP_MS = 320;
+
+	let pending: ReturnType<typeof setTimeout> | null = null;
+
 	/** One line, drawn once and reused between every row — separators, not boxes. */
 	const dividerPath = $derived(
 		dropdownWidth > 0
@@ -62,8 +72,33 @@
 		return code ? code.slice(-4) : null;
 	}
 
-	function toggle() {
-		open = !open;
+	/*
+	 * Held back rather than optimistic, the same choice a group title makes
+	 * for the same reason: opening the dropdown is neither frequent nor
+	 * urgent, so a beat of delay costs less than the popover flickering open
+	 * and shut under a double tap. A second tap inside the window cancels
+	 * the open and cycles the active list directly instead — the dropdown
+	 * without opening it.
+	 */
+	function ontap() {
+		if (pending) clearTimeout(pending);
+		pending = setTimeout(() => {
+			pending = null;
+			open = !open;
+		}, DOUBLE_TAP_MS);
+	}
+
+	function onsecondtap() {
+		if (pending) clearTimeout(pending);
+		pending = null;
+		cycle();
+	}
+
+	function cycle() {
+		if (sorted.length < 2) return;
+		const index = sorted.findIndex((entry) => entry.id === lists.current);
+		const next = sorted[(index + 1) % sorted.length];
+		pick(next.id);
 	}
 
 	function pick(id: string) {
@@ -89,12 +124,14 @@
 		pick(id);
 	}
 
-	// Outside tap or Escape closes it — a small popover, not a full panel, so
-	// it does not reach for the modal focus trap: there is nothing here to
-	// hold Tab inside, and locking body scroll for one row of buttons would
-	// be a much bigger door than this needs.
+	// Outside tap or Escape closes it — only the menu's own copy, which stays
+	// a small popover in flow rather than a full panel: there is nothing here
+	// to hold Tab inside, and locking body scroll for one row of buttons
+	// would be a much bigger door than this needs. The sheet's copy is a real
+	// Modal now and answers Escape (and everything else a panel has to)
+	// through the same `use:trap` every other modal shares.
 	$effect(() => {
-		if (!open) return;
+		if (!open || context !== 'menu') return;
 
 		function onpointerdown(event: PointerEvent) {
 			if (root && !root.contains(event.target as Node)) open = false;
@@ -125,68 +162,101 @@
 	</svg>
 {/snippet}
 
-{#if shown}
-	<div class="switcher {context}" bind:this={root}>
-		<button
-			type="button"
-			class="pill caps"
-			lang={langOf(label)}
-			aria-expanded={open}
-			aria-haspopup="listbox"
-			onclick={toggle}
+{#snippet rows()}
+	{#each sorted as entry, i (entry.id)}
+		{#if i > 0}{@render divider()}{/if}
+		{@const rowName = nameOf(entry)}
+		{@const rowCode = codeOf(entry)}
+		<div
+			class="row caps"
+			role="option"
+			tabindex="0"
+			aria-selected={entry.id === lists.current}
+			onclick={() => pick(entry.id)}
+			onkeydown={(event) => onrowkeydown(event, entry.id)}
 		>
-			<span class="label">{label}</span>
-			<svg
-				class="chevron"
-				viewBox="0 0 {CHEVRON} {CHEVRON}"
-				width={CHEVRON}
-				height={CHEVRON}
-				aria-hidden="true"
+			<span class="name" lang={langOf(rowName)}>{rowName}</span>
+			{#if rowCode}<span class="code">{rowCode}</span>{/if}
+		</div>
+	{/each}
+
+	{#if sorted.length > 0}{@render divider()}{/if}
+
+	<button type="button" class="row new caps boxed" onclick={onnew}>
+		<HandRect seed={`listrownew-${context}`} wobble={1.4} radius={3} />
+		New list
+	</button>
+{/snippet}
+
+{#if shown}
+	<div class="wrap {context}" bind:this={root}>
+		<div class="switcher {context}">
+			<button
+				type="button"
+				class="pill caps"
+				lang={langOf(label)}
+				aria-expanded={open}
+				aria-haspopup="listbox"
+				onclick={ontap}
+				ondblclick={onsecondtap}
 			>
-				<path d={chevron} class="drawn" />
-			</svg>
-		</button>
-		<TextRule text={label} seed={`listswitch-${context}`} />
+				<span class="label">{label}</span>
+				<svg
+					class="chevron"
+					viewBox="0 0 {CHEVRON} {CHEVRON}"
+					width={CHEVRON}
+					height={CHEVRON}
+					aria-hidden="true"
+				>
+					<path d={chevron} class="drawn" />
+				</svg>
+			</button>
+			<TextRule text={label} seed={`listswitch-${context}`} />
+		</div>
 
-		{#if open}
-			<div class="dropdown" role="listbox" aria-label="Lists" bind:clientWidth={dropdownWidth}>
-				{#each sorted as entry, i (entry.id)}
-					{#if i > 0}{@render divider()}{/if}
-					{@const rowName = nameOf(entry)}
-					{@const rowCode = codeOf(entry)}
-					<div
-						class="row caps"
-						role="option"
-						tabindex="0"
-						aria-selected={entry.id === lists.current}
-						onclick={() => pick(entry.id)}
-						onkeydown={(event) => onrowkeydown(event, entry.id)}
-					>
-						<span class="name" lang={langOf(rowName)}>{rowName}</span>
-						{#if rowCode}<span class="code">{rowCode}</span>{/if}
-					</div>
-				{/each}
-
-				{#if sorted.length > 0}{@render divider()}{/if}
-
-				<button type="button" class="row new caps boxed" onclick={onnew}>
-					<HandRect seed={`listrownew-${context}`} wobble={1.4} radius={3} />
-					New list
-				</button>
+		<!--
+			The sheet's copy is a real Modal, the same as SYNC/SHARE/IMPORT — full
+			screen, its own frame and ✕, closed by Escape or the drag-down grip —
+			rather than a small popover, so a listbox lives inside it for the
+			ARIA semantics the rows still want. The menu's copy stays in flow: it
+			already lives inside a trapped panel, and a modal opened over a modal
+			is the keyboard trap CLAUDE.md rules out.
+		-->
+		{#if open && context === 'sheet'}
+			<Modal title="Switch list" seed={`listswitch-${context}`} onclose={() => (open = false)}>
+				<div class="listbox" role="listbox" aria-label="Lists" bind:clientWidth={dropdownWidth}>
+					{@render rows()}
+				</div>
+			</Modal>
+		{:else if open}
+			<div class="dropdown menu" role="listbox" aria-label="Lists" bind:clientWidth={dropdownWidth}>
+				{@render rows()}
 			</div>
 		{/if}
 	</div>
 {/if}
 
 <style>
-	.switcher {
-		position: relative;
-	}
-
-	/* Room from the sync button on one side and the theme/menu pair on the other. */
-	.switcher.sheet {
+	/*
+	 * The flex item that lives in the corner row (sheet) or flows at the top
+	 * of the panel (menu).
+	 */
+	.wrap.sheet {
 		margin-inline: 0.4rem;
 		min-width: 0;
+	}
+
+	/*
+	 * Close under the label, the way a pen underlines a word — TextRule's own
+	 * default gap reads right under most titles, but this pill sits in a
+	 * touch-height row with room to spare above the rule, and closing that
+	 * gap by roughly a line's own drawn weight reads tighter, truer to the
+	 * words it marks. `:global` reaches past TextRule's own scoping for its
+	 * one rule; the extra ancestor class keeps this specific enough to win
+	 * over TextRule's own regardless of build order.
+	 */
+	.wrap .switcher :global(.rule) {
+		margin-top: calc(-0.95rem - 5px);
 	}
 
 	.pill {
@@ -201,26 +271,28 @@
 
 	/*
 	 * A block-level child doesn't inherit a flex parent's shrunk box just
-	 * because the parent shrank — `.switcher.sheet` narrows via flex-shrink,
-	 * but without this the pill still sizes to its own content and overflows
-	 * past it. The menu's pill is centred in a wide, unconstrained slot and
+	 * because the parent shrank — `.wrap.sheet` narrows via flex-shrink, but
+	 * without this the pill still sizes to its own content and overflows past
+	 * it. The menu's pill is centred in a wide, unconstrained column and
 	 * never needs to shrink, so this stays scoped to the sheet.
 	 */
-	.switcher.sheet .pill {
+	.wrap.sheet .pill {
 		width: 100%;
 	}
 
 	/*
-	 * A long list name is read to the width it has, not wrapped or left to
-	 * overflow the row it now shares with the sync and theme buttons.
-	 * `min-width: 0` up the chain is what lets a flex item shrink below its
-	 * content's own width in the first place.
+	 * The label reads bold, closer to the stroke weight of the icons it sits
+	 * beside in the corner row — Graphe's regular weight is thin enough next
+	 * to a 1.4px drawn stroke that the pill read lighter than everything
+	 * around it. Synthetic bold, since the face has only the one weight; the
+	 * hand is still the only face on the page.
 	 */
 	.label {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 		min-width: 0;
+		font-weight: 700;
 	}
 
 	.chevron {
@@ -229,24 +301,50 @@
 	}
 
 	/*
-	 * Centred under the pill rather than stretched to its width: the pill can
-	 * be as narrow as the corner row leaves room for, but the dropdown still
-	 * wants enough room to show a name and a code without wrapping.
+	 * The menu's own copy sticks where the ✕ sits rather than scrolling away
+	 * with the rest of the panel — the same row the burger's own position
+	 * answers to (see Menu.svelte). `margin-top` puts it at that offset
+	 * already, so it is never seen "engaging" stickiness — it is already
+	 * there from the first paint, whether or not the panel has been scrolled.
+	 * A solid ground stops scrolled text from showing through it.
+	 *
+	 * `margin-right` keeps its own box, and so the centred text inside it,
+	 * clear of the ✕'s column — the two share a row, and without this the
+	 * pill's opaque ground would sit right over the mark (Menu.svelte's own
+	 * z-index keeps it clickable regardless, but covering it from view would
+	 * still read as a bug).
 	 */
-	.dropdown {
-		position: absolute;
-		top: 100%;
-		left: 50%;
-		translate: -50% 0;
-		z-index: 5;
+	.switcher.menu {
+		position: sticky;
+		top: var(--tear);
+		margin-top: var(--tear);
+		margin-right: var(--touch);
+		margin-bottom: 1.5rem;
+		z-index: 1;
+		background: var(--paper);
+	}
+
+	/*
+	 * The rows, wherever they live: inside the sheet's Modal, sized by the
+	 * modal's own `.body` (max-width 34rem, centred, the same column every
+	 * other modal writes in), or in flow in the menu, full width of the
+	 * panel — see the sticky pill above. Left-aligned in both: a row is read
+	 * the way every other line in this app is, not centred like the menu's
+	 * own prose around it.
+	 */
+	.listbox {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.dropdown.menu {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 		padding-top: 0.5rem;
 		background: var(--paper);
-		width: max-content;
-		min-width: 12rem;
-		max-width: calc(100vw - 2rem);
+		width: 100%;
 	}
 
 	/*
