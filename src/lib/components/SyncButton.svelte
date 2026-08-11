@@ -37,6 +37,22 @@
 	const FRAMES = 4;
 	const BEAT_MS = 900 / FRAMES;
 
+	/**
+	 * How loose the hand is on each of the four drawings.
+	 *
+	 * A different seed alone only moves the same amount of wobble to different
+	 * places, so four frames drawn to one setting differ about as much as four
+	 * copies of a printed line — the boil was there but barely readable. A hand
+	 * does not redraw at a constant roughness either, so the looseness varies
+	 * frame to frame as well as the seed.
+	 *
+	 * The first is the resting mark and keeps 0.7, which is what the burger and
+	 * the theme glyph beside it are drawn at — a mark standing still in that
+	 * row has to belong to it. The other three are only ever seen in motion,
+	 * where a rougher line reads as a hand working rather than as a shaky one.
+	 */
+	const WOBBLES = [0.7, 1.8, 1.2, 2.1];
+
 	/*
 	 * Drawn once each, up front, so the strokes never twitch as the count
 	 * changes — the cycling below picks between drawings that already exist
@@ -45,7 +61,7 @@
 	 */
 	const boil = (draw: (size: number, options: HandOptions) => string, name: string): string[] =>
 		Array.from({ length: FRAMES }, (_, i) =>
-			draw(SIZE, { seed: seedFrom(i === 0 ? name : `${name}${i}`), wobble: 0.7 })
+			draw(SIZE, { seed: seedFrom(i === 0 ? name : `${name}${i}`), wobble: WOBBLES[i] })
 		);
 
 	const arrow = boil(handArrow, 'arrow');
@@ -206,8 +222,20 @@
 		justify-content: center;
 	}
 
+	/*
+	 * Not dimmed, unlike every other disabled control here.
+	 *
+	 * This one is a mark in the corner rather than a word in a panel, and it is
+	 * disabled for ten seconds after every sync — so dimming it made the corner
+	 * fade out and back for a third of the time anyone is looking at it, which
+	 * reads as the mark going wrong rather than as a button resting. The SYNC
+	 * button in the menu still dims, because it is a boxed action among other
+	 * boxed actions and "not available" is worth saying there.
+	 *
+	 * The cursor still says so, and the button is genuinely disabled — this is
+	 * only about what the ink does.
+	 */
 	.sync:disabled {
-		opacity: 0.4;
 		cursor: default;
 	}
 
