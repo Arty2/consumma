@@ -111,27 +111,6 @@
 			document.removeEventListener('keydown', onkeydown);
 		};
 	});
-
-	/*
-	 * The toast and the Menu's own ✕ both stand relative to where the corner
-	 * buttons actually render, via --corner-y — and this pill, shown above
-	 * them, is the one thing that moves them down. Only the sheet's own copy
-	 * sits where the corner row does; the Menu's copy has nothing to do with
-	 * the burger's position and must never write this.
-	 *
-	 * `switcherHeight` comes from `bind:clientHeight` below rather than a
-	 * ResizeObserver of our own — the same reflow-tracking Svelte already
-	 * ships for every `bind:clientWidth` elsewhere (TextRule, Perforation,
-	 * this file's own `.measure`), so this reuses that instead of paying for
-	 * a second copy.
-	 */
-	let switcherHeight = $state(0);
-
-	$effect(() => {
-		const on = context === 'sheet' && shown && root;
-		const mb = on ? parseFloat(getComputedStyle(root!).marginBottom) || 0 : 0;
-		document.documentElement.style.setProperty('--switcher-h', `${on ? switcherHeight + mb : 0}px`);
-	});
 </script>
 
 {#snippet divider()}
@@ -147,7 +126,7 @@
 {/snippet}
 
 {#if shown}
-	<div class="switcher {context}" bind:this={root} bind:clientHeight={switcherHeight}>
+	<div class="switcher {context}" bind:this={root}>
 		<button
 			type="button"
 			class="pill caps"
@@ -156,7 +135,7 @@
 			aria-haspopup="listbox"
 			onclick={toggle}
 		>
-			{label}
+			<span class="label">{label}</span>
 			<svg
 				class="chevron"
 				viewBox="0 0 {CHEVRON} {CHEVRON}"
@@ -202,30 +181,46 @@
 <style>
 	.switcher {
 		position: relative;
-		margin-bottom: 0.75rem;
 	}
 
-	/*
-	 * Above the sheet, this sits outside <main> now, so it only inherits the
-	 * page's own --paper-x, not the sheet's extra --paper-inset. Without this
-	 * it reads noticeably less inset than the sheet's own left margin.
-	 *
-	 * Centred explicitly: the pill is an inline-flex box and left-aligns by
-	 * default. Menu.svelte's own `.body` already centres everything in it,
-	 * so its copy needs nothing extra here.
-	 */
+	/* Room from the sync button on one side and the theme/menu pair on the other. */
 	.switcher.sheet {
-		padding-inline: var(--paper-inset);
-		text-align: center;
+		margin-inline: 0.4rem;
+		min-width: 0;
 	}
 
 	.pill {
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;
+		min-width: 0;
 		min-height: var(--touch);
 		font-family: var(--hand);
 		font-size: var(--size-small);
+	}
+
+	/*
+	 * A block-level child doesn't inherit a flex parent's shrunk box just
+	 * because the parent shrank — `.switcher.sheet` narrows via flex-shrink,
+	 * but without this the pill still sizes to its own content and overflows
+	 * past it. The menu's pill is centred in a wide, unconstrained slot and
+	 * never needs to shrink, so this stays scoped to the sheet.
+	 */
+	.switcher.sheet .pill {
+		width: 100%;
+	}
+
+	/*
+	 * A long list name is read to the width it has, not wrapped or left to
+	 * overflow the row it now shares with the sync and theme buttons.
+	 * `min-width: 0` up the chain is what lets a flex item shrink below its
+	 * content's own width in the first place.
+	 */
+	.label {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		min-width: 0;
 	}
 
 	.chevron {
@@ -233,30 +228,25 @@
 		translate: 0 calc(-1 * var(--cap-lift));
 	}
 
+	/*
+	 * Centred under the pill rather than stretched to its width: the pill can
+	 * be as narrow as the corner row leaves room for, but the dropdown still
+	 * wants enough room to show a name and a code without wrapping.
+	 */
 	.dropdown {
 		position: absolute;
 		top: 100%;
-		left: 0;
-		right: 0;
+		left: 50%;
+		translate: -50% 0;
 		z-index: 5;
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 		padding-top: 0.5rem;
 		background: var(--paper);
-	}
-
-	/*
-	 * Menu.svelte's own panel scrolls (`.scroll { overflow-y: auto; }`), and
-	 * an absolutely positioned dropdown taller than what's left of that
-	 * scroll box is clipped — its lower rows would sit there unreachable
-	 * rather than merely out of sight, unlike on the sheet where <main> has
-	 * no overflow and the dropdown genuinely floats free. In flow instead,
-	 * it just pushes the rest of the panel down.
-	 */
-	.switcher.menu .dropdown {
-		position: static;
-		z-index: auto;
+		width: max-content;
+		min-width: 12rem;
+		max-width: calc(100vw - 2rem);
 	}
 
 	/*

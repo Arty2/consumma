@@ -166,7 +166,7 @@
 		top: 50%;
 		translate: -50% -50%;
 		pointer-events: none;
-		animation: sparkle 600ms ease-out forwards;
+		animation: sparkle 350ms ease-out forwards;
 	}
 
 	/*

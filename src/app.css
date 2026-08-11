@@ -178,9 +178,9 @@
 	 * as you were not paying attention.
 	 */
 	--paper-width: 34rem;
-	--paper-x: 1rem;
-	--paper-top: calc(2rem + env(safe-area-inset-top));
-	--paper-bottom: calc(2rem + env(safe-area-inset-bottom));
+	--paper-x: 0.5rem;
+	--paper-top: calc(1rem + env(safe-area-inset-top));
+	--paper-bottom: calc(1rem + env(safe-area-inset-bottom));
 
 	/* How far the writing sits inside the drawn edge, on both. */
 	--paper-inset: 1.25rem;
@@ -195,14 +195,7 @@
 	 * inside it; down, the room above the tear plus the tear itself.
 	 */
 	--corner-x: calc(var(--paper-x) + var(--paper-inset));
-	/*
-	 * Written by ListSwitcher through the CSSOM (`--underline`'s own
-	 * precedent, in +layout.svelte) whenever the switcher pill is shown
-	 * above the sheet — it pushes the real corner row down by exactly this
-	 * much, and everything positioned relative to that row has to know.
-	 */
-	--switcher-h: 0px;
-	--corner-y: calc(var(--paper-top) + var(--tear) + var(--switcher-h));
+	--corner-y: calc(var(--paper-top) + var(--tear));
 
 	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.

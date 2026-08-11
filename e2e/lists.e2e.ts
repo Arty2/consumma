@@ -168,7 +168,7 @@ test('deleting every list leaves no trace, and the next edit lands under the sam
 	expect(after).toContain('consumma:doc');
 });
 
-test('the toast still lands below the corner buttons once the switcher pushes them down', async ({
+test('the toast still lands below the corner buttons with the switcher on the row', async ({
 	page
 }) => {
 	await addTask(page, 'Bread');

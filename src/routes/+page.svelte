@@ -143,14 +143,6 @@
 </script>
 
 <div class="page">
-	<!--
-		Above the whole receipt rather than inside it — the switcher answers
-		which list this is before anything else on the page does, and that
-		includes the paper itself. Only ever here once there is a second list to
-		choose between — see ListSwitcher.
-	-->
-	<ListSwitcher />
-
 	<!-- Room above the tear, so the stroke is never clipped by the viewport. -->
 	<div class="top">
 		<TornEdge seed="top" />
@@ -166,11 +158,14 @@
 
 		<!--
 			Sync on its own at the left, because it is the one that comes and goes;
-			the two that are always there stay together on the right, where the
-			thumb already knows to find the burger.
+			the switcher sits between it and the two that are always there, which
+			stay together on the right, where the thumb already knows to find the
+			burger. Only ever here once there is a second list to choose between —
+			see ListSwitcher.
 		-->
 		<div class="corner">
 			<SyncButton />
+			<ListSwitcher />
 			<div class="controls">
 				<ThemeButton />
 				<MenuButton onopen={() => (panel = 'menu')} />
@@ -268,10 +263,13 @@
 	/*
 	 * The buttons sit in the sheet's top corners with a row to themselves. They
 	 * used to be positioned over the sheet, where the first task row covered
-	 * them and swallowed the tap.
+	 * them and swallowed the tap. The switcher, when there is one, rides the
+	 * same row between sync and the pair on the right, rather than a row of
+	 * its own — one line of controls, not two.
 	 */
 	.corner {
 		display: flex;
+		align-items: center;
 	}
 
 	/*

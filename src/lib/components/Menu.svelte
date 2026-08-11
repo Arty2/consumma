@@ -195,17 +195,23 @@
 		</svg>
 	</button>
 
+	<!--
+		Aligned with the ✕ rather than sitting in the scrolled content below it
+		— the same row the burger's own position answers to, via --corner-y —
+		so opening the menu does not visibly move it. Answers which list this
+		is before anything else in the panel does, the same reason it stands
+		first above the sheet. Always shown here, unlike its copy above the
+		sheet: with the button that used to make a second list gone, this is
+		the only place left to reach one from while there is still just the
+		first. Outside `.scroll` so it stays put while the panel scrolls, the
+		same reason the ✕ does.
+	-->
+	<div class="switcher-slot">
+		<ListSwitcher context="menu" onafterselect={onclose} />
+	</div>
+
 	<div class="scroll">
 		<div class="body">
-			<!--
-				Answers which list this is before anything else in the panel does —
-				the same reason it stands first above the sheet. Always shown here,
-				unlike its copy above the sheet: with the button that used to make a
-				second list gone, this is the only place left to reach one from while
-				there is still just the first.
-			-->
-			<ListSwitcher context="menu" onafterselect={onclose} />
-
 			<!--
 				Two sentences, never one. How much is waiting is what people want to
 				know; whether the list could be reached is a condition, not a failure,
@@ -501,6 +507,23 @@
 		align-items: center;
 		justify-content: center;
 		/* Above the content it scrolls over. */
+		z-index: 1;
+	}
+
+	/*
+	 * The same row as the ✕, the same way the ✕ shares its own position with
+	 * the burger — see ListSwitcher.svelte's markup comment. Spans the width
+	 * the ✕ leaves clear rather than the ✕'s own column, so the pill inside,
+	 * centred on its own, is centred on the panel rather than nudged left by
+	 * the corner it shares.
+	 */
+	.switcher-slot {
+		position: absolute;
+		top: var(--corner-y);
+		left: var(--corner-x);
+		right: calc(var(--corner-x) + var(--touch));
+		display: flex;
+		justify-content: center;
 		z-index: 1;
 	}
 
