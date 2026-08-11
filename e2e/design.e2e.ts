@@ -543,6 +543,16 @@ test('a checkbox sits level with the capitals it is beside', async ({ page }) =>
 	await page.keyboard.press('Escape');
 	await page.mouse.move(0, 0);
 
+	/*
+	 * The measurement below reads a real line box off the page and compares it
+	 * with canvas metrics for the same face, so the two have to be talking
+	 * about the same font: measured mid-swap they disagree by enough to spend
+	 * the whole budget this assertion has, which is 0.58px — the offset lands
+	 * at -0.42 and the bar is 1. That is what made this fail once in a full
+	 * parallel run and never once on its own.
+	 */
+	await page.evaluate(() => document.fonts.ready);
+
 	const offset = await page.evaluate(() => {
 		const row = document.querySelector('.tasks li')!;
 		const text = row.querySelector('.text')!;
