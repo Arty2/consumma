@@ -23,8 +23,6 @@ export class Ui {
 
 	#key: string = KEYS.collapsed;
 	#timer: ReturnType<typeof setTimeout> | null = null;
-	/** Consummatum fires once, and not again until something is finished anew. */
-	#celebrated = false;
 
 	load(): void {
 		if (this.loaded) return;
@@ -73,22 +71,6 @@ export class Ui {
 
 	announce(text: string): void {
 		this.announcement = text;
-	}
-
-	/**
-	 * The one flourish. Called after every state change; fires only on the
-	 * transition into "everything on the sheet is done", and not on an empty
-	 * sheet.
-	 */
-	celebrate(finished: boolean): void {
-		if (!finished) {
-			this.#celebrated = false;
-			return;
-		}
-		if (this.#celebrated) return;
-
-		this.#celebrated = true;
-		this.say('Consummatum');
 	}
 }
 

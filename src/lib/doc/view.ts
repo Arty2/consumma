@@ -60,12 +60,6 @@ export function view(doc: Doc): ViewGroup[] {
 	return out;
 }
 
-/** The one flourish: fires when the last open task on the sheet is ticked. */
-export function allDone(doc: Doc): boolean {
-	const tasks = Object.values(doc.tasks).filter((t) => !t.deleted);
-	return tasks.length > 0 && tasks.every((t) => t.state === 'done');
-}
-
 export function openCount(doc: Doc): number {
 	return Object.values(doc.tasks).filter((t) => !t.deleted && t.state !== 'done').length;
 }

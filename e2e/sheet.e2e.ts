@@ -238,19 +238,15 @@ test('moves a task with the keyboard and announces where it went', async ({ page
 	expect(await order()).toStrictEqual(['Coffee', 'Bread']);
 });
 
-test('Consummatum appears when the last open task is ticked, and not on an empty sheet', async ({
-	page
-}) => {
-	await expect(page.getByText('Consummatum')).toHaveCount(0);
-
+test('ticking a task to done draws the sparkle flourish, with no toast', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
 
 	await task(page, 'Bread').click();
-	await expect(page.getByText('Consummatum')).toHaveCount(0);
-
 	await task(page, 'Coffee').click();
-	await expect(page.getByText('Consummatum')).toBeVisible();
+
+	await expect(task(page, 'Coffee').locator('svg.sparkle')).toBeVisible();
+	await expect(page.getByRole('status').filter({ hasText: 'Consummatum' })).toHaveCount(0);
 });
 
 test('the header control collapses and expands, and counts what it hides', async ({ page }) => {

@@ -169,9 +169,19 @@
 		animation: sparkle 340ms ease-out forwards;
 	}
 
+	/*
+	 * Thicker than an ordinary drawn line: with the toast gone, this is the
+	 * one thing that says a task just finished, so it reads as a mark made
+	 * with feeling rather than another stroke the same weight as the box.
+	 */
+	.sparkle .drawn {
+		stroke: var(--ink);
+		stroke-width: calc(var(--stroke) * 2.4);
+	}
+
 	@keyframes sparkle {
 		from {
-			opacity: 0.9;
+			opacity: 1;
 			scale: 0.55;
 		}
 		to {

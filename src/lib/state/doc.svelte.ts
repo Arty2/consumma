@@ -4,7 +4,7 @@ import { between } from '$lib/doc/order';
 import { createClock, type Ctx } from '$lib/doc/stamp';
 import { emptyDoc, type Doc, type State } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
-import { allDone, openCount, view, type ViewGroup } from '$lib/doc/view';
+import { openCount, view, type ViewGroup } from '$lib/doc/view';
 import { KEYS, keysFor, persist, read, write, type ListKeySet } from './storage';
 
 /** What the first group is called until someone renames it. */
@@ -49,7 +49,6 @@ export class Sheet {
 	canAddGroup: boolean = $derived(ops.canAddGroup(this.doc));
 	doneCount: number = $derived(ops.doneTasks(this.doc).length);
 	open: number = $derived(openCount(this.doc));
-	finished: boolean = $derived(allDone(this.doc));
 
 	/** Called once the browser exists. Until then the sheet is empty. */
 	load(): void {

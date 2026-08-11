@@ -887,6 +887,9 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 
 	await page.getByRole('checkbox', { name: 'Bread' }).click();
 	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	// The row pops before it actually goes, so the undo toast lands a beat
+	// after the click rather than in the same tick.
+	await page.locator('.toast').waitFor();
 
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
