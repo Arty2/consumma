@@ -1,3 +1,5 @@
+import { errorText, trace } from './trace';
+
 /**
  * The only place the app makes a network request.
  *
@@ -49,17 +51,31 @@ export async function getRoom(roomId: string, etag: string | null): Promise<GetR
 			headers: etag ? { 'If-None-Match': etag } : undefined,
 			cache: 'no-store'
 		});
-	} catch {
+	} catch (error) {
 		// No network, or the request was blocked. Not an error the person needs
 		// a stack trace for.
+		trace(`GET: ${errorText(error)}`);
 		return { status: 'offline' };
 	}
 
-	if (response.status === 304) return { status: 'unchanged' };
-	if (response.status === 404) return { status: 'missing' };
-	if (!response.ok) return { status: 'refused', code: response.status };
+	if (response.status === 304) {
+		// The whole reason a stale device can look empty forever: this says
+		// nothing changed since the version already cached here, not that
+		// there is nothing there.
+		trace(`GET 304, still at ${etag ?? 'no etag sent'}`);
+		return { status: 'unchanged' };
+	}
+	if (response.status === 404) {
+		trace('GET 404');
+		return { status: 'missing' };
+	}
+	if (!response.ok) {
+		trace(`GET ${response.status}`);
+		return { status: 'refused', code: response.status };
+	}
 
 	const room = snapshot(await response.json().catch(() => null));
+	trace(room ? `GET 200 v${room.v} ${room.blob.length}b` : 'GET 200 unparsable');
 	return room ? { status: 'ok', room } : { status: 'missing' };
 }
 
@@ -68,6 +84,8 @@ export async function putRoom(
 	body: { baseV: number; blob: string }
 ): Promise<PutResult> {
 	let response: Response;
+	// What was actually sent, on every line below — success or not.
+	const sent = `PUT baseV${body.baseV} ${body.blob.length}b`;
 
 	try {
 		response = await fetch(`/api/room/${roomId}`, {
@@ -76,23 +94,32 @@ export async function putRoom(
 			body: JSON.stringify(body),
 			cache: 'no-store'
 		});
-	} catch {
+	} catch (error) {
+		trace(`${sent}: ${errorText(error)}`);
 		return { status: 'offline' };
 	}
 
-	if (response.status === 413) return { status: 'too-large' };
+	if (response.status === 413) {
+		trace(`${sent}: 413 too large`);
+		return { status: 'too-large' };
+	}
 
 	if (response.status === 409) {
 		const room = snapshot(await response.json().catch(() => null));
+		trace(room ? `${sent}: 409, server is at v${room.v}` : `${sent}: 409 unparsable`);
 		// The current state travels with the conflict, so a retry needs no extra
 		// round trip.
 		return room ? { status: 'conflict', room } : { status: 'refused', code: 409 };
 	}
 
-	if (!response.ok) return { status: 'refused', code: response.status };
+	if (!response.ok) {
+		trace(`${sent}: ${response.status}`);
+		return { status: 'refused', code: response.status };
+	}
 
 	const value = await response.json().catch(() => null);
 	const v = (value as { v?: unknown } | null)?.v;
 
+	trace(typeof v === 'number' ? `${sent}: 200, now v${v}` : `${sent}: 200 unparsable`);
 	return typeof v === 'number' ? { status: 'ok', v } : { status: 'refused', code: response.status };
 }

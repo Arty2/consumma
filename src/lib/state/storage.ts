@@ -21,7 +21,12 @@ export const KEYS = {
 	theme: 'consumma:theme',
 	code: 'consumma:code',
 	version: 'consumma:version',
-	synced: 'consumma:synced'
+	synced: 'consumma:synced',
+	/**
+	 * Whether the debug log in the menu is on. Off by default and written
+	 * only once someone turns it on — see src/lib/state/diagnostics.svelte.ts.
+	 */
+	diagnostics: 'consumma:diagnostics'
 } as const;
 
 /**

@@ -258,6 +258,75 @@ test('joining a list finishes, and says so by closing', async ({ page }) => {
 	await expect(page.getByText('1234 5678 9abc')).toBeVisible();
 });
 
+test('the debug log is off by default, and shows what a sync attempt did once turned on', async ({
+	page
+}) => {
+	await page.route('**/api/room/**', (route) => route.abort());
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await openMenu(page);
+
+	// Off by default: no log, no way to copy one.
+	await expect(page.locator('[role="log"][aria-label="Debug log"]')).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(0);
+
+	await page.getByRole('button', { name: 'Debug log: Off' }).click();
+	await expect(page.getByRole('button', { name: 'Debug log: On' })).toBeVisible();
+
+	// Nothing has happened yet, so there is nothing to show or copy.
+	await expect(page.locator('[role="log"][aria-label="Debug log"]')).toHaveCount(0);
+
+	// A real attempt, offline, so there is something to see.
+	await page.getByRole('button', { name: /^Sync now/ }).click();
+
+	const log = page.locator('[role="log"][aria-label="Debug log"]');
+	await expect(log).toBeVisible();
+	await expect(log.locator('p').first()).not.toBeEmpty();
+
+	// This device also got a code the moment Sync now was tapped, which
+	// carries its own "Copy" button — the debug log's is the later one.
+	await page.getByRole('button', { name: 'Copy', exact: true }).last().click();
+
+	// Turning it off clears what was kept, the same as every other thing here
+	// that takes something away.
+	await page.getByRole('button', { name: 'Debug log: On' }).click();
+	await expect(page.getByRole('button', { name: 'Debug log: Off' })).toBeVisible();
+	await expect(log).toHaveCount(0);
+
+	// And the choice itself — on or off — survives a reload.
+	await page.getByRole('button', { name: 'Debug log: Off' }).click();
+	await page.keyboard.press('Escape');
+	await page.reload();
+	await openMenu(page);
+	await expect(page.getByRole('button', { name: 'Debug log: On' })).toBeVisible();
+});
+
+test('the debug log shows what a push actually sent, and its result', async ({ page }) => {
+	await page.route('**/api/room/**', api);
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await openMenu(page);
+	await page.getByRole('button', { name: 'Debug log: Off' }).click();
+	await page.keyboard.press('Escape');
+
+	await addTask(page, 'Bread');
+	await openMenu(page);
+
+	const button = page.getByRole('button', { name: /^Sync now/ });
+	await expect(button).toBeEnabled();
+	await button.click();
+	await expect(page.getByText('Everything is synced.')).toBeVisible();
+
+	// What was sent — the version it was based on and the size of the
+	// ciphertext — travels on the same line as what came back.
+	const lines = await page.locator('[role="log"][aria-label="Debug log"] p').allTextContents();
+	expect(lines.some((line) => /^PUT baseV\d+ \d+b: 200, now v\d+$/.test(line))).toBe(true);
+});
+
 test('the code is typed into twelve places, one underline each', async ({ page }) => {
 	await page.route('**/api/room/**', api);
 	await page.goto('/');
