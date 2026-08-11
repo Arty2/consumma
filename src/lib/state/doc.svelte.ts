@@ -5,7 +5,7 @@ import { createClock, type Ctx } from '$lib/doc/stamp';
 import { emptyDoc, type Doc, type State } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
 import { allDone, openCount, view, type ViewGroup } from '$lib/doc/view';
-import { KEYS, persist, read, write } from './storage';
+import { KEYS, keysFor, persist, read, write, type ListKeySet } from './storage';
 
 /** What the first group is called until someone renames it. */
 export const FIRST_GROUP = 'My list';
@@ -30,6 +30,8 @@ export class Sheet {
 	written = $state(false);
 
 	#ctx: Ctx | null = null;
+	/** Which list's keys this sheet is currently reading and writing. */
+	#keys: ListKeySet = keysFor(null);
 	/*
 	 * Set while the opening group is being put in place. A sheet arrives with
 	 * one group already on it, and that is scaffolding rather than something
@@ -52,13 +54,27 @@ export class Sheet {
 	/** Called once the browser exists. Until then the sheet is empty. */
 	load(): void {
 		if (this.loaded) return;
+		this.#loadFrom(keysFor(null));
+	}
+
+	/**
+	 * Re-points the sheet at a different list's keys — the switcher's whole
+	 * job. Unlike `load()` this always runs: switching lists is not a thing
+	 * that happens once.
+	 */
+	switchTo(keys: ListKeySet): void {
+		this.#loadFrom(keys);
+	}
+
+	#loadFrom(keys: ListKeySet): void {
+		this.#keys = keys;
 
 		this.#ctx = {
 			clientId: this.#clientId(),
 			clock: createClock(Number(read(KEYS.lastT) ?? 0))
 		};
 
-		const stored = read(KEYS.doc);
+		const stored = read(keys.doc);
 		this.doc = parseDoc(stored ?? '') ?? emptyDoc();
 		this.written = stored !== null;
 		this.loaded = true;
@@ -253,7 +269,7 @@ export class Sheet {
 			write(KEYS.clientId, this.#ctx.clientId);
 			write(KEYS.lastT, String(this.#ctx.clock.last()));
 		}
-		write(KEYS.doc, JSON.stringify(this.doc));
+		write(this.#keys.doc, JSON.stringify(this.doc));
 
 		// There is a list now, so it is worth asking not to be evicted.
 		if (!this.#asked) {

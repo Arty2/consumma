@@ -4,7 +4,7 @@ import type { Doc } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
 import { syncNow, type SyncOutcome } from '$lib/sync/client';
 import { sheet } from './doc.svelte';
-import { KEYS, persist, read, remove, write } from './storage';
+import { keysFor, persist, read, remove, write, type ListKeySet } from './storage';
 
 /**
  * What the corner button draws: nothing when synced, an outbox arrow when
@@ -36,7 +36,10 @@ export class SyncState {
 	/** Set when a sync last completed, so the cooldown can be shown ticking down. */
 	lastSyncAt = $state(0);
 	now = $state(0);
+	loaded = $state(false);
 
+	/** Which list's keys this device is currently syncing. */
+	#keys: ListKeySet = keysFor(null);
 	#room: Room | null = null;
 	#etag: string | null = null;
 	/*
@@ -90,11 +93,28 @@ export class SyncState {
 	 * it, for someone who had not yet written a word.
 	 */
 	load(): void {
-		const stored = read(KEYS.code);
+		if (this.loaded) return;
+		this.loaded = true;
+		this.#loadFrom(keysFor(null));
+	}
+
+	/** Re-points sync at a different list's keys. Always runs, unlike `load()`. */
+	switchTo(keys: ListKeySet): void {
+		this.loaded = true;
+		this.#loadFrom(keys);
+	}
+
+	#loadFrom(keys: ListKeySet): void {
+		this.#keys = keys;
+
+		const stored = read(keys.code);
 		this.code = stored ? normaliseCode(stored) : null;
 
-		this.#etag = read(KEYS.version);
-		this.#lastSynced = parseDoc(read(KEYS.synced) ?? '');
+		this.#room = null;
+		this.#etag = read(keys.version);
+		this.#lastSynced = parseDoc(read(keys.synced) ?? '');
+		this.#unreachable = false;
+		this.message = null;
 		this.refresh();
 	}
 
@@ -129,13 +149,13 @@ export class SyncState {
 		if (!code) return null;
 
 		this.code = code;
-		write(KEYS.code, code);
+		write(this.#keys.code, code);
 
 		this.#room = null;
 		this.#etag = null;
 		this.#lastSynced = null;
-		remove(KEYS.version);
-		remove(KEYS.synced);
+		remove(this.#keys.version);
+		remove(this.#keys.synced);
 
 		if (!keep) sheet.replace({ v: 1, groups: {}, tasks: {} });
 
@@ -155,7 +175,7 @@ export class SyncState {
 		 */
 		if (!this.code) {
 			this.code = newCode();
-			write(KEYS.code, this.code);
+			write(this.#keys.code, this.code);
 			void persist();
 		}
 
@@ -184,9 +204,23 @@ export class SyncState {
 		}
 	}
 
-	/** DELETE: forgets the list, the code and the key. Touches nothing remote. */
+	/**
+	 * DELETE: forgets the list, the code and the key. Touches nothing remote.
+	 *
+	 * Wipes whatever key-set is currently active — the legacy bare keys for a
+	 * single-remembered-list device, or one list's own namespaced set once
+	 * there is more than one. Reloading through the same keys afterwards
+	 * leaves the sheet exactly where a first-ever visit does: one quiet,
+	 * unwritten opening group.
+	 */
 	forget(): void {
-		for (const key of [KEYS.doc, KEYS.code, KEYS.version, KEYS.synced, KEYS.collapsed]) {
+		for (const key of [
+			this.#keys.doc,
+			this.#keys.code,
+			this.#keys.version,
+			this.#keys.synced,
+			this.#keys.collapsed
+		]) {
 			remove(key);
 		}
 
@@ -199,7 +233,7 @@ export class SyncState {
 		this.code = null;
 
 		sheet.forget();
-		sheet.load();
+		sheet.switchTo(this.#keys);
 		this.refresh();
 	}
 
@@ -211,8 +245,8 @@ export class SyncState {
 			this.#unreachable = false;
 			this.#lastSynced = outcome.doc;
 			this.#etag = `"${outcome.v}"`;
-			write(KEYS.version, this.#etag);
-			write(KEYS.synced, canonical(outcome.doc));
+			write(this.#keys.version, this.#etag);
+			write(this.#keys.synced, canonical(outcome.doc));
 
 			this.status = 'synced';
 			return;

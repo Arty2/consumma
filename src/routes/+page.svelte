@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
+	import ListSwitcher from '$lib/components/ListSwitcher.svelte';
 	import Menu from '$lib/components/Menu.svelte';
 	import MenuButton from '$lib/components/MenuButton.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
@@ -16,6 +17,7 @@
 	import type { Parsed } from '$lib/markdown/from';
 	import { toMarkdown } from '$lib/markdown/to';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -49,6 +51,16 @@
 	 */
 	$effect(() => {
 		untrack(() => {
+			/*
+			 * lists.load() restores whichever list was open last and points
+			 * sheet/sync/ui at it, which marks their own `loaded` the same way
+			 * calling them directly would — so on a device that remembers more
+			 * than one list, the three calls below are already no-ops by the
+			 * time they run. On a device with just the one, lists.load() finds
+			 * no index and does nothing, leaving these three to load exactly as
+			 * they always have.
+			 */
+			lists.load();
 			sheet.load();
 			ui.load();
 			sync.load();
@@ -123,7 +135,7 @@
 
 	function onDelete() {
 		panel = null;
-		sync.forget();
+		lists.deleteCurrent();
 		ui.say('Removed from this device.');
 	}
 </script>
@@ -143,6 +155,13 @@
 		<SideEdge seed="right" side="right" />
 
 		<!--
+			Only ever here once there is a second list to choose between — see
+			ListSwitcher. It stands first, above even the corner buttons, because
+			it answers which list this is before anything else on the page does.
+		-->
+		<ListSwitcher />
+
+		<!--
 			Sync on its own at the left, because it is the one that comes and goes;
 			the two that are always there stay together on the right, where the
 			thumb already knows to find the burger.
@@ -154,7 +173,15 @@
 				<MenuButton onopen={() => (panel = 'menu')} />
 			</div>
 		</div>
-		<Sheet />
+		<!--
+			Keyed on which list is open, so a row a task was being typed into, or a
+			drag in progress, does not survive into another list's markup — Sheet's
+			own state (the new-group draft, the open caret) belongs to the list it
+			was opened on, not to the component instance.
+		-->
+		{#key lists.current}
+			<Sheet />
+		{/key}
 	</main>
 
 	<TornEdge seed="bottom" flip />

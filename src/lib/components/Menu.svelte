@@ -9,6 +9,7 @@
 	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
 
@@ -108,6 +109,17 @@
 	 */
 	async function onCopy() {
 		copied = sync.code ? await copy(formatCode(sync.code)) : false;
+	}
+
+	/*
+	 * The switcher pill only ever appears once a second list exists, so this
+	 * is where that second list is made — the only place reachable while
+	 * there is still just the one. Once it exists, the pill's own "+ New
+	 * list" row calls the same function.
+	 */
+	function onNewList() {
+		lists.createList();
+		onclose();
 	}
 
 	async function join(keep: boolean) {
@@ -247,6 +259,13 @@
 				-->
 				<p class="note">Only on this device. Sync it to get a code you can share.</p>
 			{/if}
+
+			<div class="pair">
+				<button type="button" class="caps boxed" onclick={onNewList}>
+					<HandRect seed="btnnewlist" wobble={1.4} radius={3} />
+					New list
+				</button>
+			</div>
 
 			<div class="pair apart">
 				<button type="button" class="caps boxed" onclick={onimport}>
