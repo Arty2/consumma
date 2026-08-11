@@ -15,6 +15,7 @@
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
 	import { toMarkdown } from '$lib/markdown/to';
+	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
@@ -49,6 +50,7 @@
 	 */
 	$effect(() => {
 		untrack(() => {
+			diagnostics.load();
 			sheet.load();
 			ui.load();
 			sync.load();

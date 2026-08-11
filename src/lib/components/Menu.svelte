@@ -8,6 +8,7 @@
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
 	import { handCross } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
@@ -41,6 +42,7 @@
 	let panel = $state<HTMLElement | null>(null);
 	let offset = $state(0);
 	let dragStart: { x: number; at: number } | null = null;
+	let logCopied = $state(false);
 
 	/*
 	 * The same size as the burger it stands in for. This is the one control that
@@ -108,6 +110,17 @@
 	 */
 	async function onCopy() {
 		copied = sync.code ? await copy(formatCode(sync.code)) : false;
+	}
+
+	/**
+	 * A phone has no console to open. This is the same trail, read off the
+	 * device it happened on rather than a screen nobody here has — copied as
+	 * plain text, because pasting it somewhere is the whole point of keeping
+	 * it.
+	 */
+	async function onCopyLog() {
+		const text = diagnostics.entries.join('\n');
+		logCopied = text !== '' && (await copy(text));
 	}
 
 	async function join(keep: boolean) {
@@ -315,6 +328,35 @@
 					<HandRect seed="btnjoin" wobble={1.4} radius={3} />
 					Join
 				</button>
+			{/if}
+
+			<!--
+				No heading of its own — just the tear every other section gets,
+				marking off what every sync and join attempt actually did, on this
+				device only, kept only while this is on. No console to open on a
+				phone; Copy is how it leaves.
+			-->
+			<div class="tear"><Perforation seed="menu-debug" /></div>
+
+			<div class="pair debug">
+				<button type="button" class="caps boxed" onclick={() => diagnostics.toggle()}>
+					<HandRect seed="btndebug" wobble={1.4} radius={3} />
+					Debug log: {diagnostics.enabled ? 'On' : 'Off'}
+				</button>
+				{#if diagnostics.enabled && diagnostics.entries.length > 0}
+					<button type="button" class="caps boxed" onclick={onCopyLog}>
+						<HandRect seed="btncopylog" wobble={1.4} radius={3} />
+						{logCopied ? 'Copied' : 'Copy'}
+					</button>
+				{/if}
+			</div>
+
+			{#if diagnostics.enabled && diagnostics.entries.length > 0}
+				<div class="log" role="log" aria-label="Debug log">
+					{#each diagnostics.entries as entry, i (i)}
+						<p class="entry">{entry}</p>
+					{/each}
+				</div>
 			{/if}
 
 			<footer class="credit">
@@ -532,6 +574,15 @@
 	}
 
 	/*
+	 * No h2 comes between this pair and the tear above it, so it takes the
+	 * same top margin a heading would have taken — the tear alone is not
+	 * what sets a section apart, the room after it is too.
+	 */
+	.pair.debug {
+		margin-top: 2.5rem;
+	}
+
+	/*
 	 * A drawn box each, rather than an underline and a dot between them. Every
 	 * seed is its own, so no two boxes are the same shape — eleven copies of one
 	 * rectangle would read as a stamp, which is the thing this app never does.
@@ -580,6 +631,25 @@
 		margin-top: 1rem;
 		font-size: var(--size-title);
 		line-height: 1.4;
+	}
+
+	/*
+	 * Left-aligned against a panel everything else is centred in: this is
+	 * read a line at a time, in order, and centring would make every line a
+	 * different width to find the start of.
+	 */
+	.log {
+		margin-top: 1rem;
+		text-align: left;
+		max-height: 40vh;
+		overflow-y: auto;
+	}
+
+	.entry {
+		margin: 0 0 0.6rem;
+		font-size: var(--size-small);
+		line-height: 1.4;
+		overflow-wrap: anywhere;
 	}
 
 	/*

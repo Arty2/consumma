@@ -6,6 +6,7 @@ import { merge } from '$lib/doc/merge';
 import type { Doc } from '$lib/doc/types';
 import { validateDoc } from '$lib/doc/validate';
 import { getRoom, putRoom, type RoomSnapshot } from './api';
+import { trace } from './trace';
 
 /**
  * One sync, start to finish, on the SYNC tap and nowhere else.
@@ -34,7 +35,9 @@ export type SyncOutcome =
 	/** Over the 128 KB cap. Nothing was written. */
 	| { status: 'too-large' }
 	/** Kept losing a race with another writer. */
-	| { status: 'busy' };
+	| { status: 'busy' }
+	/** Something none of the above expected to happen — caught, not swallowed. */
+	| { status: 'error'; message: string };
 
 export type SyncInput = {
 	roomId: string;
@@ -69,9 +72,11 @@ export async function syncNow(input: SyncInput): Promise<SyncOutcome> {
 
 		// Nothing to say: the remote already holds everything we have.
 		if (incoming && canonical(merged) === canonical(incoming)) {
+			trace(`sync: matched, nothing to push (${countOf(merged)})`);
 			return { status: 'synced', doc: merged, v: remoteV };
 		}
 
+		trace(`sync: pushing #${attempt + 1} (${countOf(merged)})`);
 		const blob = await seal(input.key, merged);
 		const result = await putRoom(input.roomId, { baseV: remoteV, blob });
 
@@ -81,8 +86,12 @@ export async function syncNow(input: SyncInput): Promise<SyncOutcome> {
 
 		if (result.status === 'conflict') {
 			const opened = await decrypt(input.key, result.room);
-			if (opened.status !== 'ok') return opened.outcome;
+			if (opened.status !== 'ok') {
+				trace(`sync: conflict winner didn't decrypt (${opened.outcome.status})`);
+				return opened.outcome;
+			}
 
+			trace(`sync: conflict, retrying against v${result.room.v}`);
 			remote = opened.doc;
 			remoteV = result.room.v;
 
@@ -99,15 +108,26 @@ export async function syncNow(input: SyncInput): Promise<SyncOutcome> {
 		 * in principle.
 		 */
 		const check = await verify(input, merged);
-		if (check.status === 'ok') return { status: 'synced', doc: merged, v: result.v };
+		if (check.status === 'ok') {
+			trace('sync: verified');
+			return { status: 'synced', doc: merged, v: result.v };
+		}
 		if (check.status !== 'retry') return check.outcome;
 
+		trace('sync: verify found a newer write, retrying');
 		remote = check.remote;
 		remoteV = check.v;
 		await wait(40 * 2 ** attempt + Math.random() * 60);
 	}
 
+	trace('sync: out of attempts');
 	return { status: 'busy' };
+}
+
+function countOf(doc: Doc): string {
+	const groups = Object.values(doc.groups).filter((g) => !g.deleted).length;
+	const tasks = Object.values(doc.tasks).filter((t) => !t.deleted).length;
+	return `${groups}g/${tasks}t`;
 }
 
 type Pulled =
@@ -131,8 +151,12 @@ async function pull(input: SyncInput): Promise<Pulled> {
 	}
 
 	const opened = await decrypt(input.key, result.room);
-	if (opened.status !== 'ok') return { status: 'stop', outcome: opened.outcome };
+	if (opened.status !== 'ok') {
+		trace(`pull: ${opened.outcome.status}`);
+		return { status: 'stop', outcome: opened.outcome };
+	}
 
+	trace(`pull: ${countOf(opened.doc)}`);
 	return { status: 'ok', remote: opened.doc, v: result.room.v };
 }
 
