@@ -2,7 +2,7 @@ import { derive, newCode, normaliseCode, type Room } from '$lib/crypto/derive';
 import { canonical } from '$lib/doc/canonical';
 import type { Doc } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
-import { checkRoom, syncNow, type SyncOutcome } from '$lib/sync/client';
+import { pull, syncNow, type SyncOutcome } from '$lib/sync/client';
 import { sheet } from './doc.svelte';
 import { keysFor, persist, read, remove, write, type ListKeySet } from './storage';
 
@@ -144,12 +144,14 @@ export class SyncState {
 	 * Joins someone else's list. The caller decides first whether to carry the
 	 * local tasks across or discard them — never silently.
 	 *
-	 * The code is checked before anything local is touched. `keep: false` is
+	 * The code is fetched before anything local is touched: `keep: false` is
 	 * a real discard, and doing that ahead of the request used to mean a
 	 * code that was offline, wrong, or damaged still cost the tasks already
-	 * on this device — the join failed and they were gone anyway. Now the
-	 * round trip that finds that out happens first, on the code alone,
-	 * before anything here is written or replaced.
+	 * on this device — the join failed and they were gone anyway. That one
+	 * fetch is also the only one: it is handed straight to `#run()` as
+	 * `prefetched` rather than pulled a second time, which would open its own
+	 * window — this fetch succeeding and a second one failing afterwards,
+	 * leaving a wiped local doc with nothing to replace it.
 	 */
 	async join(input: string, keep: boolean): Promise<SyncOutcome | null> {
 		const code = normaliseCode(input);
@@ -163,13 +165,19 @@ export class SyncState {
 			// Derived lazily: PBKDF2 at 300,000 iterations is deliberately slow, so
 			// its cost lands on an explicit tap rather than on first paint.
 			const room = await derive(code);
-			const problem = await checkRoom(room.roomId, room.key);
+			const pulled = await pull({
+				roomId: room.roomId,
+				key: room.key,
+				local: sheet.doc,
+				etag: null,
+				lastSynced: null
+			});
 
-			if (problem) {
-				this.#unreachable = problem.status === 'offline';
+			if (pulled.status !== 'ok') {
+				this.#unreachable = pulled.outcome.status === 'offline';
 				this.status = this.#unreachable ? 'offline' : 'pending';
-				this.message = messageFor(problem);
-				return problem;
+				this.message = messageFor(pulled.outcome);
+				return pulled.outcome;
 			}
 
 			this.code = code;
@@ -183,7 +191,7 @@ export class SyncState {
 
 			if (!keep) sheet.replace({ v: 1, groups: {}, tasks: {} });
 
-			return await this.#run();
+			return await this.#run({ remote: pulled.remote, v: pulled.v });
 		} finally {
 			this.busy = false;
 			this.lastSyncAt = Date.now();
@@ -225,7 +233,7 @@ export class SyncState {
 	 * clock, and — for `join()` — confirming the code is good before this
 	 * ever runs.
 	 */
-	async #run(): Promise<SyncOutcome> {
+	async #run(prefetched?: { remote: Doc | null; v: number }): Promise<SyncOutcome> {
 		// Not derived again if join() already did: `??=` is a no-op once #room
 		// is set, so the 300,000-iteration cost is never paid twice for one
 		// join.
@@ -236,7 +244,8 @@ export class SyncState {
 			key: this.#room.key,
 			local: sheet.doc,
 			etag: this.#etag,
-			lastSynced: this.#lastSynced
+			lastSynced: this.#lastSynced,
+			prefetched
 		});
 
 		this.#apply(outcome);
