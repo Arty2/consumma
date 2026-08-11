@@ -187,7 +187,15 @@
 			onkeydown={(event) => onrowkeydown(event, entry.id)}
 		>
 			<span class="name" lang={langOf(rowName)}>{rowName}</span>
-			{#if rowCode}<span class="code">{rowCode}</span>{/if}
+			<!--
+				A code once it has one; until then a mark saying it hasn't, rather
+				than leaving the slot blank — a row with nothing there read as
+				unfinished rather than as a list that has simply never left this
+				device.
+			-->
+			<span class="code" aria-label={rowCode === null ? 'Local only, never synced' : rowCode}
+				>{rowCode ?? '¢'}</span
+			>
 		</div>
 	{/each}
 
