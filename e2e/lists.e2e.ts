@@ -168,9 +168,7 @@ test('deleting every list leaves no trace, and the next edit lands under the sam
 	expect(after).toContain('consumma:doc');
 });
 
-test('the toast still lands below the corner buttons with the switcher on the row', async ({
-	page
-}) => {
+test('the toast still lands on the corner row with the switcher sharing it', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await newList(page);
 	await addTask(page, 'Milk');
@@ -184,10 +182,12 @@ test('the toast still lands below the corner buttons with the switcher on the ro
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
 		const burger = document.querySelector('[aria-label^="Menu"]')!.getBoundingClientRect();
-		return { top: toast.top, corner: burger.bottom };
+		return { top: toast.top, cornerTop: burger.top };
 	});
 
-	expect(where.top).toBeGreaterThanOrEqual(where.corner);
+	// The switcher rides this row too, and none of the three moves the line
+	// the toast stands on.
+	expect(where.top).toBeCloseTo(where.cornerTop, 0);
 });
 
 test('a dropdown row switches with the keyboard, not just a tap', async ({ page }) => {
@@ -299,4 +299,46 @@ test('the menu keeps its ✕ reachable once the switcher shares its row', async 
 	// intercepted the tap meant for the ✕ underneath it.
 	await page.getByRole('button', { name: 'Close' }).click();
 	await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('a long list name truncates in a row rather than overflowing it, in either context', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	await page.locator('section .title').first().dblclick();
+	await page
+		.getByRole('textbox', { name: 'Group title' })
+		.fill('A very long list name that would otherwise overflow the row it sits in');
+	await page.getByRole('textbox', { name: 'Group title' }).press('Enter');
+	await page.keyboard.press('Escape');
+
+	// The sheet's own modal.
+	await switcherPill(page).click();
+	await dropdown(page).waitFor();
+	const sheetRow = await page.evaluate(() => {
+		const row = document.querySelector('.listbox .row')!.getBoundingClientRect();
+		const box = document.querySelector('.listbox')!.getBoundingClientRect();
+		return row.width <= box.width + 1;
+	});
+	expect(sheetRow).toBe(true);
+	await page.keyboard.press('Escape');
+
+	// The menu's own in-flow copy — same row styling, and the pill itself
+	// (which carries the active list's own name) must not spill into the ✕.
+	await openMenu(page);
+	const dialog = page.getByRole('dialog', { name: 'Menu' });
+	await dialog.locator('button[aria-haspopup="listbox"]').click();
+	await dialog.getByRole('listbox', { name: 'Lists' }).waitFor();
+
+	const menuGeo = await page.evaluate(() => {
+		const row = document.querySelector('.dropdown.menu .row')!.getBoundingClientRect();
+		const box = document.querySelector('.dropdown.menu')!.getBoundingClientRect();
+		const pill = document.querySelector('button[aria-haspopup="listbox"]')!.getBoundingClientRect();
+		const close = document.querySelector('.close')!.getBoundingClientRect();
+		return { rowFits: row.width <= box.width + 1, pillRight: pill.right, closeLeft: close.left };
+	});
+	expect(menuGeo.rowFits).toBe(true);
+	expect(menuGeo.pillRight).toBeLessThanOrEqual(menuGeo.closeLeft);
 });

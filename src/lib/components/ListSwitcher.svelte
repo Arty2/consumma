@@ -321,6 +321,17 @@
 	}
 
 	/*
+	 * `.margin-right` above only reserves the room; a `display: inline-flex`
+	 * pill still sizes to its own content regardless of how little of that
+	 * room is left, and a long enough active name pushed straight through it
+	 * into the ✕'s own column. Capped to the space `.switcher.menu` actually
+	 * has, so `.label`'s own ellipsis (below) has a width to truncate against.
+	 */
+	.switcher.menu .pill {
+		max-width: 100%;
+	}
+
+	/*
 	 * The rows, wherever they live: inside the sheet's Modal, sized by the
 	 * modal's own `.body` (max-width 34rem, centred, the same column every
 	 * other modal writes in), or in flow in the menu, full width of the
@@ -360,8 +371,24 @@
 		cursor: pointer;
 	}
 
+	/*
+	 * The name is what may run long, so it is the one that gives — the code
+	 * is four characters and stays whole. `min-width: 0` is what lets a flex
+	 * item shrink below its text's own width in the first place; without it
+	 * a long name overflowed the row (and the container the divider below
+	 * measures itself against, leaving the drawn line narrower than the row
+	 * it was supposed to rule off).
+	 */
+	.row .name {
+		flex: 1 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
 	.row .code {
-		margin-left: auto;
+		flex: none;
 	}
 
 	.row.new {

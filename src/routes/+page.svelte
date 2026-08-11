@@ -266,17 +266,20 @@
 	 * them and swallowed the tap. The switcher, when there is one, rides the
 	 * same row between sync and the pair on the right, rather than a row of
 	 * its own — one line of controls, not two.
-	 */
-	/*
-	 * Double the writing's own inset, the same rhythm the menu's own sections
-	 * space themselves by (see Menu.svelte's `.tear`/`h2`) — without it the
-	 * first group's title sat flush under the buttons, reading as part of the
-	 * same row rather than the start of the sheet.
+	 *
+	 * The margin under it is enough to part the buttons from the first title
+	 * without opening a hole between them — the row already brings its own
+	 * air, since the buttons are touch targets a good deal taller than their
+	 * ink and the title's line box is taller than its letters. Measured
+	 * against what the eye actually sees (bottom of the burger's stroke to
+	 * the top of the first title) rather than picked off the spacing scale,
+	 * which is why it is not a multiple of `--paper-inset`: two thirds of the
+	 * gap is already there before this adds anything.
 	 */
 	.corner {
 		display: flex;
 		align-items: center;
-		margin-bottom: calc(var(--paper-inset) * 2);
+		margin-bottom: 0.5rem;
 	}
 
 	/*

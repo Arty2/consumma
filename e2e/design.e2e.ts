@@ -924,11 +924,24 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
 		const burger = document.querySelector('[aria-label^="Menu"]')!.getBoundingClientRect();
-		return { top: toast.top, bottom: toast.bottom, corner: burger.bottom, height: innerHeight };
+		return {
+			top: toast.top,
+			bottom: toast.bottom,
+			left: toast.left,
+			right: toast.right,
+			cornerTop: burger.top,
+			cornerBottom: burger.bottom,
+			cornerRight: burger.right,
+			height: innerHeight
+		};
 	});
 
-	// Below the buttons, never over them — they are the other marks on that line.
-	expect(where.top).toBeGreaterThanOrEqual(where.corner);
+	// On the buttons' own line, standing where they stand rather than a row
+	// below them — and covering them outright while it shows, which is why it
+	// has to reach at least as far as the burger does at either end.
+	expect(where.top).toBeCloseTo(where.cornerTop, 0);
+	expect(where.bottom).toBeGreaterThanOrEqual(where.cornerBottom);
+	expect(where.right).toBeGreaterThanOrEqual(where.cornerRight);
 
 	// And nowhere near the bottom, which is the keyboard's half of the screen.
 	expect(where.bottom).toBeLessThan(where.height / 2);
