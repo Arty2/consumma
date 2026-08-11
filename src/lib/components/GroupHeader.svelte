@@ -315,7 +315,18 @@
 	.header {
 		position: relative;
 		display: flex;
-		align-items: center;
+		/*
+		 * On the title's last line, not on the middle of the block it makes.
+		 *
+		 * The icon flows inline after the last word, so a title that wraps puts
+		 * it on the last line — while the total, a flex item of this row, was
+		 * centred against the whole block and ended up beside the middle of a
+		 * three-line name, on a different line from the icon it belongs beside.
+		 * `last baseline` sits it on the same line as the words it is the sum
+		 * of. It stays in the price column: this changes which line it is on,
+		 * never which column.
+		 */
+		align-items: last baseline;
 		gap: 0.25rem;
 		min-height: var(--touch);
 		/* The total lands over the prices, so it stops where they stop. */

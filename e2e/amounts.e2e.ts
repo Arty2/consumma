@@ -186,6 +186,44 @@ test('the total stands directly over the prices it is the sum of', async ({ page
 	for (const price of edges.prices) expect(price).toBe(edges.total);
 });
 
+test('a title that wraps keeps its total on the last line, beside the fold icon', async ({
+	page
+}) => {
+	// Narrow enough that the title has to wrap onto three lines.
+	await page.setViewportSize({ width: 320, height: 700 });
+	await theList(page);
+
+	await page.locator('section .title').first().dblclick();
+	await page.getByRole('textbox', { name: 'Group title' }).fill('Saturday morning market run');
+	await page.getByRole('textbox', { name: 'Group title' }).press('Enter');
+	await page.keyboard.press('Escape');
+
+	const geo = await page.evaluate(() => {
+		const mid = (el: Element) => {
+			const r = el.getBoundingClientRect();
+			return (r.top + r.bottom) / 2;
+		};
+		const header = document.querySelector('section .header')!.getBoundingClientRect();
+		return {
+			lines: Math.round(header.height / 44),
+			icon: mid(document.querySelector('section .title-wrap .icon')!),
+			total: mid(document.querySelector('.total')!),
+			headerMid: (header.top + header.bottom) / 2
+		};
+	});
+
+	// The title really did wrap — otherwise this proves nothing.
+	expect(geo.lines).toBeGreaterThan(1);
+
+	/*
+	 * On the icon's line, not floating beside the middle of the block: the
+	 * icon flows after the last word, and the sum belongs on the same line as
+	 * the words it is the sum of.
+	 */
+	expect(Math.abs(geo.total - geo.icon)).toBeLessThan(6);
+	expect(geo.total).toBeGreaterThan(geo.headerMid);
+});
+
 /*
  * And the column itself ends on the corner above it.
  *
