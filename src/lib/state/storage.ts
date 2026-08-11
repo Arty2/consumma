@@ -26,7 +26,12 @@ export const KEYS = {
 	 * The index of every remembered list, written only once a second one
 	 * exists — see src/lib/state/lists.ts.
 	 */
-	lists: 'consumma:lists'
+	lists: 'consumma:lists',
+	/**
+	 * Whether the debug log in the menu is on. Off by default and written
+	 * only once someone turns it on — see src/lib/state/diagnostics.svelte.ts.
+	 */
+	diagnostics: 'consumma:diagnostics'
 } as const;
 
 /** The keys one list's own data lives under. */

@@ -3,6 +3,7 @@ import { canonical } from '$lib/doc/canonical';
 import type { Doc } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
 import { pull, syncNow, type SyncOutcome } from '$lib/sync/client';
+import { errorText, trace } from '$lib/sync/trace';
 import { sheet } from './doc.svelte';
 import { keysFor, persist, read, remove, write, type ListKeySet } from './storage';
 
@@ -160,6 +161,7 @@ export class SyncState {
 
 		this.busy = true;
 		this.message = null;
+		trace(`join (${keep ? 'keep' : 'discard'})`);
 
 		try {
 			// Derived lazily: PBKDF2 at 300,000 iterations is deliberately slow, so
@@ -174,9 +176,7 @@ export class SyncState {
 			});
 
 			if (pulled.status !== 'ok') {
-				this.#unreachable = pulled.outcome.status === 'offline';
-				this.status = this.#unreachable ? 'offline' : 'pending';
-				this.message = messageFor(pulled.outcome);
+				this.#apply(pulled.outcome);
 				return pulled.outcome;
 			}
 
@@ -192,6 +192,13 @@ export class SyncState {
 			if (!keep) sheet.replace({ v: 1, groups: {}, tasks: {} });
 
 			return await this.#run({ remote: pulled.remote, v: pulled.v });
+		} catch (error) {
+			// Whatever this is, it must not leave someone staring at a panel that
+			// silently does nothing — see it, say it, same as every outcome above.
+			const outcome: SyncOutcome = { status: 'error', message: errorText(error) };
+			trace(`join threw: ${outcome.message}`);
+			this.#apply(outcome);
+			return outcome;
 		} finally {
 			this.busy = false;
 			this.lastSyncAt = Date.now();
@@ -218,9 +225,15 @@ export class SyncState {
 
 		this.busy = true;
 		this.message = null;
+		trace('sync');
 
 		try {
 			return await this.#run();
+		} catch (error) {
+			const outcome: SyncOutcome = { status: 'error', message: errorText(error) };
+			trace(`sync threw: ${outcome.message}`);
+			this.#apply(outcome);
+			return outcome;
 		} finally {
 			this.busy = false;
 			this.lastSyncAt = Date.now();
@@ -322,6 +335,8 @@ function messageFor(outcome: SyncOutcome): string | null {
 			return 'This list is too big to send — clear some.';
 		case 'busy':
 			return 'Couldn’t sync — try again in a moment.';
+		case 'error':
+			return `Something went wrong: ${outcome.message}`;
 		default:
 			return null;
 	}

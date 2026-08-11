@@ -16,6 +16,7 @@
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
 	import { toMarkdown } from '$lib/markdown/to';
+	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
@@ -60,6 +61,7 @@
 			 * no index and does nothing, leaving these three to load exactly as
 			 * they always have.
 			 */
+			diagnostics.load();
 			lists.load();
 			sheet.load();
 			ui.load();
