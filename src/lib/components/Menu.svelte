@@ -350,11 +350,14 @@
 			{/if}
 
 			<!--
-				No heading of its own: what every sync and join attempt actually
-				did, on this device only, kept only while this is on — a console
-				there is no way to open on a phone. Copy is how it leaves.
+				No heading of its own — just the tear every other section gets,
+				marking off what every sync and join attempt actually did, on this
+				device only, kept only while this is on. No console to open on a
+				phone; Copy is how it leaves.
 			-->
-			<div class="pair">
+			<div class="tear"><Perforation seed="menu-debug" /></div>
+
+			<div class="pair debug">
 				<button type="button" class="caps boxed" onclick={() => diagnostics.toggle()}>
 					<HandRect seed="btndebug" wobble={1.4} radius={3} />
 					Debug log: {diagnostics.enabled ? 'On' : 'Off'}
@@ -587,6 +590,15 @@
 	/* Still this list, but a different kind of doing to it. */
 	.pair.apart {
 		margin-top: 1.75rem;
+	}
+
+	/*
+	 * No h2 comes between this pair and the tear above it, so it takes the
+	 * same top margin a heading would have taken — the tear alone is not
+	 * what sets a section apart, the room after it is too.
+	 */
+	.pair.debug {
+		margin-top: 2.5rem;
 	}
 
 	/*

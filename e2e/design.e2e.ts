@@ -584,9 +584,10 @@ test('the menu is told apart by tears, and they are the same mark as Loose ends'
 }) => {
 	await openMenu(page);
 
-	// One before each of the two headings, and one above the credit.
+	// One before each of the two headings, one above the debug toggle
+	// (which has no heading of its own), and one above the credit.
 	const tears = page.getByRole('dialog', { name: 'Menu' }).locator('.tear svg path');
-	await expect(tears).toHaveCount(3);
+	await expect(tears).toHaveCount(4);
 
 	// Drawn and dashed, at the weight everything else here is drawn at.
 	for (const dash of await tears.evaluateAll((paths) =>
