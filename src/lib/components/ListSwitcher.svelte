@@ -247,16 +247,12 @@
 	}
 
 	/*
-	 * Close under the label, the way a pen underlines a word — TextRule's own
-	 * default gap reads right under most titles, but this pill sits in a
-	 * touch-height row with room to spare above the rule, and closing that
-	 * gap by roughly a line's own drawn weight reads tighter, truer to the
-	 * words it marks. `:global` reaches past TextRule's own scoping for its
-	 * one rule; the extra ancestor class keeps this specific enough to win
-	 * over TextRule's own regardless of build order.
+	 * The whole pill, label and rule together, a line width up from where it
+	 * sits in flow — paint only, so the row's layout height is untouched and
+	 * nothing below opens from the wrong place.
 	 */
-	.wrap .switcher :global(.rule) {
-		margin-top: calc(-0.95rem - 5px);
+	.switcher.sheet {
+		translate: 0 -5px;
 	}
 
 	.pill {
