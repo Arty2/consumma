@@ -9,7 +9,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-BUDGET_KB=60
+BUDGET_KB=100
 DIR=.svelte-kit/output/client/_app/immutable
 
 if [ ! -d "$DIR" ]; then

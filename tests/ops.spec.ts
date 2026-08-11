@@ -20,7 +20,7 @@ import {
 } from '../src/lib/doc/ops';
 import { createClock, type Ctx } from '../src/lib/doc/stamp';
 import { emptyDoc, type Doc } from '../src/lib/doc/types';
-import { LOOSE_ENDS_ID, LOOSE_ENDS_TITLE, allDone, view } from '../src/lib/doc/view';
+import { LOOSE_ENDS_ID, LOOSE_ENDS_TITLE, view } from '../src/lib/doc/view';
 import { validateDoc } from '../src/lib/doc/validate';
 
 let ctx: Ctx;
@@ -265,16 +265,6 @@ describe('view', () => {
 		view(doc);
 
 		expect(doc.tasks.t1.groupId).toBe('elsewhere');
-	});
-
-	it('reports the sheet finished only when something was on it', () => {
-		expect(allDone(doc)).toBe(false);
-
-		doc = addTask(doc, ctx, { id: 't1', groupId: 'g1', text: 'Bread' });
-		expect(allDone(doc)).toBe(false);
-
-		doc = setTaskState(doc, ctx, 't1', 'done');
-		expect(allDone(doc)).toBe(true);
 	});
 });
 

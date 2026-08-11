@@ -258,6 +258,69 @@ test('joining a list finishes, and says so by closing', async ({ page }) => {
 	await expect(page.getByText('1234 5678 9abc')).toBeVisible();
 });
 
+test('JOIN that cannot reach the list keeps the tasks already here, and says why', async ({
+	page
+}) => {
+	/*
+	 * The tasks used to go before the network was ever asked: `!keep` wiped
+	 * the sheet, then the request that was meant to replace it with something
+	 * real found nothing to reach. A join that fails must cost nothing.
+	 */
+	await page.route('**/api/room/**', (route) => route.abort());
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await addTask(page, 'Bread');
+
+	await openMenu(page);
+	await page.getByRole('textbox', { name: 'Code' }).fill('1234 5678 9abc');
+	await page.getByRole('button', { name: 'Join' }).click();
+	await page.getByRole('button', { name: 'Leave them' }).click();
+
+	await expect(page.getByRole('alert')).toContainText('Couldn’t reach the list');
+
+	// Still open on the code field, not silently moved on.
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
+	await page.keyboard.press('Escape');
+
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
+test('JOIN on a code that decrypts to nothing sensible keeps the tasks already here, and says so', async ({
+	page
+}) => {
+	/*
+	 * A room that answers with something that is not this code's blob — the
+	 * shape a mistyped or unrelated code takes. AES-GCM authenticates, so a
+	 * key that does not match fails the read rather than producing rubbish
+	 * that happens to parse.
+	 */
+	await page.route('**/api/room/**', (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({
+			status: 200,
+			headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+			body: JSON.stringify({ v: 1, blob: 'AQID' })
+		});
+	});
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await addTask(page, 'Bread');
+
+	await openMenu(page);
+	await page.getByRole('textbox', { name: 'Code' }).fill('1234 5678 9abc');
+	await page.getByRole('button', { name: 'Join' }).click();
+	await page.getByRole('button', { name: 'Leave them' }).click();
+
+	await expect(page.getByRole('alert')).toContainText('doesn’t match a list');
+	await page.keyboard.press('Escape');
+
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
 test('the debug log is off by default, and shows what a sync attempt did once turned on', async ({
 	page
 }) => {
@@ -265,6 +328,10 @@ test('the debug log is off by default, and shows what a sync attempt did once tu
 	await page.goto('/');
 	await page.evaluate(() => localStorage.clear());
 	await page.reload();
+
+	// Something on the sheet first: a list carrying nothing but its opening
+	// group cannot be synced at all, so there would be no attempt to log.
+	await addTask(page, 'Bread');
 
 	await openMenu(page);
 
@@ -438,9 +505,11 @@ test('the corner sync button says when it did sync', async ({ page }) => {
 test('the mark works while the sync is in flight, and goes out on a fade', async ({ page }) => {
 	/*
 	 * Syncing is the one thing here that takes long enough to wonder about, and
-	 * the button went as still during it as it is when idle. Now it moves — the
-	 * circular arrow turns, the outbox arrow breathes, both on the same count so
-	 * the corner reads as one thing working.
+	 * the button went as still during it as it is when idle. Now it boils: the
+	 * same mark drawn four times over and cycled, the way a hand-drawn line has
+	 * always been made to look alive. Nothing is scaled or faded — that is a
+	 * machine moving a picture of a line, and it was the one thing in this
+	 * corner that never looked drawn.
 	 */
 	await device(page, 'aaaa bbbb cccc');
 	await addTask(page, 'Bread');
@@ -448,18 +517,11 @@ test('the mark works while the sync is in flight, and goes out on a fade', async
 	const button = page.getByRole('button', { name: /^Sync —/ });
 	const mark = page.locator('.sync svg');
 
-	const animation = () =>
-		mark.evaluate((el) => {
-			const style = getComputedStyle(el);
-			return {
-				name: style.animationName,
-				duration: style.animationDuration,
-				count: style.animationIterationCount
-			};
-		});
+	const animation = () => mark.evaluate((el) => getComputedStyle(el).animationName);
 
-	// Idle: still.
-	expect((await animation()).name).toBe('none');
+	// Idle: one drawing, held, and nothing moving it.
+	expect(await animation()).toBe('none');
+	const idle = await mark.locator('path').getAttribute('d');
 
 	/*
 	 * The same fake server, answering slowly. Registered over the one `device`
@@ -473,11 +535,32 @@ test('the mark works while the sync is in flight, and goes out on a fade', async
 	});
 	await button.click();
 
-	const working = await animation();
-	// Something waiting to go, so this is the outbox arrow: it breathes.
-	expect(working.name).toContain('pulse');
-	expect(working.duration).toBe('0.9s');
-	expect(working.count).toBe('infinite');
+	/*
+	 * Sampled across the whole sync rather than read once: which drawing is up
+	 * at any instant is a race, but how many different ones went past is not.
+	 */
+	const seen = await page.evaluate(async () => {
+		const drawings = new Set<string>();
+		const animations = new Set<string>();
+
+		for (let i = 0; i < 24; i++) {
+			const svg = document.querySelector('.sync svg');
+			const path = svg?.querySelector('path');
+			if (path) drawings.add(path.getAttribute('d') ?? '');
+			if (svg) animations.add(getComputedStyle(svg).animationName);
+			await new Promise((resolve) => setTimeout(resolve, 40));
+		}
+
+		return { drawings: [...drawings], animations: [...animations] };
+	});
+
+	// More than one drawing went past, and never more than the four there are.
+	expect(seen.drawings.length).toBeGreaterThan(1);
+	expect(seen.drawings.length).toBeLessThanOrEqual(4);
+	// Every one of them is the outbox arrow, which never turns.
+	expect(seen.animations).toStrictEqual(['none']);
+	// And the mark it rests on is the one it started from.
+	expect(seen.drawings).toContain(idle);
 
 	/*
 	 * And then it leaves. The button vanishing is the only sign the corner gives

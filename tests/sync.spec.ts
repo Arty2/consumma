@@ -5,7 +5,7 @@ import { canonical } from '../src/lib/doc/canonical';
 import { addGroup, addTask, setTaskState } from '../src/lib/doc/ops';
 import { createClock, type Ctx } from '../src/lib/doc/stamp';
 import { emptyDoc, type Doc } from '../src/lib/doc/types';
-import { syncNow } from '../src/lib/sync/client';
+import { pull, syncNow } from '../src/lib/sync/client';
 import {
 	MAX_BLOB_BYTES,
 	RoomStore,
@@ -379,5 +379,49 @@ describe('when things go wrong', () => {
 		expect(blob.length).toBeLessThan(MAX_BLOB_BYTES);
 
 		expect((await sync(one)).status).toBe('synced');
+	});
+
+	/*
+	 * What JOIN relies on: it fetches once to confirm a code is good before
+	 * touching anything local, then hands that fetch straight to `syncNow`
+	 * as `prefetched`. Pulling the room a second time here would open a
+	 * window — the first fetch succeeding and a second one failing — where
+	 * local tasks had already been discarded for a join that then had
+	 * nothing to replace them with.
+	 */
+	it('merges against a prefetched room instead of pulling it again', async () => {
+		const one = fresh('one');
+		one.doc = addGroup(one.doc, one.ctx, { id: 'g1', title: 'Market' });
+		one.doc = addTask(one.doc, one.ctx, { id: 't1', groupId: 'g1', text: 'Bread' });
+		await sync(one);
+
+		const reads = vi.spyOn(store, 'read');
+
+		const pulled = await pull({
+			roomId: room.roomId,
+			key: room.key,
+			local: emptyDoc(),
+			etag: null,
+			lastSynced: null
+		});
+		expect(pulled.status).toBe('ok');
+		expect(reads).toHaveBeenCalledTimes(1);
+		if (pulled.status !== 'ok') return;
+
+		const outcome = await syncNow({
+			roomId: room.roomId,
+			key: room.key,
+			local: emptyDoc(),
+			etag: null,
+			lastSynced: null,
+			wait: async () => {},
+			prefetched: { remote: pulled.remote, v: pulled.v }
+		});
+
+		// No second read, and an empty local merged against what was already
+		// fetched has nothing new to push either.
+		expect(reads).toHaveBeenCalledTimes(1);
+		expect(outcome.status).toBe('synced');
+		if (outcome.status === 'synced') expect(texts(outcome.doc)).toStrictEqual(['Bread']);
 	});
 });

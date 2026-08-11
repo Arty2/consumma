@@ -150,8 +150,8 @@
 	}
 
 	/*
-	 * The one flourish a tick gets, drawn over the box and gone in a third of a
-	 * second.
+	 * The one flourish a tick gets, drawn over the box and held rather than
+	 * faded.
 	 *
 	 * Centred on the box rather than left where the flow puts it — absolute with
 	 * no offsets sits where the element would have been, which is after the box
@@ -166,17 +166,35 @@
 		top: 50%;
 		translate: -50% -50%;
 		pointer-events: none;
-		animation: sparkle 340ms ease-out forwards;
+		animation: sparkle 350ms ease-out forwards;
 	}
 
+	/*
+	 * Thicker than an ordinary drawn line: this is the one thing that says a
+	 * task just finished, so it reads as a mark made with feeling rather than
+	 * another stroke the same weight as the box.
+	 */
+	.sparkle .drawn {
+		stroke: var(--ink);
+		stroke-width: calc(var(--stroke) * 3);
+	}
+
+	/*
+	 * No opacity here, deliberately: ink stays ink for the whole run rather
+	 * than dissolving away. Growing past its own resting size and easing
+	 * back down before it is removed (see `onanimationend` above) is what
+	 * keeps the end from reading as cut off mid-motion — the scribble draws
+	 * itself out and holds a beat, rather than being frozen and yanked away.
+	 */
 	@keyframes sparkle {
 		from {
-			opacity: 0.9;
-			scale: 0.55;
+			scale: 0.5;
+		}
+		60% {
+			scale: 1.25;
 		}
 		to {
-			opacity: 0;
-			scale: 1.15;
+			scale: 1.05;
 		}
 	}
 </style>

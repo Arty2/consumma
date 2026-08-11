@@ -238,19 +238,15 @@ test('moves a task with the keyboard and announces where it went', async ({ page
 	expect(await order()).toStrictEqual(['Coffee', 'Bread']);
 });
 
-test('Consummatum appears when the last open task is ticked, and not on an empty sheet', async ({
-	page
-}) => {
-	await expect(page.getByText('Consummatum')).toHaveCount(0);
-
+test('ticking a task to done draws the sparkle flourish, with no toast', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
 
 	await task(page, 'Bread').click();
-	await expect(page.getByText('Consummatum')).toHaveCount(0);
-
 	await task(page, 'Coffee').click();
-	await expect(page.getByText('Consummatum')).toBeVisible();
+
+	await expect(task(page, 'Coffee').locator('svg.sparkle')).toBeVisible();
+	await expect(page.getByRole('status').filter({ hasText: 'Consummatum' })).toHaveCount(0);
 });
 
 test('the header control collapses and expands, and counts what it hides', async ({ page }) => {
@@ -745,7 +741,13 @@ test('what has lost its group is ruled off rather than headed', async ({ page })
 	await expect(page.getByRole('button', { name: 'Loose ends' })).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Add a task' })).toHaveCount(1);
 	await expect(page.getByRole('button', { name: /^(Collapse|Expand) group/ })).toHaveCount(1);
-	await expect(page.locator('section.group svg.rule')).toHaveCount(1);
+	// The real group still carries its drawn underline; the perforation above
+	// has nothing analogous, being a line rather than a title.
+	expect(
+		await page
+			.locator('section.group .title')
+			.evaluate((el) => getComputedStyle(el).backgroundImage)
+	).not.toBe('none');
 
 	/*
 	 * And the way to make a group belongs above the line, among the ones anyone

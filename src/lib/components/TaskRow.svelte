@@ -520,7 +520,20 @@
 		touch-action: pan-y;
 		user-select: none;
 		-webkit-user-select: none;
+		/*
+		 * Broken at a syllable with a hyphen where the word allows it, and only
+		 * mid-letter where it does not: `anywhere` alone cut words wherever the
+		 * column happened to run out, which on a narrow phone is most long
+		 * words. The two compose — the browser takes a hyphenation point first
+		 * and falls back to `anywhere` for what it cannot hyphenate.
+		 *
+		 * `<html lang="en">` is what tells it which dictionary to read; text
+		 * marked Greek by `langOf` uses Greek's, or none if the browser has
+		 * none, and wraps as it always did.
+		 */
 		overflow-wrap: anywhere;
+		-webkit-hyphens: auto;
+		hyphens: auto;
 		/*
 		 * The first line centred on the box beside it, whatever comes after.
 		 * `1lh` is this element's own line box, so it follows --size-task and
@@ -637,8 +650,14 @@
 	 * The mark alone steps in; the button does not. Translated rather than laid
 	 * out, so the tap area stays out in the margin and the end of a price still
 	 * belongs to the row — see --cross-step.
+	 *
+	 * It lifts by --cap-lift for the same reason the checkbox at the other end
+	 * of the row does: both are centred in a --touch box that starts at the top
+	 * of the row, but the checkbox is then lifted to sit level with the
+	 * capitals, so a ✕ left on the box's own middle sat a few pixels below it.
+	 * Two marks at either end of one line have to agree on where that line is.
 	 */
 	.remove svg {
-		translate: calc(-1 * var(--cross-step)) 0;
+		translate: calc(-1 * var(--cross-step)) calc(-1 * var(--cap-lift));
 	}
 </style>

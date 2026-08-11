@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
+	import ListSwitcher from '$lib/components/ListSwitcher.svelte';
 	import Menu from '$lib/components/Menu.svelte';
 	import MenuButton from '$lib/components/MenuButton.svelte';
 	import Sheet from '$lib/components/Sheet.svelte';
@@ -17,6 +18,7 @@
 	import { toMarkdown } from '$lib/markdown/to';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -50,7 +52,17 @@
 	 */
 	$effect(() => {
 		untrack(() => {
+			/*
+			 * lists.load() restores whichever list was open last and points
+			 * sheet/sync/ui at it, which marks their own `loaded` the same way
+			 * calling them directly would — so on a device that remembers more
+			 * than one list, the three calls below are already no-ops by the
+			 * time they run. On a device with just the one, lists.load() finds
+			 * no index and does nothing, leaving these three to load exactly as
+			 * they always have.
+			 */
 			diagnostics.load();
+			lists.load();
 			sheet.load();
 			ui.load();
 			sync.load();
@@ -125,7 +137,7 @@
 
 	function onDelete() {
 		panel = null;
-		sync.forget();
+		lists.deleteCurrent();
 		ui.say('Removed from this device.');
 	}
 </script>
@@ -146,17 +158,28 @@
 
 		<!--
 			Sync on its own at the left, because it is the one that comes and goes;
-			the two that are always there stay together on the right, where the
-			thumb already knows to find the burger.
+			the switcher sits between it and the two that are always there, which
+			stay together on the right, where the thumb already knows to find the
+			burger. Only ever here once there is a second list to choose between —
+			see ListSwitcher.
 		-->
 		<div class="corner">
 			<SyncButton />
+			<ListSwitcher />
 			<div class="controls">
 				<ThemeButton />
 				<MenuButton onopen={() => (panel = 'menu')} />
 			</div>
 		</div>
-		<Sheet />
+		<!--
+			Keyed on which list is open, so a row a task was being typed into, or a
+			drag in progress, does not survive into another list's markup — Sheet's
+			own state (the new-group draft, the open caret) belongs to the list it
+			was opened on, not to the component instance.
+		-->
+		{#key lists.current}
+			<Sheet />
+		{/key}
 	</main>
 
 	<TornEdge seed="bottom" flip />
@@ -187,7 +210,7 @@
 	<ConfirmModal
 		title="Remove this list from this device"
 		seed="delete"
-		confirmLabel="Delete"
+		confirmLabel="Leave"
 		onconfirm={onDelete}
 		oncancel={() => (panel = null)}
 	>
@@ -240,10 +263,23 @@
 	/*
 	 * The buttons sit in the sheet's top corners with a row to themselves. They
 	 * used to be positioned over the sheet, where the first task row covered
-	 * them and swallowed the tap.
+	 * them and swallowed the tap. The switcher, when there is one, rides the
+	 * same row between sync and the pair on the right, rather than a row of
+	 * its own — one line of controls, not two.
+	 *
+	 * The margin under it is enough to part the buttons from the first title
+	 * without opening a hole between them — the row already brings its own
+	 * air, since the buttons are touch targets a good deal taller than their
+	 * ink and the title's line box is taller than its letters. Measured
+	 * against what the eye actually sees (bottom of the burger's stroke to
+	 * the top of the first title) rather than picked off the spacing scale,
+	 * which is why it is not a multiple of `--paper-inset`: two thirds of the
+	 * gap is already there before this adds anything.
 	 */
 	.corner {
 		display: flex;
+		align-items: center;
+		margin-bottom: 0.5rem;
 	}
 
 	/*

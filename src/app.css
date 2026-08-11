@@ -178,9 +178,9 @@
 	 * as you were not paying attention.
 	 */
 	--paper-width: 34rem;
-	--paper-x: 1rem;
-	--paper-top: calc(2rem + env(safe-area-inset-top));
-	--paper-bottom: calc(2rem + env(safe-area-inset-bottom));
+	--paper-x: 0.5rem;
+	--paper-top: calc(1rem + env(safe-area-inset-top));
+	--paper-bottom: calc(1rem + env(safe-area-inset-bottom));
 
 	/* How far the writing sits inside the drawn edge, on both. */
 	--paper-inset: 1.25rem;

@@ -17,8 +17,11 @@ test.beforeEach(async ({ page }) => {
 test('every mark on the page is a drawn path, not an image', async ({ page }) => {
 	await expect(page.locator('img')).toHaveCount(0);
 
+	// The one other exception on a bare sheet: a group title's underline,
+	// drawn the same way a link's is — see the next test.
 	const backgrounds = await page.evaluate(() =>
 		[...document.querySelectorAll('*')]
+			.filter((el) => !el.classList.contains('title'))
 			.map((el) => getComputedStyle(el).backgroundImage)
 			.filter((value) => value !== 'none')
 	);
@@ -29,15 +32,19 @@ test('every mark on the page is a drawn path, not an image', async ({ page }) =>
 });
 
 /*
- * The one exception, and it is worth stating as one rather than leaving the
+ * Two exceptions, and both are worth stating as such rather than leaving the
  * rule above quietly true only because nothing on a bare sheet is a link.
  *
  * A link is inline text that wraps, and every one of its line boxes wants its
  * own underline — which is the one thing an inline <svg> measured to a box
- * cannot do. So the mark is a repeating background, still drawn by the same
- * hand, still seeded, and still nothing but a stroke.
+ * cannot do. A wrapped group title needs exactly the same thing for exactly
+ * the same reason, so it is drawn the same way. Both are a repeating
+ * background, still drawn by the same hand, still seeded, and still nothing
+ * but a stroke.
  */
-test('the only background in the app is the drawn underline under a link', async ({ page }) => {
+test('the only backgrounds in the app are drawn underlines, on links and titles', async ({
+	page
+}) => {
 	await page.getByRole('button', { name: 'Add a task' }).first().click();
 	const field = page.getByRole('textbox', { name: 'New task' });
 	await field.fill('Recipe https://heracl.es/projects/2024/consumma tonight');
@@ -46,20 +53,27 @@ test('the only background in the app is the drawn underline under a link', async
 
 	const backgrounds = await page.evaluate(() =>
 		[...document.querySelectorAll('*')]
-			.map((el) => ({ tag: el.tagName, image: getComputedStyle(el).backgroundImage }))
+			.map((el) => ({
+				tag: el.tagName,
+				title: el.classList.contains('title'),
+				image: getComputedStyle(el).backgroundImage
+			}))
 			.filter((entry) => entry.image !== 'none')
 	);
 
-	// Exactly one, on the anchor, and it is an SVG drawn into the page rather
-	// than a file fetched from anywhere.
-	expect(backgrounds).toHaveLength(1);
-	expect(backgrounds[0].tag).toBe('A');
-	expect(backgrounds[0].image).toContain('data:image/svg+xml');
-	expect(backgrounds[0].image).toContain('stroke');
+	// The link, and the one group title the default list starts with — each
+	// an SVG drawn into the page rather than a file fetched from anywhere.
+	expect(backgrounds).toHaveLength(2);
+	for (const entry of backgrounds) {
+		expect(entry.tag === 'A' || entry.title).toBe(true);
+		expect(entry.image).toContain('data:image/svg+xml');
+		expect(entry.image).toContain('stroke');
+	}
 
 	// Never the browser's own rule. The check below walks the whole page for
-	// that; this says it of the one element most likely to acquire one.
+	// that; this says it of the two elements most likely to acquire one.
 	await expect(page.locator('a').first()).toHaveCSS('text-decoration-line', 'none');
+	await expect(page.locator('.title').first()).toHaveCSS('text-decoration-line', 'none');
 });
 
 test('the link underline is ink, and turns over with the theme', async ({ page }) => {
@@ -174,7 +188,7 @@ test('works at 320px without scrolling sideways', async ({ page }) => {
 		)
 	).toBe(false);
 
-	for (const label of ['Import', 'Export', 'Delete', 'Clear']) {
+	for (const label of ['Import', 'Export', 'Leave', 'Clear']) {
 		const box = await page
 			.getByRole('dialog', { name: 'Menu' })
 			.getByRole('button', { name: label })
@@ -250,9 +264,11 @@ test('Greek loses its tonos in caps, and keeps it everywhere else', async ({ pag
 	expect(exported).toContain('μαΐστρος');
 });
 
-test('the rule under a title is as wide as the title, not the row', async ({ page }) => {
+test('the underline under a title is as wide as the title, not the row', async ({ page }) => {
 	const title = page.getByRole('button', { name: 'My list' });
-	const rule = page.locator('section svg.rule').first();
+
+	const image = await title.evaluate((el) => getComputedStyle(el).backgroundImage);
+	expect(image).toContain('data:image/svg+xml');
 
 	const text = await title.evaluate((el) => {
 		const range = document.createRange();
@@ -260,13 +276,15 @@ test('the rule under a title is as wide as the title, not the row', async ({ pag
 		return range.getBoundingClientRect().width;
 	});
 	/*
-	 * Measured against the header rather than the title button: the button is
-	 * only as wide as the name now, so that the collapse icon can sit against it
-	 * and the total can take the end of the row. The claim is unchanged — a pen
+	 * The button's own box is what the underline paints against — display:
+	 * inline, so its width is its content's width, not the row's. Measured
+	 * against the header rather than the button, since the button is only as
+	 * wide as the name, so that the collapse icon can sit against it and the
+	 * total can take the end of the row. The claim is unchanged — a pen
 	 * underlines the word, not the column.
 	 */
 	const row = (await page.locator('section .header').first().boundingBox())!.width;
-	const drawn = (await rule.boundingBox())!.width;
+	const drawn = (await title.boundingBox())!.width;
 
 	// A pen underlines the word, not the column.
 	expect(drawn).toBeLessThan(row);
@@ -460,7 +478,9 @@ test('a group title has the air under it that the tasks have between them', asyn
 			between.push(ink(tasks[i]).top - ink(tasks[i - 1]).bottom);
 		}
 
-		const rule = document.querySelector('section svg.rule')!.getBoundingClientRect();
+		// The underline is the title's own background now, not a separate
+		// drawn element — its bottom edge is where the old rule sat.
+		const rule = document.querySelector('section .title')!.getBoundingClientRect();
 		return { between, underTitle: ink(tasks[0]).top - rule.bottom };
 	});
 
@@ -522,6 +542,16 @@ test('a checkbox sits level with the capitals it is beside', async ({ page }) =>
 	await input.press('Enter');
 	await page.keyboard.press('Escape');
 	await page.mouse.move(0, 0);
+
+	/*
+	 * The measurement below reads a real line box off the page and compares it
+	 * with canvas metrics for the same face, so the two have to be talking
+	 * about the same font: measured mid-swap they disagree by enough to spend
+	 * the whole budget this assertion has, which is 0.58px — the offset lands
+	 * at -0.42 and the bar is 1. That is what made this fail once in a full
+	 * parallel run and never once on its own.
+	 */
+	await page.evaluate(() => document.fonts.ready);
 
 	const offset = await page.evaluate(() => {
 		const row = document.querySelector('.tasks li')!;
@@ -617,21 +647,31 @@ test('every underline in the app is drawn, not a CSS decoration', async ({ page 
 		);
 
 	expect(await underlined(page)).toStrictEqual([]);
-	// The group title and the new-group row each carry a drawn rule instead.
-	expect(await page.locator('main svg.rule path').count()).toBeGreaterThanOrEqual(2);
+	// The new-group row carries a drawn rule; the group title carries a
+	// drawn underline instead, the same mechanism as a link's.
+	expect(await page.locator('main svg.rule path').count()).toBeGreaterThanOrEqual(1);
+	expect(
+		await page
+			.locator('main .title')
+			.first()
+			.evaluate((el) => getComputedStyle(el).backgroundImage)
+	).not.toBe('none');
 
 	await openMenu(page);
 	expect(await underlined(page)).toStrictEqual([]);
-	// And its two section headers are ruled the way a group title is.
-	expect(await page.locator('[role="dialog"] svg.rule path').count()).toBe(2);
+	// Its two section headers are ruled the way a group title is, plus the
+	// menu's own always-shown copy of the list switcher's pill.
+	expect(await page.locator('[role="dialog"] svg.rule path').count()).toBe(3);
 });
 
 test('every button in the menu is boxed, and no two boxes are alike', async ({ page }) => {
 	await openMenu(page);
 
 	const menu = page.locator('[role="dialog"]');
-	// Every button that does something, which is all of them but the ✕.
-	const labelled = menu.locator('button:not(.close)');
+	// Every button that does something, which is all of them but the ✕ and
+	// the switcher pill — a disclosure toggle like the burger it stands
+	// beside on the sheet, drawn without a box there too.
+	const labelled = menu.locator('button:not(.close):not(.pill)');
 	const count = await labelled.count();
 	expect(count).toBeGreaterThanOrEqual(6);
 
@@ -860,8 +900,8 @@ test('the theme is the device’s, so removing the list does not take it', async
 	await themeButton(page).click();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 
-	await fromMenu(page, 'Delete');
-	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
 
 	await page.reload();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
@@ -887,15 +927,31 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 
 	await page.getByRole('checkbox', { name: 'Bread' }).click();
 	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	// The row pops before it actually goes, so the undo toast lands a beat
+	// after the click rather than in the same tick.
+	await page.locator('.toast').waitFor();
 
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
 		const burger = document.querySelector('[aria-label^="Menu"]')!.getBoundingClientRect();
-		return { top: toast.top, bottom: toast.bottom, corner: burger.bottom, height: innerHeight };
+		return {
+			top: toast.top,
+			bottom: toast.bottom,
+			left: toast.left,
+			right: toast.right,
+			cornerTop: burger.top,
+			cornerBottom: burger.bottom,
+			cornerRight: burger.right,
+			height: innerHeight
+		};
 	});
 
-	// Below the buttons, never over them — they are the other marks on that line.
-	expect(where.top).toBeGreaterThanOrEqual(where.corner);
+	// On the buttons' own line, standing where they stand rather than a row
+	// below them — and covering them outright while it shows, which is why it
+	// has to reach at least as far as the burger does at either end.
+	expect(where.top).toBeCloseTo(where.cornerTop, 0);
+	expect(where.bottom).toBeGreaterThanOrEqual(where.cornerBottom);
+	expect(where.right).toBeGreaterThanOrEqual(where.cornerRight);
 
 	// And nowhere near the bottom, which is the keyboard's half of the screen.
 	expect(where.bottom).toBeLessThan(where.height / 2);

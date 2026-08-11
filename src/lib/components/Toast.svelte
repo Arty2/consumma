@@ -15,21 +15,28 @@
 
 <style>
 	/*
-	 * At the top, under the buttons in the corners.
+	 * On the corner row itself, standing exactly where the buttons stand.
 	 *
 	 * It used to sit at the bottom, which is where a phone puts its keyboard —
 	 * so the one message that most wants reading, the one offering to undo what
 	 * just happened, was behind the keys that had just caused it. Every toast
 	 * here follows an edit, and an edit is made with the keyboard up.
 	 *
-	 * Below the corner row rather than level with it: those buttons are the
-	 * other things drawn on this line, and a bar through them would cover the
-	 * sync mark and the burger.
+	 * It then sat a row below the buttons, to keep clear of them. Level with
+	 * them now, and covering them for as long as it shows: the row is the one
+	 * line at the top of the sheet that is not writing, so a message belongs
+	 * on it rather than opening a third line under it.
+	 *
+	 * Covering them is the whole reason it takes the row's own width and
+	 * height below rather than its old centred 24rem: a bar narrower than the
+	 * row leaves a few pixels of sync mark showing at one end and burger at
+	 * the other, which reads as a misplaced box rather than as a message
+	 * standing in for the row.
 	 */
 	.toast {
 		position: fixed;
 		left: 50%;
-		top: calc(var(--corner-y) + var(--touch) + 0.5rem);
+		top: var(--corner-y);
 		translate: -50% 0;
 		display: flex;
 		align-items: center;
@@ -41,10 +48,13 @@
 		justify-content: space-between;
 		gap: 1rem;
 		/*
-		 * A bar rather than a label, but inset from the paper on both sides so it
-		 * reads as sitting in front of the sheet rather than as part of it.
+		 * The corner row's own box: the paper's width, capped, less the room
+		 * the buttons themselves are held off the edges by. Written from
+		 * `--corner-x` because that is the same number the buttons are placed
+		 * with — the bar lands on them rather than near them.
 		 */
-		width: min(24rem, calc(100vw - 4rem));
+		width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x));
+		min-height: var(--touch);
 		padding: 0.5rem 1rem;
 	}
 

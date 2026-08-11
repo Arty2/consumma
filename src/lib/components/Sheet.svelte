@@ -6,7 +6,6 @@
 	import { figures } from '$lib/doc/amount';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import type { State } from '$lib/doc/types';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, NEW_GROUP, type DropTarget } from '$lib/dnd/drag.svelte';
@@ -59,11 +58,6 @@
 	const landing = $derived(
 		landingWidth > 0 ? handLine(landingWidth, { seed: seedFrom('landing'), wobble: 1.2, y: 2 }) : ''
 	);
-
-	function setState(id: string, state: State) {
-		sheet.setState(id, state);
-		ui.celebrate(sheet.finished);
-	}
 
 	/*
 	 * Only offered once every task in the group is done, so nothing anyone is
@@ -328,7 +322,7 @@
 							groupId={group.id}
 							style={fig.style}
 							open={opening === task.id}
-							onstate={(state) => setState(task.id, state)}
+							onstate={(state) => sheet.setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
 							onsplit={(carried) =>

@@ -50,6 +50,15 @@ export type SyncInput = {
 	now?: () => number;
 	/** Overridable so tests do not sit through the backoff. */
 	wait?: (ms: number) => Promise<void>;
+	/**
+	 * Skips the initial pull, merging against this instead. JOIN already
+	 * fetches the room once to confirm the code is good before touching
+	 * anything local (see `join()` in state/sync.svelte.ts) — pulling a
+	 * second time here would open a window where that first fetch succeeds
+	 * but this one fails afterwards, leaving a wiped local doc with nothing
+	 * to replace it.
+	 */
+	prefetched?: { remote: Doc | null; v: number };
 };
 
 const ATTEMPTS = 5;
@@ -58,11 +67,18 @@ export async function syncNow(input: SyncInput): Promise<SyncOutcome> {
 	const now = input.now ?? Date.now;
 	const wait = input.wait ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
 
-	const pulled = await pull(input);
-	if (pulled.status !== 'ok') return pulled.outcome;
+	let remote: Doc | null;
+	let remoteV: number;
 
-	let remote = pulled.remote;
-	let remoteV = pulled.v;
+	if (input.prefetched) {
+		remote = input.prefetched.remote;
+		remoteV = input.prefetched.v;
+	} else {
+		const pulled = await pull(input);
+		if (pulled.status !== 'ok') return pulled.outcome;
+		remote = pulled.remote;
+		remoteV = pulled.v;
+	}
 
 	for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
 		// Clamp before merging, never inside it: one device with a wrong clock
@@ -130,10 +146,20 @@ function countOf(doc: Doc): string {
 	return `${groups}g/${tasks}t`;
 }
 
-type Pulled =
+export type Pulled =
 	{ status: 'ok'; remote: Doc | null; v: number } | { status: 'stop'; outcome: SyncOutcome };
 
-async function pull(input: SyncInput): Promise<Pulled> {
+/**
+ * Fetches and decrypts one room, without merging or pushing anything.
+ *
+ * JOIN calls this directly (with `etag`/`lastSynced` both null, always a
+ * full fetch) to confirm a code is good — reachable, and either decryptable
+ * or genuinely new — before touching anything local, then hands the result
+ * straight to `syncNow` as `prefetched` so the merge runs against the exact
+ * same fetch rather than a second one that could disagree with, or fail
+ * after, the first.
+ */
+export async function pull(input: SyncInput): Promise<Pulled> {
 	const result = await getRoom(input.roomId, input.etag);
 
 	if (result.status === 'offline') return { status: 'stop', outcome: { status: 'offline' } };

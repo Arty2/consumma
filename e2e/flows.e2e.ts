@@ -449,7 +449,7 @@ test('CLEAR asks first, then clears, and the undo still works', async ({ page })
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
-test('DELETE shows the code one last time, then wipes only this device', async ({ page }) => {
+test('LEAVE shows the code one last time, then wipes only this device', async ({ page }) => {
 	await withCode(page);
 	await addTask(page, 'Bread');
 
@@ -457,7 +457,7 @@ test('DELETE shows the code one last time, then wipes only this device', async (
 	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
 	await page.getByRole('button', { name: 'Close' }).click();
 
-	await fromMenu(page, 'Delete');
+	await fromMenu(page, 'Leave');
 
 	const confirm = page.getByRole('dialog', { name: /Remove this list/ });
 	await expect(confirm).toContainText('Everyone else keeps it');
@@ -468,8 +468,8 @@ test('DELETE shows the code one last time, then wipes only this device', async (
 	await page.getByRole('button', { name: 'Cancel' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 
-	await fromMenu(page, 'Delete');
-	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
 
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 

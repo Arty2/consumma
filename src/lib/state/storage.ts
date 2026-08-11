@@ -23,11 +23,51 @@ export const KEYS = {
 	version: 'consumma:version',
 	synced: 'consumma:synced',
 	/**
+	 * The index of every remembered list, written only once a second one
+	 * exists — see src/lib/state/lists.ts.
+	 */
+	lists: 'consumma:lists',
+	/**
 	 * Whether the debug log in the menu is on. Off by default and written
 	 * only once someone turns it on — see src/lib/state/diagnostics.svelte.ts.
 	 */
 	diagnostics: 'consumma:diagnostics'
 } as const;
+
+/** The keys one list's own data lives under. */
+export type ListKeySet = {
+	doc: string;
+	code: string;
+	version: string;
+	synced: string;
+	collapsed: string;
+};
+
+/**
+ * `null` is the first list anyone ever has: it keeps living under today's bare
+ * keys forever, so a single-list device never gains a suffix it did not have
+ * yesterday. Every later list gets its own id-suffixed set instead — see
+ * src/lib/state/lists.ts for how the two are told apart.
+ */
+export function keysFor(id: string | null): ListKeySet {
+	if (id === null) {
+		return {
+			doc: KEYS.doc,
+			code: KEYS.code,
+			version: KEYS.version,
+			synced: KEYS.synced,
+			collapsed: KEYS.collapsed
+		};
+	}
+
+	return {
+		doc: `consumma:doc:${id}`,
+		code: `consumma:code:${id}`,
+		version: `consumma:version:${id}`,
+		synced: `consumma:synced:${id}`,
+		collapsed: `consumma:collapsed:${id}`
+	};
+}
 
 /**
  * Prerendering runs in Node, and a browser with storage disabled throws on

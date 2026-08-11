@@ -1,6 +1,7 @@
 <script lang="ts">
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
+	import ListSwitcher from './ListSwitcher.svelte';
 	import Perforation from './Perforation.svelte';
 	import TextRule from './TextRule.svelte';
 	import { trap } from '$lib/a11y/trap';
@@ -197,6 +198,19 @@
 	<div class="scroll">
 		<div class="body">
 			<!--
+				Answers which list this is before anything else in the panel does —
+				the same reason it stands first above the sheet. Always shown here,
+				unlike its copy above the sheet: with the button that used to make a
+				second list gone, this is the only place left to reach one from
+				while there is still just the first. Sticks where the ✕ sits (see
+				ListSwitcher.svelte) rather than scrolling away with the rest of the
+				panel, so opening the menu does not visibly move it — but its
+				dropdown, when open, is ordinary content and scrolls like everything
+				else beneath it.
+			-->
+			<ListSwitcher context="menu" onafterselect={onclose} />
+
+			<!--
 				Two sentences, never one. How much is waiting is what people want to
 				know; whether the list could be reached is a condition, not a failure,
 				and folding it into the same line made "Offline" read like an error.
@@ -206,10 +220,15 @@
 				<p class="detail">{summary.detail}</p>
 			{/if}
 
+			<!--
+				Nothing written and no code: there is nothing to send and no list to
+				fetch, so the button says so by being unavailable rather than
+				minting a code for an empty sheet — see `sync.syncable`.
+			-->
 			<button
 				type="button"
 				class="caps boxed action"
-				disabled={sync.busy || sync.cooling}
+				disabled={sync.busy || sync.cooling || !sync.syncable}
 				onclick={syncNow}
 			>
 				<HandRect seed="btnsync" wobble={1.4} radius={3} />
@@ -286,7 +305,7 @@
 				</button>
 				<button type="button" class="caps boxed" onclick={ondelete}>
 					<HandRect seed="btndelete" wobble={1.4} radius={3} />
-					Delete
+					Leave
 				</button>
 			</div>
 
@@ -490,21 +509,22 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		/* Above the content it scrolls over. */
-		z-index: 1;
+		/*
+		 * Above the content it scrolls over, and above the switcher's own
+		 * sticky pill too — the two share the same row, and without this the
+		 * pill, painted later in the document, would win the tie.
+		 */
+		z-index: 2;
 	}
 
 	/*
-	 * Clear of the ✕, which sits lower than it used to now that it stands where
-	 * the burger stands.
-	 */
-	/*
-	 * Clear of the ✕, which stands a tear's height below the paper's top edge
-	 * and is a touch target tall. Derived rather than guessed, so it follows
-	 * the corner it is avoiding.
+	 * No padding-top of its own any more: the switcher's own sticky pill (see
+	 * ListSwitcher.svelte) reserves exactly the room the ✕ needs by sitting at
+	 * that same offset as ordinary first content, rather than this padding
+	 * pushing everything below it clear of a corner control mounted outside
+	 * the scroll.
 	 */
 	.body {
-		padding-top: calc(var(--tear) + var(--touch));
 		text-align: center;
 	}
 
@@ -605,10 +625,13 @@
 		opacity: 0.4;
 	}
 
+	/* Hyphenated where the word allows it — see `.text` in TaskRow. */
 	.note {
 		margin: 0.75rem 0 0;
 		font-size: var(--size-title);
 		line-height: 1.4;
+		-webkit-hyphens: auto;
+		hyphens: auto;
 	}
 
 	.action {
@@ -638,8 +661,16 @@
 	 * read a line at a time, in order, and centring would make every line a
 	 * different width to find the start of.
 	 */
+	/*
+	 * A plain CSS border, not a drawn one: this is a technical readout, not a
+	 * mark on the sheet, and a dashed rule around it reads as a terminal's own
+	 * frame rather than as paper. Monospace for the same reason — a log is
+	 * lines of data lining up, not words in a hand.
+	 */
 	.log {
 		margin-top: 1rem;
+		padding: 0.75rem;
+		border: 1px dashed var(--ink);
 		text-align: left;
 		max-height: 40vh;
 		overflow-y: auto;
@@ -647,9 +678,14 @@
 
 	.entry {
 		margin: 0 0 0.6rem;
-		font-size: var(--size-small);
+		font-family: var(--mono);
+		font-size: calc(var(--size-small) * var(--mono-scale));
 		line-height: 1.4;
 		overflow-wrap: anywhere;
+	}
+
+	.entry:last-child {
+		margin-bottom: 0;
 	}
 
 	/*
@@ -675,12 +711,19 @@
 	}
 
 	/*
-	 * The tear brings its own room above, so the footer adds none of its own.
-	 * It used to open with three asterisks and 3rem of padding; the mark now
-	 * spaces itself the way the other two do.
+	 * The tear brings its own room above, so the footer adds none of its own
+	 * at the top. It used to open with three asterisks and 3rem of padding;
+	 * the mark now spaces itself the way the other two do.
+	 *
+	 * Below, `.scroll` clips at the paper's own edge — without room here the
+	 * credit sits flush against it once someone has scrolled all the way
+	 * down, whatever its last line happens to be. One line's own height, at
+	 * the credit's own size, so the room below it reads as a line rather
+	 * than as a gap that just happens to be there.
 	 */
 	.credit {
 		padding-top: 0;
+		margin-bottom: 1.4em;
 	}
 
 	.credit p {
