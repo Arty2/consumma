@@ -110,6 +110,27 @@ export async function syncNow(input: SyncInput): Promise<SyncOutcome> {
 	return { status: 'busy' };
 }
 
+/**
+ * Confirms a code actually reaches something, before JOIN commits to it.
+ *
+ * Returns null when the code is good — reachable, and either decryptable or
+ * genuinely new — and the outcome that explains why otherwise. JOIN is the
+ * one caller allowed to discard local tasks (`keep: false`), and it must not
+ * do that on a code that turns out to be offline, refused, wrong, or
+ * damaged: this runs first, so nothing local is touched on a code that was
+ * never going to work.
+ */
+export async function checkRoom(roomId: string, key: CryptoKey): Promise<SyncOutcome | null> {
+	const result = await getRoom(roomId, null);
+
+	if (result.status === 'offline') return { status: 'offline' };
+	if (result.status === 'refused') return { status: 'refused', code: result.code };
+	if (result.status === 'missing' || result.status === 'unchanged') return null;
+
+	const opened = await decrypt(key, result.room);
+	return opened.status === 'ok' ? null : opened.outcome;
+}
+
 type Pulled =
 	{ status: 'ok'; remote: Doc | null; v: number } | { status: 'stop'; outcome: SyncOutcome };
 

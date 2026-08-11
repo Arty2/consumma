@@ -258,6 +258,69 @@ test('joining a list finishes, and says so by closing', async ({ page }) => {
 	await expect(page.getByText('1234 5678 9abc')).toBeVisible();
 });
 
+test('JOIN that cannot reach the list keeps the tasks already here, and says why', async ({
+	page
+}) => {
+	/*
+	 * The tasks used to go before the network was ever asked: `!keep` wiped
+	 * the sheet, then the request that was meant to replace it with something
+	 * real found nothing to reach. A join that fails must cost nothing.
+	 */
+	await page.route('**/api/room/**', (route) => route.abort());
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await addTask(page, 'Bread');
+
+	await openMenu(page);
+	await page.getByRole('textbox', { name: 'Code' }).fill('1234 5678 9abc');
+	await page.getByRole('button', { name: 'Join' }).click();
+	await page.getByRole('button', { name: 'Leave them' }).click();
+
+	await expect(page.getByRole('alert')).toContainText('Couldn’t reach the list');
+
+	// Still open on the code field, not silently moved on.
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
+	await page.keyboard.press('Escape');
+
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
+test('JOIN on a code that decrypts to nothing sensible keeps the tasks already here, and says so', async ({
+	page
+}) => {
+	/*
+	 * A room that answers with something that is not this code's blob — the
+	 * shape a mistyped or unrelated code takes. AES-GCM authenticates, so a
+	 * key that does not match fails the read rather than producing rubbish
+	 * that happens to parse.
+	 */
+	await page.route('**/api/room/**', (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		return route.fulfill({
+			status: 200,
+			headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+			body: JSON.stringify({ v: 1, blob: 'AQID' })
+		});
+	});
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	await addTask(page, 'Bread');
+
+	await openMenu(page);
+	await page.getByRole('textbox', { name: 'Code' }).fill('1234 5678 9abc');
+	await page.getByRole('button', { name: 'Join' }).click();
+	await page.getByRole('button', { name: 'Leave them' }).click();
+
+	await expect(page.getByRole('alert')).toContainText('doesn’t match a list');
+	await page.keyboard.press('Escape');
+
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
 test('the code is typed into twelve places, one underline each', async ({ page }) => {
 	await page.route('**/api/room/**', api);
 	await page.goto('/');

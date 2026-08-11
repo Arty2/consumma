@@ -2,7 +2,7 @@ import { derive, newCode, normaliseCode, type Room } from '$lib/crypto/derive';
 import { canonical } from '$lib/doc/canonical';
 import type { Doc } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
-import { syncNow, type SyncOutcome } from '$lib/sync/client';
+import { checkRoom, syncNow, type SyncOutcome } from '$lib/sync/client';
 import { sheet } from './doc.svelte';
 import { keysFor, persist, read, remove, write, type ListKeySet } from './storage';
 
@@ -143,23 +143,52 @@ export class SyncState {
 	/**
 	 * Joins someone else's list. The caller decides first whether to carry the
 	 * local tasks across or discard them — never silently.
+	 *
+	 * The code is checked before anything local is touched. `keep: false` is
+	 * a real discard, and doing that ahead of the request used to mean a
+	 * code that was offline, wrong, or damaged still cost the tasks already
+	 * on this device — the join failed and they were gone anyway. Now the
+	 * round trip that finds that out happens first, on the code alone,
+	 * before anything here is written or replaced.
 	 */
 	async join(input: string, keep: boolean): Promise<SyncOutcome | null> {
 		const code = normaliseCode(input);
 		if (!code) return null;
+		if (this.busy) return null;
 
-		this.code = code;
-		write(this.#keys.code, code);
+		this.busy = true;
+		this.message = null;
 
-		this.#room = null;
-		this.#etag = null;
-		this.#lastSynced = null;
-		remove(this.#keys.version);
-		remove(this.#keys.synced);
+		try {
+			// Derived lazily: PBKDF2 at 300,000 iterations is deliberately slow, so
+			// its cost lands on an explicit tap rather than on first paint.
+			const room = await derive(code);
+			const problem = await checkRoom(room.roomId, room.key);
 
-		if (!keep) sheet.replace({ v: 1, groups: {}, tasks: {} });
+			if (problem) {
+				this.#unreachable = problem.status === 'offline';
+				this.status = this.#unreachable ? 'offline' : 'pending';
+				this.message = messageFor(problem);
+				return problem;
+			}
 
-		return await this.sync({ force: true });
+			this.code = code;
+			write(this.#keys.code, code);
+
+			this.#room = room;
+			this.#etag = null;
+			this.#lastSynced = null;
+			remove(this.#keys.version);
+			remove(this.#keys.synced);
+
+			if (!keep) sheet.replace({ v: 1, groups: {}, tasks: {} });
+
+			return await this.#run();
+		} finally {
+			this.busy = false;
+			this.lastSyncAt = Date.now();
+			this.now = Date.now();
+		}
 	}
 
 	/** Everything happens here, and only when someone asks for it. */
@@ -183,25 +212,35 @@ export class SyncState {
 		this.message = null;
 
 		try {
-			// Derived lazily: PBKDF2 at 300,000 iterations is deliberately slow, so
-			// its cost lands on an explicit tap rather than on first paint.
-			this.#room ??= await derive(this.code);
-
-			const outcome = await syncNow({
-				roomId: this.#room.roomId,
-				key: this.#room.key,
-				local: sheet.doc,
-				etag: this.#etag,
-				lastSynced: this.#lastSynced
-			});
-
-			this.#apply(outcome);
-			return outcome;
+			return await this.#run();
 		} finally {
 			this.busy = false;
 			this.lastSyncAt = Date.now();
 			this.now = Date.now();
 		}
+	}
+
+	/**
+	 * The network round trip alone. Callers own the busy flag, the cooldown
+	 * clock, and — for `join()` — confirming the code is good before this
+	 * ever runs.
+	 */
+	async #run(): Promise<SyncOutcome> {
+		// Not derived again if join() already did: `??=` is a no-op once #room
+		// is set, so the 300,000-iteration cost is never paid twice for one
+		// join.
+		this.#room ??= await derive(this.code!);
+
+		const outcome = await syncNow({
+			roomId: this.#room.roomId,
+			key: this.#room.key,
+			local: sheet.doc,
+			etag: this.#etag,
+			lastSynced: this.#lastSynced
+		});
+
+		this.#apply(outcome);
+		return outcome;
 	}
 
 	/**
