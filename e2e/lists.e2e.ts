@@ -304,6 +304,14 @@ test('the menu keeps its ✕ reachable once the switcher shares its row', async 
 test('a long name gives way in the pill, the code never does, and the rule follows both', async ({
 	page
 }) => {
+	/*
+	 * A phone, explicitly: the suite runs at Desktop Chrome's width, where the
+	 * panel is wide enough that this name fits and nothing needs to give — so
+	 * the assertions below would be testing the absence of a problem. Running
+	 * out of room is a phone's question, and this is the width it is asked at.
+	 */
+	await page.setViewportSize({ width: 390, height: 700 });
+
 	// A code planted rather than synced: there is no server behind the preview,
 	// and what is under test is what the pill does with one, not how it got it.
 	await page.evaluate(() => localStorage.setItem('consumma:code', '5e6b7c1a93f2'));
