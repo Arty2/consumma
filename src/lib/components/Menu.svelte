@@ -625,10 +625,13 @@
 		opacity: 0.4;
 	}
 
+	/* Hyphenated where the word allows it — see `.text` in TaskRow. */
 	.note {
 		margin: 0.75rem 0 0;
 		font-size: var(--size-title);
 		line-height: 1.4;
+		-webkit-hyphens: auto;
+		hyphens: auto;
 	}
 
 	.action {

@@ -368,11 +368,14 @@
 		}
 	}
 
+	/* Hyphenated where the word allows it — see `.text` in TaskRow. */
 	.title {
 		font-family: var(--hand);
 		font-size: var(--size-title);
 		text-align: left;
 		overflow-wrap: anywhere;
+		-webkit-hyphens: auto;
+		hyphens: auto;
 	}
 
 	/*

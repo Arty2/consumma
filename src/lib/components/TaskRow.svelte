@@ -520,7 +520,20 @@
 		touch-action: pan-y;
 		user-select: none;
 		-webkit-user-select: none;
+		/*
+		 * Broken at a syllable with a hyphen where the word allows it, and only
+		 * mid-letter where it does not: `anywhere` alone cut words wherever the
+		 * column happened to run out, which on a narrow phone is most long
+		 * words. The two compose — the browser takes a hyphenation point first
+		 * and falls back to `anywhere` for what it cannot hyphenate.
+		 *
+		 * `<html lang="en">` is what tells it which dictionary to read; text
+		 * marked Greek by `langOf` uses Greek's, or none if the browser has
+		 * none, and wraps as it always did.
+		 */
 		overflow-wrap: anywhere;
+		-webkit-hyphens: auto;
+		hyphens: auto;
 		/*
 		 * The first line centred on the box beside it, whatever comes after.
 		 * `1lh` is this element's own line box, so it follows --size-task and
