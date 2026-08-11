@@ -296,7 +296,7 @@
 				</button>
 				<button type="button" class="caps boxed" onclick={ondelete}>
 					<HandRect seed="btndelete" wobble={1.4} radius={3} />
-					Delete
+					Leave
 				</button>
 			</div>
 

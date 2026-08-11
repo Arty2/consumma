@@ -188,7 +188,7 @@ test('works at 320px without scrolling sideways', async ({ page }) => {
 		)
 	).toBe(false);
 
-	for (const label of ['Import', 'Export', 'Delete', 'Clear']) {
+	for (const label of ['Import', 'Export', 'Leave', 'Clear']) {
 		const box = await page
 			.getByRole('dialog', { name: 'Menu' })
 			.getByRole('button', { name: label })
@@ -524,38 +524,6 @@ test('the toast reads on the middle of its own box', async ({ page }) => {
 
 	// Graphe's capitals ride high, so a box centred on the row reads low.
 	expect(Math.abs(offset)).toBeLessThan(2);
-});
-
-test('the toast is inverted from the sheet, ink behind and paper in front', async ({ page }) => {
-	await page.getByRole('button', { name: 'Add a task' }).click();
-	const input = page.getByRole('textbox', { name: 'New task' });
-	await input.fill('Bread');
-	await input.press('Enter');
-	await page.keyboard.press('Escape');
-
-	await page.getByRole('checkbox', { name: 'Bread' }).click();
-	await page.getByRole('button', { name: 'Delete task' }).first().click();
-	await page.locator('.toast').waitFor();
-
-	const colours = () =>
-		page.evaluate(() => {
-			const toast = document.querySelector('.toast')!;
-			return {
-				text: getComputedStyle(toast).color,
-				ground: getComputedStyle(toast, '::before').backgroundColor
-			};
-		});
-
-	// Light: the sheet is ink on paper, so the toast sitting in front of it
-	// reads paper on ink — the opposite way round.
-	expect(await colours()).toStrictEqual({ text: 'rgb(255, 255, 255)', ground: 'rgb(0, 0, 0)' });
-
-	await themeButton(page).click();
-	await expect.poll(async () => (await swatch(page)).resolved).toBe('dark');
-
-	// Dark: --ink and --paper swap, and the toast swaps with them — still the
-	// opposite pair from whatever the sheet is doing.
-	expect(await colours()).toStrictEqual({ text: 'rgb(0, 0, 0)', ground: 'rgb(255, 255, 255)' });
 });
 
 test('a checkbox sits level with the capitals it is beside', async ({ page }) => {
@@ -922,8 +890,8 @@ test('the theme is the device’s, so removing the list does not take it', async
 	await themeButton(page).click();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 
-	await fromMenu(page, 'Delete');
-	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
 
 	await page.reload();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');

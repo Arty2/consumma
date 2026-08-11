@@ -259,12 +259,19 @@
 		z-index: auto;
 	}
 
+	/*
+	 * Shorter than --touch: a row here is read and tapped once, not held, and
+	 * a column of full touch-height rows read as a second menu rather than a
+	 * short list. `.row.new` matches it below, overriding the `.boxed` floor
+	 * it would otherwise inherit, so the drawn button reads as one more row
+	 * rather than a taller thing bolted on the end.
+	 */
 	.row {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
 		width: 100%;
-		min-height: var(--touch);
+		min-height: 2.25rem;
 		text-align: left;
 		cursor: pointer;
 	}
@@ -276,6 +283,7 @@
 	.row.new {
 		justify-content: center;
 		opacity: var(--faint);
+		min-height: 2.25rem;
 	}
 
 	.divider {

@@ -215,7 +215,7 @@
 	<ConfirmModal
 		title="Remove this list from this device"
 		seed="delete"
-		confirmLabel="Delete"
+		confirmLabel="Leave"
 		onconfirm={onDelete}
 		oncancel={() => (panel = null)}
 	>

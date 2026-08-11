@@ -133,8 +133,8 @@ test('deleting the open list falls back to the other one, and the pill goes once
 	await newList(page);
 	await addTask(page, 'Milk');
 
-	await fromMenu(page, 'Delete');
-	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
 
 	await expect(switcherPill(page)).toHaveCount(0);
 	await expect(task(page, 'Bread')).toBeVisible();
@@ -148,10 +148,10 @@ test('deleting every list leaves no trace, and the next edit lands under the sam
 	await newList(page);
 	await addTask(page, 'Milk');
 
-	await fromMenu(page, 'Delete');
-	await page.getByRole('button', { name: 'Delete', exact: true }).click();
-	await fromMenu(page, 'Delete');
-	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
 
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 
