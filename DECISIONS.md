@@ -526,13 +526,18 @@ Numbers in brackets are the section of the build plan a decision came from.
     The long press still sets half too; this is a second way to the same place,
     not a replacement.
 
-62. **Two animations, and they are opacity and scale.** A few drawn strokes
+62. **On the sheet, animation is opacity and scale.** A few drawn strokes
     thrown out from a checkbox when it is ticked, and a short swell as a done
     task leaves. No colour, no shadow, nothing that moves a row while it plays.
 
     Both ask `prefers-reduced-motion` in JavaScript rather than hiding in CSS.
     The sparkle is cleared by its own `animationend`, so one that is merely
     invisible never clears and its strokes stay in the document for good.
+
+    This used to say "two animations", full stop, and the menu's turn (§82) is
+    the third. The rule it was reaching for is narrower than the count it kept:
+    a **mark** may not turn, because a drawn stroke that rotates stops meaning
+    what it was drawn to mean. The **paper** may, because it has two sides.
 
 63. **Everything folds shut while a group is carried.** The whole list becomes a
     handful of titles, so there is somewhere visible to put it down. Nothing is
@@ -794,6 +799,348 @@ relative` rather than a transform, which does not apply to an inline box.
     outside, and it is `Sheet` that knows which row is above which. So `Sheet`
     holds the id, as it already holds where an open empty row is sitting, and
     the row clears it as soon as it has taken the caret.
+
+82. **The menu unfurls: the sheet turns over.** The panel had been laid out from
+    the paper's own variables for some time — same width, same margins, same
+    room above and below the tear — expressly so that it would land on the sheet
+    rather than beside it. Both files said as much in their comments. But it
+    appeared instantly, so the one claim the geometry existed to support was the
+    one thing nobody ever saw. Now the sheet folds edge-on and the panel opens
+    back out of the same line, half of `--flip` each.
+
+    **About the middle of the paper, not an edge.** A receipt turned over is
+    held in the middle and spun; hinged at a side it is a door, or a page in a
+    book, which is a different object. The middle is also the only axis that
+    does not favour a hand — the sheet narrows to the same line from both sides
+    at once. It was built hinged on the right edge first, on the reasoning that
+    the burger is there and the ✕ that replaces it is drawn at the same point,
+    so the two would barely move while the paper turned around them. That is a
+    real property and it is not worth the object it makes.
+
+    **Two elements, not one turning through 180°.** The sheet is in flow and
+    scrolls with the list; the panel is fixed to the viewport with its own
+    scroller. Putting both in one `preserve-3d` box means laying the page out
+    around the animation, and the page is the thing the animation is about.
+
+    **Every half-turn is the same movement, and the paper only ever spins one
+    way.** A hand pushing the paper rightwards sends the side under it back and
+    brings the far side forward, the way a revolving door goes — so the face on
+    its way out leads with its **left** edge and goes to edge-on (`0 → 90°`),
+    and the face arriving settles out of its right (`-90° → 0`). Opening and
+    closing are identical, because the paper does not know which side it is on —
+    so a swipe rightwards always spins it the same way, and swiping again
+    carries the rotation on rather than winding it back. A receipt spun in the
+    hand keeps going round; it does not return along the arc it came by.
+
+    It turned the other way for a while, which read as pulling the paper rather
+    than pushing it: the side under the finger came towards the reader while the
+    finger went the same way, which is not what a hand does to a sheet.
+
+    That means a sign flip at each join: `.turning` leaves the sheet at `90°`
+    and `turn-back` picks it up at `-90°`, a quarter further round rather than a
+    quarter back down. Nothing is seen of it — both are edge-on, the sheet has
+    no width at either, and the panel is over it at full width at that moment
+    anyway. The near edge changes sides at the same join, because the panel's
+    words are set to be read rather than mirrored, and that is invisible for the
+    same reason. Nothing turns past a quarter, so no content is ever shown from
+    behind.
+
+    Three wrong turns on the way here, kept because each one's reasoning looked
+    sound and was answering a question nobody had asked.
+
+    The first folded the paper to edge-on and opened it back out along the arc
+    it came in by, keeping one edge near throughout. Continuous to look at, but
+    it is a sheet being folded shut and reopened rather than one being turned
+    over.
+
+    The second was the argument for it: on the right-edge hinge, the version
+    that mirrors magnified its near edge to 411px on a 390px screen and cut off
+    its own drawn frame. Real, and an artefact of hinging at an edge — about the
+    middle the near half's magnification is paid for by the far half, and
+    measured at 320, 390, 768 and 1280 no version leaves the paper. The
+    measurement outlived the condition it was taken under.
+
+    The third had the two halves mirroring each other, which is a true 180°
+    flip and does turn the receipt over — but it reverses on the way back, so a
+    second swipe the same way unwinds the first. Correct for a page in a book,
+    where there is a spine to reverse about. There is no spine here.
+
+    `transform-origin: 50% var(--eye)`. The Y half is not the axis — a `rotateY`
+    is the same rotation wherever the origin sits vertically — it is the
+    vanishing point, which `perspective()` takes from the transform-origin too.
+    Left at the middle of the element, a sheet as tall as its list turns away
+    towards a point a screen or more below the reader. `+page.svelte` writes the
+    viewport's middle there at the tap, one rect read.
+
+    The panel is in the document from the instant of the tap, with its trap
+    armed and its focus taken; only the drawing waits, held edge-on by an
+    animation delay. So nothing is held back for a keyboard or a screen reader.
+    That delay is also why `prefers-reduced-motion` is asked in JavaScript here
+    as everywhere else: the backstop in `app.css` shortens durations and says
+    nothing about delays, and a panel left to it alone would hang edge-on and
+    unreadable for exactly as long as the animation it was not playing.
+
+    The drag that dismisses the panel turns it back now, instead of sliding it
+    sideways. It used to translate along X and snap home, under a comment
+    reading "Springs back", which nothing transitioned and which therefore did
+    not. Sliding was also the wrong gesture for a panel that is the back of the
+    sheet: there is nowhere beside the paper for it to go.
+
+83. **The edge coming forward is drawn heavier as it comes.** A sheet turning about
+    its middle brings one side towards the reader and sends the other away, and
+    the transform says almost nothing about which. Worse than nothing: a vertical
+    stroke's width is measured across the paper, so the rotation that ought to
+    thicken the near edge compresses it instead, and both sides come out thinner
+    than they started. Measured at 45°, a near edge magnified by perspective to
+    1.13 and compressed by 0.71 lands at 0.8 of its own weight.
+
+    So the weight is drawn rather than derived. `near-out`, `near-in` and
+    `near-home` in app.css take the near edge to `--near-peak` times its own
+    weight at the point it is nearest, and the far edge is not touched at all —
+    the asymmetry is the whole signal, and thickening both would say only that
+    something was happening.
+
+    Two ways it was written and did not work, both silent. `--hand` was already
+    the typeface, so naming the drag progress the same made every one of these
+    declarations invalid at computed-value time and `stroke-width` fell back to
+    its initial 1 — the panel's own left edge had been drawing at 1px rather
+    than 1.4 at rest for the same reason. And with valid values it still
+    stepped: `--stroke` is unitless, so `calc(var(--stroke) * 2)` stays a
+    `calc()`, and two unresolved calcs do not interpolate. Multiplying through
+    by `1px` resolves them. The timing is `linear` rather than eased, because
+    the weight is a reading of how near the edge is and not of how far through
+    the animation it is; easing both put nearly all of it into the last few
+    degrees, where the paper is edge-on and there is nothing to see.
+
+    **What `--near-peak` names is what reaches the screen, not what is drawn.**
+    Three times the weight, drawn, arrives as rather less than three and by a
+    different amount at every angle. So the wanted multiple is stated in what the
+    reader sees and the geometry is divided back out: `cos` for the compression,
+    and the square of the distance ratio for the perspective magnification, which
+    needs half the paper's width — `--half`, measured in JavaScript because CSS
+    cannot ask. Measured across a turn the on-screen weight now tracks the want
+    exactly to about sixty degrees, and the drawn stroke stands at `--near-cap`
+    by the quarter, where the paper is edge-on and there is nothing to see.
+
+    It is written as a blend between one and the corrected peak, weighted by
+    `--near`, rather than as the corrected want on its own. The difference is the
+    far edge: with `--near` of nought the plain version still divided by the
+    compression and came out at one over cosine, so the edge going _away_ from
+    the reader thickened as the paper turned. Both ends of the blend are exact
+    and the middle is within a fiftieth of what the geometry asks for.
+
+    Which edge is near is not a state anything is told. It is the sign of the
+    sine — `max(0, sin(--turn))` on the left, its negation on the right — which
+    is why `--turn` is registered with `@property`: registered, it interpolates,
+    so the transform becomes a plain rule reading the angle and everything that
+    is a reading of the rotation falls out of that one number. Three keyframe
+    blocks and a whole custom property went with it.
+
+    `near-home` was separate from `near-in` and that was the point of it. A drag
+    that stops short leaves the paper part-turned and its near edge part
+    weighted, and springing home from the peak made the line grow heavier while
+    the paper was straightening and the edge going away from the reader —
+    backwards, and the wrong way round twice over.
+
+    Which side is near is not decided in the keyframes; it is whichever side the
+    selector points at, and that is the left one leaving and the right arriving,
+    on both faces of the paper — the far side of a pushed sheet is the one that
+    swings towards you. Under a finger the weight follows `--hand`, how
+    far round the paper has been turned from nought to one, so the animation
+    picks it up where the drag left it rather than starting again from flat.
+
+    It is worth naming what this breaks: §62 says animation here is opacity and
+    scale. A stroke gaining weight is neither, and it is not a colour or a shadow
+    either — it is the line drawn heavier, which is what a nearer line looks like
+    in a drawing. That is the same argument the turn itself won, and it is the
+    last one of its kind: the mark is not moving or changing what it means, only
+    being drawn with more of the pen.
+
+84. **The far half of a turning sheet cannot be put out of focus, and it was
+    tried.** A rotation gives an eye two cues about which way a surface faces,
+    and the app has one of them: the near edge drawn heavier. Weight can only
+    speak at an edge, and the surface between the edges says nothing. Depth of
+    field is what would say it.
+
+    It shipped for one commit and came straight back out. Two panes over the
+    paper, masked to fade at the middle, blurring with `backdrop-filter` — and
+    the result was a doubled ghost of the whole sheet, offset from the sheet
+    itself. The cause is not tuning. `backdrop-filter` samples its backdrop at
+    the backdrop root, in screen space, and the filtered image is then drawn
+    through the element's own transform: inside a rotated element it is
+    transformed a second time. Switching the panes off in the same paused frame
+    made the ghost vanish, which is how it was pinned down rather than guessed
+    at.
+
+    A gradual blur of live content inside a 3D transform needs the content
+    duplicated — one sharp copy and one blurred, masked against each other — and
+    the content here is the whole list. A uniform `filter: blur()` on the paper
+    would stay in register, because a filter applies before the transform rather
+    than after it, but a sheet uniformly out of focus is not depth of field and
+    says nothing about which half is further away.
+
+    The other way that would work is to take the panes out of the rotation
+    entirely — fixed to the viewport, over where the paper is drawn, driven by
+    the same state — so the blur samples the already-rotated sheet in screen
+    space. That is a real restructure, and it is written down here rather than
+    half-built.
+
+    It also settles a palette question by removing it: a blur of black on white
+    is grey, and while the turn was the one place that might have earned the
+    exception, nothing earns it while it is also broken.
+
+85. **A drag rightwards turns the receipt over, from either face.** The sheet is
+    dragged aside to bring the menu up, and the panel is dragged aside to put it
+    back. One gesture on one object, whichever side happens to be showing —
+    having it only on the panel made the turn something the paper did to you on
+    the way in and something you did to it on the way out.
+
+    `src/lib/turn.ts` holds the arithmetic both sides read: how far a drag has
+    turned the paper, where it has pushed the axis, and whether letting go
+    finishes the turn. Only the sign differs, because the two are halves of one
+    rotation. It is a module with a test rather than a pair of near-identical
+    handlers, which is the shape the second copy of anything here has always
+    drifted into.
+
+    **A sheet pushed sideways goes sideways first.** The paper slides before it
+    begins to come round, and its near edge is unweighted for the whole of that,
+    because a paper that is not turning has no near edge. A hand does not spin a
+    receipt from the instant it touches it, and rotation that begins on the
+    first pixel reads as a mechanism rather than as paper. The slide is a
+    `translate` and the turn a `transform`, so the two compose without either
+    having to know about the other.
+
+    How far it may slide is not a constant: it is the room between the paper's
+    own drawn edge and the screen, capped at `LEAD`. The paper never slides off.
+    On a phone it is drawn almost to the edges, so the room is a few pixels and
+    the slide is barely a nudge — running out of room is what starts it turning,
+    which is the truer reading of the two. Measured off the side edge rather
+    than off the element's box, because the box carries the paper's margin and
+    it is the drawn line that must not leave the screen.
+
+    **The two faces draw the line in different places.** On the panel the drag
+    takes hold over the buttons as well. Nothing there owns a press — every
+    button is a tap and nothing more — and most of the panel is buttons, so a
+    gesture that only worked in the gaps between them was a gesture that mostly
+    did not work. A drag that crossed a button is not a press of it, so the
+    click is swallowed in the capture phase, which is what the sheet already
+    does after a row is dropped. Text fields keep their own drag on both sides,
+    which is selecting text.
+
+    Both sides take `setPointerCapture` on the **first move**, not on the press.
+    Capturing a pointer retargets the click that follows it to whatever holds
+    the capture, so taking it on `pointerdown` stopped every button on the panel
+    working — the click arrived at the panel instead of at the button under the
+    finger. A press that never travels never captures, and so is still a press.
+
+    On the sheet it takes hold on bare paper only. Everything on the sheet that
+    can be pressed already owns a press — the long press that lifts a task, the
+    one that lifts a group — and a receipt that turned over when someone meant
+    to carry a row would be worse than one that only turns from the margins. It
+    also gives the gesture up at the first sign of vertical movement, since the
+    sheet is the thing that scrolls, and `touch-action: pan-y pinch-zoom` on
+    `main` says the same to the browser. Pinch is spelt out because `pan-y`
+    alone would take zoom away with it, and this is a sheet of words.
+
+    Both sides take `setPointerCapture`. Turning the paper takes it out from
+    under the hand — that is what turning it means — and without capture the
+    events go to whatever is underneath, so the move stops being seen and the
+    release is never heard, leaving the paper hung at the angle it reached.
+
+    **The axis moves a little, and comes home first.** A sheet spun in the hand
+    is not held in a vice: `--axis` drifts up to `DRIFT` percent off the middle
+    with the push, and `recentre` in app.css brings it back under `--inertia`,
+    which overshoots slightly and settles. It runs on a shorter clock than the
+    turn — 60% of `--flip` — because an axis still wandering at the quarter
+    would hand the other side of the receipt a turn about a line that is not its
+    own. That means two animations on one element rather than one, since a
+    single keyframe timeline can only be eased one way at a time, and it means
+    both `animationend` handlers have to ignore `recentre`: it ends first, and
+    the panel's handler is what unmounts the panel.
+
+86. **The sheet is prerendered, so it may not carry a `style:` directive.**
+    Svelte renders one as a literal `style="…"` attribute in the HTML that
+    ships, and `style-src 'self'` refuses an inline style outright — the page
+    hydrated with two console violations the moment `--turn` and `--axis` were
+    bound that way. They go on through the CSSOM instead, the route `--eye`
+    already took.
+
+    The panel is free to use `style:` and still does. Nothing is open when the
+    page is built, so it is never server-rendered and the attribute never
+    reaches the HTML. The difference is not a rule about which directive is
+    safe; it is a rule about which elements are prerendered.
+
+    `e2e/csp.e2e.ts` caught it, which is the whole reason it watches the console
+    rather than only reading the header back.
+
+87. **The paper is torn, not drawn torn, and the teeth are what cuts.** On two
+    colours the ground behind a tear is the same white as the paper in front of
+    it, so nothing about a filled box is visible until something passes behind
+    the teeth. In the panel something does — the writing scrolls — and it was
+    cut along a straight line a tooth's height short of the teeth, which floated
+    clear above it. A zigzag with a white rectangle doing its work.
+
+    **The fill goes on the outer side.** `TornEdge` closes its zigzag along the
+    top of its own box and fills that, so what is past the tear is not paper and
+    anything travelling that way is cut tooth by tooth. The bottom tear is the
+    same svg turned over, so its outer side is the room below. Nothing is filled
+    on the inside: the paper's own ground is already there, and a second one
+    painted over it is the rectangle this replaced.
+
+    **The scroller runs the full height of the paper, tears included.** That is
+    the other half, and neither half cuts anything alone. `.menu` pads by
+    `--paper-top`/`--paper-bottom` and no more; the room the writing needs clear
+    of the teeth is `.scroll`'s own `padding-block: var(--tear)`, held inside
+    the scroll rather than outside it. A line therefore rests exactly where it
+    always rested, and it is the room above it that scrolls away, carrying the
+    line up behind the tear to be cut there.
+
+    An earlier pass had the fill on the inside and the scroller stopping at the
+    tear's inner edge. Both were wrong in the same direction and each hid the
+    other: the inner fill was invisible against the panel's own ground, and the
+    straight cut was blamed on the tear being drawn too high.
+
+    **The sides run up into the tears and are cut back by the teeth.** They used
+    to stop flush at each tear, which ends them on a clean horizontal — a sheet
+    guillotined at three edges and torn at the fourth, and the one thing left
+    saying the tear was a band laid on the paper rather than where the paper
+    gives out. They overhang by a tear at each end now and the teeth take them
+    back, which is the same cut the writing behind a tear gets.
+
+    That only reads if both tears are painted over the sides, and the two faces
+    reach it differently. The panel writes its sides before both tears and needs
+    nothing more. The sheet cannot: its top tear is above the paper in the flow
+    and its bottom tear below it, so whichever order the sides are written in,
+    one tear is on the wrong side of them. Both are lifted instead — positioned,
+    `z-index: 1` — which says it once for the pair.
+
+    The ground closes a full tear **past** the box rather than flush at it. The
+    box is `overflow: visible`, for the zigzag's own stroke, and the sides
+    running up into it carry a round cap that reaches past their box too; closed
+    at nought, that cap came out above the teeth as a stray tick of ink.
+
+    **The tears stop on the two verticals rather than running past them.** The
+    zigzag used to be drawn to the full width of the paper while the sides sit
+    half a `--edge` in from it — that is where a side's stroke runs in its own
+    box — so each tear overshot its corner by a few pixels and left a whisker of
+    the paper's edge sticking out into the margin. Trimming both tears by that
+    half gives the two marks one corner.
+
+    Which puts the outer half of each vertical, and the cap on the end of it,
+    outside the fill: the ground's own boundary is the line the tear starts on.
+    So it carries a strip past each end — `PAD` further out, and down as far as
+    the corner the zigzag made there and no further, because below the corner
+    the side is the paper's own edge and has to be seen. The left corner is the
+    midline, where every tear starts; the right one is wherever the last tooth
+    landed, which the path is the only place that records.
+
+    The strips are outside the tear's span and nowhere else. One rectangle
+    across the whole width would be simpler and wrong: it would cut the paper
+    straight along the midline wherever a tooth reached above it.
+
+    The sides themselves are still not jagged, and that is right: paper running
+    the last few pixels out to a straight drawn line is what a straight drawn
+    line means. It is only their ends that the tear now owns.
 
 ## Known limits
 

@@ -413,6 +413,35 @@ export function handArrow(size: number, options: HandOptions): string {
 }
 
 /**
+ * An arrow pointing back the way you came, level rather than on the diagonal.
+ *
+ * The panel's own corner mark. It is not `handArrow` turned: that one runs up
+ * and out and means an outbox, and the same drawing laid on its side would be
+ * a mark saying something it was not drawn to say. Level and leftwards is its
+ * own stroke, and what it means is where the tap goes.
+ */
+export function handBack(size: number, options: HandOptions): string {
+	const pad = size * 0.2;
+	const middle = size / 2;
+	const from = { x: size - pad, y: middle };
+	const to = { x: pad, y: middle };
+	const head = size * 0.28;
+
+	const shaft = handPath([from, { x: (from.x + to.x) / 2, y: middle }, to], options);
+
+	// Both barbs in one polyline, so the corner at the point joins as a corner.
+	const barb = handPath(
+		[{ x: to.x + head, y: middle - head }, to, { x: to.x + head, y: middle + head }],
+		{
+			...options,
+			seed: options.seed + 421
+		}
+	);
+
+	return `${shaft} ${barb}`;
+}
+
+/**
  * A circle with a stroke through it: the list could not be reached.
  *
  * Not a warning triangle and not a crossed-out cloud — being offline is a

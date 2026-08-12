@@ -357,25 +357,25 @@
 	}
 
 	/*
-	 * The menu's own copy sticks where the ✕ sits rather than scrolling away
-	 * with the rest of the panel — the same row the burger's own position
-	 * answers to (see Menu.svelte). `margin-top` puts it at that offset
-	 * already, so it is never seen "engaging" stickiness — it is already
-	 * there from the first paint, whether or not the panel has been scrolled.
-	 * A solid ground stops scrolled text from showing through it.
+	 * The menu's own copy opens on the row the ✕ sits on — the same row the
+	 * burger answers to, on the other face of the paper — and then scrolls away
+	 * with everything else written on the panel.
 	 *
-	 * It spans the panel rather than stopping short of the ✕, so its ground
-	 * covers the whole row it sticks to — an inset box left scrolled text
-	 * showing through beside it. The pill inside is what keeps clear of the
-	 * mark; see below.
+	 * It was pinned there for a while, on the reasoning that it answers which
+	 * list this is and so should always be legible. What that bought was an
+	 * opaque band the width of the paper, sliding under the writing and cutting
+	 * whichever line it met in half. The panel is a sheet of paper: one thing
+	 * is written on it and all of it moves together. The ✕ is the only thing
+	 * that stays, because it is a control rather than something written.
 	 */
 	.switcher.menu {
-		position: sticky;
-		top: var(--tear);
-		margin-top: var(--tear);
+		/*
+		 * Flush with the top of the scroller, which is the panel's own torn
+		 * edge: the padding holding that tear is what puts this a tear's depth
+		 * inside the paper, so it is not offset again here.
+		 */
+		margin-top: 0;
 		margin-bottom: 1.5rem;
-		z-index: 1;
-		background: var(--paper);
 		/*
 		 * Left, against the panel's own centred prose. It answers which list
 		 * this is, and it is read the way the rows it opens are — which are

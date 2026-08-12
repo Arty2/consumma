@@ -840,3 +840,209 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 	// And nowhere near the bottom, which is the keyboard's half of the screen.
 	expect(where.bottom).toBeLessThan(where.height / 2);
 });
+
+test('the receipt is never shorter than the screen, and grows past it with the list', async ({
+	page
+}) => {
+	/*
+	 * A list of three lines used to leave a strip of paper a few centimetres
+	 * tall at the top of an empty screen, which is a note pinned to a wall
+	 * rather than a receipt. It also gave away that the sheet and the menu are
+	 * two elements: the panel is `top: 0; bottom: 0` and always was, so the turn
+	 * swapped a small paper for a screen-tall one.
+	 */
+	const viewport = page.viewportSize()!;
+
+	// The whole receipt: the top tear down to the bottom one, tears included.
+	const receipt = () =>
+		page.evaluate(() => {
+			const tears = [...document.querySelectorAll('.page > .top > .tear, .page > .bottom > .tear')];
+			const page_ = document.querySelector('.page')!.getBoundingClientRect();
+			return { height: page_.height, tears: tears.length };
+		});
+
+	const bare = await receipt();
+	// Both tears are on the page, so this is the paper end to end.
+	expect(bare.tears).toBe(2);
+
+	// Filling the screen, give or take the stroke the tears hang outside their
+	// boxes by.
+	expect(bare.height).toBeGreaterThanOrEqual(viewport.height - 2);
+	expect(bare.height).toBeLessThanOrEqual(viewport.height + 2);
+
+	// The page itself does not scroll while the list is short enough to fit.
+	const scrolls = await page.evaluate(
+		() => document.documentElement.scrollHeight > document.documentElement.clientHeight + 1
+	);
+	expect(scrolls).toBe(false);
+
+	// Enough rows to run off the bottom, and the floor stops being what decides.
+	for (let i = 0; i < 24; i++) {
+		await page.keyboard.press('Escape');
+		await page.getByRole('button', { name: 'Add a task' }).first().click();
+		const input = page.getByRole('textbox', { name: 'New task' });
+		await input.fill(`Item ${i}`);
+		await input.press('Enter');
+	}
+	await page.keyboard.press('Escape');
+
+	const full = await receipt();
+	expect(full.height).toBeGreaterThan(viewport.height);
+});
+
+test('the paper is torn, not drawn torn: nothing fills the notches', async ({ page }) => {
+	/*
+	 * A zigzag is only a line. Laid over writing it lets the writing carry on
+	 * past it, so the tear reads as a mark drawn across the page rather than as
+	 * where the page stops.
+	 *
+	 * Each tear carries its own ground on the **outer** side of its teeth — so
+	 * what is past the tear is not paper, and anything travelling that way is
+	 * cut tooth by tooth. Fill it on the inner side instead and the paper is
+	 * painted twice while the writing is cut, a tooth's height short, by a
+	 * straight line: a white rectangle doing the tear's work.
+	 */
+	const paper = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+	for (const root of ['.page', '[role="dialog"]']) {
+		if (root !== '.page') await openMenu(page);
+
+		const grounds = page.locator(`${root} svg.tear path.ground`);
+		await expect(grounds).toHaveCount(2);
+
+		for (const fill of await grounds.evaluateAll((paths) =>
+			paths.map((p) => getComputedStyle(p).fill)
+		)) {
+			expect(fill).toBe(paper);
+		}
+
+		// Filled and never stroked: it is the paper, not a mark.
+		for (const stroke of await grounds.evaluateAll((paths) =>
+			paths.map((p) => getComputedStyle(p).stroke)
+		)) {
+			expect(stroke).toBe('none');
+		}
+
+		/*
+		 * Closed past the top of its own box, which every tear draws as its
+		 * outer side — the bottom one is the same svg turned over. Closed along
+		 * the height instead, the fill would be on the inside, where the paper
+		 * already is; closed flush at nought it would stop at a box that is
+		 * `overflow: visible`, and the round caps of the sides running up into
+		 * it would come out above the teeth.
+		 *
+		 * Three closed shapes: the tear itself and a strip past each end, which
+		 * carries the same paper out over the outer half of the vertical the
+		 * tear now stops on.
+		 */
+		for (const d of await grounds.evaluateAll((paths) =>
+			paths.map((p) => p.getAttribute('d') ?? '')
+		)) {
+			expect(d).toContain(' L 0 -16 Z');
+			expect(d.match(/Z/g)).toHaveLength(3);
+		}
+	}
+
+	// And the panel stops at the tears rather than filling the box behind them.
+	expect(
+		await page
+			.getByRole('dialog', { name: 'Menu' })
+			.evaluate((el) => getComputedStyle(el).backgroundClip)
+	).toBe('content-box');
+
+	/*
+	 * The panel's writing travels the full height of the paper, tears included.
+	 *
+	 * This is what leaves the cut to the teeth. Stop the scroller at the inner
+	 * edge of each tear and a line vanishes along a straight edge a tooth's
+	 * height short of them, with the teeth floating clear above it — which is
+	 * the failure the ground above cannot catch on its own, since both halves
+	 * have to be true for the tear to cut anything.
+	 */
+	const box = async (sel: string) => {
+		const b = await page.locator(sel).boundingBox();
+		if (!b) throw new Error(`no box for ${sel}`);
+		return b;
+	};
+	const scroll = await box('[role="dialog"] .scroll');
+	const top = await box('[role="dialog"] .tear-edge.top');
+	const bottom = await box('[role="dialog"] .tear-edge.bottom');
+
+	expect(scroll.y).toBeLessThanOrEqual(top.y + 0.5);
+	expect(scroll.y + scroll.height).toBeGreaterThanOrEqual(bottom.y + bottom.height - 0.5);
+});
+
+test('the sides run up into the tears, and the teeth cut them back', async ({ page }) => {
+	/*
+	 * A side edge stopped flush at the tear ends on a clean horizontal, which
+	 * is a sheet guillotined at three edges and torn at the fourth. It runs a
+	 * tear's height past instead, and the teeth cut it back — the same thing
+	 * the tear does to writing that scrolls behind it.
+	 *
+	 * Two facts, and the second is what makes the first anything but a stray
+	 * line: the sides overhang, and both tears are painted over them. Each face
+	 * reaches the second its own way, so what is asserted here is the property
+	 * rather than either mechanism. The panel writes its sides before both
+	 * tears and needs nothing else. The sheet cannot — its top tear is above
+	 * the paper in the flow and its bottom tear below it, so one would always
+	 * be on the wrong side of the sides in between — and lifts both instead.
+	 */
+	for (const root of ['.page', '[role="dialog"]']) {
+		if (root !== '.page') await openMenu(page);
+
+		const seen = await page.evaluate((sel) => {
+			const at = document.querySelector(sel)!;
+			const sides = at.querySelector('.sides')!;
+			const tears = [...at.querySelectorAll('svg.tear')];
+
+			const box = (el: Element) => {
+				const b = el.getBoundingClientRect();
+				return { top: b.top, bottom: b.bottom, left: b.left, right: b.right };
+			};
+
+			/*
+			 * Painted later than the sides, so it covers them. Whichever
+			 * z-index governs wins; a tie goes to document order, which is
+			 * what the panel relies on.
+			 */
+			const layer = (el: Element) => {
+				for (let n: Element | null = el; n; n = n.parentElement) {
+					const z = getComputedStyle(n).zIndex;
+					if (z !== 'auto') return Number(z);
+				}
+				return 0;
+			};
+			const over = (a: Element, b: Element) =>
+				layer(a) !== layer(b)
+					? layer(a) > layer(b)
+					: !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+			return {
+				count: tears.length,
+				sides: box(sides),
+				tears: tears.map(box),
+				covered: tears.map((t) => over(t, sides)),
+				edge: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge'))
+			};
+		}, root);
+
+		expect(seen.count).toBe(2);
+		expect(seen.covered).toEqual([true, true]);
+
+		// Up into the top tear, and down into the bottom one.
+		expect(seen.sides.top).toBeLessThanOrEqual(seen.tears[0].top + 0.5);
+		expect(seen.sides.bottom).toBeGreaterThanOrEqual(seen.tears[1].bottom - 0.5);
+
+		/*
+		 * And the tears stop on the two verticals rather than running past
+		 * them. A side's stroke runs down the middle of its own box, so half of
+		 * `--edge` in from where the sides start is where the corner is; drawn
+		 * to the full width the zigzag overshot it and left a whisker of the
+		 * paper's edge sticking out into the margin on either side.
+		 */
+		for (const tear of seen.tears) {
+			expect(tear.left).toBeCloseTo(seen.sides.left + seen.edge / 2, 1);
+			expect(tear.right).toBeCloseTo(seen.sides.right - seen.edge / 2, 1);
+		}
+	}
+});

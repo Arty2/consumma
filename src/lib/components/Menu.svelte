@@ -1,18 +1,36 @@
+<script module lang="ts">
+	/*
+	 * Where the panel was left, for as long as the app is open and no longer.
+	 *
+	 * Coming back to a menu scrolled to the top after going down it to press
+	 * something is the panel forgetting a place you were just standing in. But
+	 * it is not a preference either: it belongs to this visit the way a finger
+	 * held in a page belongs to this reading. Module scope, so it is shared by
+	 * however many times the panel is opened and dies with the tab — nothing in
+	 * `KEYS`, nothing on disk. Arriving still writes nothing.
+	 */
+	let remembered = 0;
+</script>
+
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
 	import ListSwitcher from './ListSwitcher.svelte';
 	import Perforation from './Perforation.svelte';
+	import SideEdge from './SideEdge.svelte';
 	import TextRule from './TextRule.svelte';
+	import TornEdge from './TornEdge.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
-	import { handCross } from '$lib/draw/hand';
+	import { handBack } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
+	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -24,14 +42,35 @@
 	 */
 
 	type Props = {
+		/** Set by the page once the paper has begun turning back over. */
+		closing?: boolean;
 		onclose: () => void;
+		/** The panel's half of the turn is done and it can be taken away. */
+		onclosed?: () => void;
 		onimport: () => void;
 		onexport: () => void;
 		onclear: () => void;
 		ondelete: () => void;
 	};
 
-	let { onclose, onimport, onexport, onclear, ondelete }: Props = $props();
+	let {
+		closing = false,
+		onclose,
+		onclosed,
+		onimport,
+		onexport,
+		onclear,
+		ondelete
+	}: Props = $props();
+
+	/*
+	 * Asking twice to close is asking once. Escape during the furl, or a second
+	 * tap on the arrow, would otherwise restart the turn from the top.
+	 */
+	function close() {
+		if (closing) return;
+		onclose();
+	}
 
 	let entered = $state('');
 	let joining = $state(false);
@@ -41,19 +80,51 @@
 	let copied = $state(false);
 
 	let panel = $state<HTMLElement | null>(null);
-	let offset = $state(0);
+	let scroller = $state<HTMLElement | null>(null);
+	/*
+	 * How far the paper has been turned back by a finger, in degrees. A drag is
+	 * the same gesture as the animation now — the panel is the back of a sheet
+	 * and pulling it rightwards turns it over, rather than sliding it off to one
+	 * side as though there were somewhere beside the paper for it to go.
+	 */
+	let turn = $state(0);
+	/** Where the axis has been pushed to, as a percentage across the paper. */
+	let axis = $state(50);
+	/** The lead-in: how far the panel has slid before it begins to turn. */
+	let slide = $state(0);
+	/** How far it may slide before its drawn edge reaches the screen. */
+	let lead = 0;
+	/** Swinging home after a drag that did not go far enough to close. */
+	let springing = $state(false);
+	/** Whether this gesture turned the paper, and so was not a press. */
+	let moved = false;
 	let dragStart: { x: number; at: number } | null = null;
+
+	/*
+	 * Unfurling, once, on arrival — cleared by its own animationend so the drag
+	 * can take the transform over afterwards.
+	 *
+	 * Asked in JS rather than left to the media query, as every animation here
+	 * is. The reduced-motion backstop in app.css shortens durations but says
+	 * nothing about delays, and this animation is held back half a turn while
+	 * the sheet gets out of the way — under reduced motion that delay would
+	 * survive on its own and leave the panel edge-on and unreadable for it.
+	 */
+	let entering = $state(browser && !matchMedia('(prefers-reduced-motion: reduce)').matches);
 	let logCopied = $state(false);
 
 	/*
-	 * The same size as the burger it stands in for. This is the one control that
-	 * is drawn twice — closed it is three strokes, open it is two — and it has to
-	 * read as one button being looked at from either side, so it keeps the
-	 * burger's size as well as its place.
+	 * The same size as the burger, in the same place, because it is the same
+	 * corner of the same sheet seen from the other side.
+	 *
+	 * An arrow back rather than a ✕. A cross closes something that was put on
+	 * top; nothing was put on top here — the paper was turned over, and what
+	 * this does is turn it back. It is also the one mark on the panel that has
+	 * to say where a tap goes rather than what a thing is.
 	 */
 	const CLOSE = 22;
 
-	const cross = $derived(handCross(CLOSE, { seed: seedFrom('closemenu'), wobble: 0.8 }));
+	const back = $derived(handBack(CLOSE, { seed: seedFrom('backtolist'), wobble: 0.8 }));
 
 	const summary = $derived(statusText(sync.status, sync.unsent, refused));
 	const valid = $derived(normaliseCode(entered) !== null);
@@ -73,6 +144,17 @@
 	 * The link is bare. The code is never a query parameter or a fragment.
 	 */
 	const invitation = $derived(sync.code ? `${location.origin}\n${formatCode(sync.code)}` : '');
+
+	/*
+	 * Back where it was left. Set before the first paint the panel is visible
+	 * for — it unfurls a half-turn after the tap, so there is time in hand — and
+	 * guarded, because a panel shorter than it was cannot be scrolled that far
+	 * and the browser would clamp it to something that then gets written back.
+	 */
+	$effect(() => {
+		if (!scroller || remembered === 0) return;
+		scroller.scrollTop = remembered;
+	});
 
 	// Nothing else advances the clock, so the cooldown would never clear while
 	// the menu is open and looking at it.
@@ -139,32 +221,108 @@
 		}
 
 		entered = '';
-		onclose();
+		close();
 	}
 
-	/* Rightwards only: the menu came from there and goes back the same way. */
+	/*
+	 * Rightwards only: the menu came from there and goes back the same way.
+	 *
+	 * The distance travelled is read as a fraction of the paper's width and
+	 * turned into an angle, so a drag across the whole panel is the whole
+	 * quarter-turn that takes it edge-on.
+	 *
+	 * It takes hold over the buttons too, and that is where this parts company
+	 * with the sheet. The sheet bails on anything pressable because its rows own
+	 * a press already — the long presses that lift a task and a group — but
+	 * nothing on the panel does: every button here is a tap and nothing more, so
+	 * a finger that starts on SYNC NOW and travels is plainly turning the paper
+	 * rather than pressing anything. Most of the panel is buttons, and a gesture
+	 * that only worked in the gaps between them was a gesture that mostly did
+	 * not work.
+	 *
+	 * Text fields still keep their own drag, which is selecting text.
+	 */
 	function onpointerdown(event: PointerEvent) {
-		if (event.button !== 0) return;
-		if ((event.target as HTMLElement).closest('input, textarea, button')) return;
+		if (event.button !== 0 || closing) return;
+		if ((event.target as HTMLElement).closest('input, textarea')) return;
+
+		moved = false;
+
+		/*
+		 * Caught on its way home. It is only ever a few degrees out by then —
+		 * a spring follows a drag too short to close — so it is put flat and the
+		 * new drag is measured from there, rather than handing the finger a
+		 * paper that jumps back to where the last one left it.
+		 */
+		if (springing) {
+			springing = false;
+			turn = 0;
+			axis = 50;
+		}
+
+		/*
+		 * The room the panel has to slide into, off its own drawn edge rather
+		 * than off its box: the edge is inset from that by the paper's margin,
+		 * and it is the drawn line that must not leave the screen.
+		 */
+		const edge = panel?.querySelector('svg.edge.right')?.getBoundingClientRect();
+		lead = leadFor(edge ? innerWidth - edge.right : 0);
+		// See `eye()` in +page.svelte: the near edge's weight needs this and CSS
+		// has no way of asking for it.
+		panel?.style.setProperty('--half', `${panel.clientWidth / 2}`);
+
 		dragStart = { x: event.clientX, at: performance.now() };
 	}
 
 	function onpointermove(event: PointerEvent) {
-		if (!dragStart) return;
-		offset = Math.max(0, event.clientX - dragStart.x);
+		if (!dragStart || !panel) return;
+		const travelled = event.clientX - dragStart.x;
+
+		if (!moved) {
+			if (travelled <= SLACK) return;
+			moved = true;
+
+			/*
+			 * The gesture belongs to the panel from here until the finger lifts,
+			 * wherever the paper has got to by then. Turning it takes it out from
+			 * under the hand — that is what turning it means — and without this
+			 * the pointer events go to whatever is under the finger instead,
+			 * which partway through a turn is the sheet behind: the move stops
+			 * being seen and the release is never heard, so the paper hangs at
+			 * the angle it reached.
+			 *
+			 * Taken here rather than on the press, now that a press may land on a
+			 * button. Capturing a pointer retargets the click that follows it to
+			 * whatever holds the capture, so taking it on `pointerdown` stopped
+			 * every button on the panel working — the click arrived at the panel
+			 * rather than at the button under the finger. A press that never
+			 * travels never captures, and so is still a press.
+			 */
+			panel.setPointerCapture(event.pointerId);
+		}
+
+		slide = slideAt(travelled, lead);
+		turn = angleAt(travelled, panel.clientWidth, 1, lead);
+		axis = axisAt(travelled, panel.clientWidth, lead);
 	}
 
 	function onpointerup(event: PointerEvent) {
+		panel?.releasePointerCapture(event.pointerId);
 		if (!dragStart || !panel) return;
 
 		const travelled = event.clientX - dragStart.x;
 		const elapsed = performance.now() - dragStart.at;
-		const flick = travelled > 40 && elapsed < 250;
 
 		dragStart = null;
 
-		if (flick || travelled > panel.clientWidth * 0.25) onclose();
-		else offset = 0; // Springs back.
+		/*
+		 * Let go far enough and the paper carries on turning over from wherever
+		 * the finger left it — the furl reads `--turn` for its first frame, so
+		 * there is no jump between the hand and the animation. Short of that it
+		 * swings back upright, which it now actually does: it used to snap.
+		 */
+		if (commits(travelled, elapsed, panel.clientWidth, lead)) close();
+		else if (turn > 0 || slide > 0) springing = true;
 	}
 </script>
 
@@ -174,28 +332,97 @@
 	aria-modal="true"
 	aria-label="Menu"
 	tabindex="-1"
+	class:unfurling={entering}
+	class:furling={closing}
+	class:springing
+	style:--turn="{turn}deg"
+	style:--axis="{axis}%"
+	style:--slide="{slide}px"
 	bind:this={panel}
-	style:--offset="{offset}px"
-	use:trap={onclose}
+	use:trap={close}
 	{onpointerdown}
 	{onpointermove}
 	{onpointerup}
+	onclickcapture={(event) => {
+		/*
+		 * A drag that crossed a button is not a press of it. Swallowed in the
+		 * capture phase, before the button's own handler runs — the sheet does
+		 * the same after a row is dropped, and for the same reason.
+		 */
+		if (!moved) return;
+		moved = false;
+		event.preventDefault();
+		event.stopPropagation();
+	}}
 	onpointercancel={() => {
 		dragStart = null;
-		offset = 0;
+		if ((turn > 0 || slide > 0) && !closing) springing = true;
+	}}
+	onanimationend={(event) => {
+		/*
+		 * The panel's own turn, and only that — a boxed button's mark or a row
+		 * inside the switcher would otherwise end the panel's animation for it.
+		 */
+		if (event.target !== panel) return;
+		/*
+		 * The axis comes home on a shorter clock than the turn, so it ends
+		 * first. Taken as the turn's own end it would hand the panel back to
+		 * the page before the paper had finished going over.
+		 */
+		if (event.animationName === 'recentre') return;
+
+		if (closing) onclosed?.();
+		else if (springing) {
+			springing = false;
+			turn = 0;
+			axis = 50;
+			slide = 0;
+		} else entering = false;
 	}}
 >
-	<div class="frame" aria-hidden="true">
-		<HandRect seed="menu" wobble={2.2} />
+	<!--
+		The back of the same receipt, closed by the same four edges — and closed
+		with the very seeds the sheet uses, turned left for right. A tear is a
+		tear all the way through the paper: seen from behind it is the same one
+		reversed, and the edge down the sheet's left is the edge down the panel's
+		right. That is the whole reason these are not new marks.
+	-->
+	<div class="edges" aria-hidden="true">
+		<!--
+			The sides come first so both tears are drawn over them. They run up
+			into the tears and are cut back by the teeth, the same way the
+			writing behind a tear is, and a side drawn after the tear it runs
+			into would cross its own teeth instead.
+		-->
+		<div class="sides">
+			<SideEdge seed="right" side="left" mirror />
+			<SideEdge seed="left" side="right" mirror />
+		</div>
+		<div class="tear-edge top"><TornEdge seed="top" mirror /></div>
+		<div class="tear-edge bottom"><TornEdge seed="bottom" flip mirror /></div>
 	</div>
 
-	<button class="close" type="button" onclick={onclose} aria-label="Close">
+	<button class="close" type="button" onclick={close} aria-label="Close">
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
-			<path d={cross} class="drawn" />
+			<!--
+				The same two strokes drawn twice: once in the paper, wide, and then
+				in the ink on top. It is the mark's own shape held clear of whatever
+				has scrolled under it, rather than a box of ground around it — a
+				square of paper cut the line it landed on in half, and the panel has
+				no rectangles on it anywhere else.
+			-->
+			<path d={back} class="drawn knockout" />
+			<path d={back} class="drawn" />
 		</svg>
 	</button>
 
-	<div class="scroll">
+	<div
+		class="scroll"
+		bind:this={scroller}
+		onscroll={() => {
+			if (scroller) remembered = scroller.scrollTop;
+		}}
+	>
 		<div class="body">
 			<!--
 				Answers which list this is before anything else in the panel does —
@@ -208,7 +435,7 @@
 				dropdown, when open, is ordinary content and scrolls like everything
 				else beneath it.
 			-->
-			<ListSwitcher context="menu" onafterselect={onclose} />
+			<ListSwitcher context="menu" onafterselect={close} />
 
 			<!--
 				Two sentences, never one. How much is waiting is what people want to
@@ -418,8 +645,9 @@
 	 * margins, same room above and below the tear — so opening the menu turns
 	 * the list over rather than sliding something else in front of it.
 	 *
-	 * Centred like the page, so the drag-to-dismiss offset is composed with the
-	 * centring rather than replacing it.
+	 * Centred like the page, and centred with `translate` rather than with
+	 * `transform`, which leaves the transform free for the turn: the two are
+	 * separate properties and compose without either clobbering the other.
 	 */
 	.menu {
 		position: fixed;
@@ -430,11 +658,40 @@
 		max-width: var(--paper-width);
 		z-index: 10;
 		background: var(--paper);
+		/*
+		 * The paper begins where the paper begins, not at the viewport.
+		 *
+		 * `padding-block` below is the room the sheet keeps above and below
+		 * itself, so the content box starts at the top tear's outer edge and
+		 * ends at the bottom one's. Clipped to it, the panel's ground is the
+		 * paper and the margins around it are not — which is what lets each
+		 * tear's own ground cut into it from outside.
+		 */
+		background-clip: content-box;
 		display: flex;
 		flex-direction: column;
 		outline: none;
 		touch-action: pan-y;
-		translate: calc(-50% + var(--offset, 0px)) 0;
+		translate: calc(-50% + var(--slide, 0px)) 0;
+
+		/*
+		 * The sheet's own axis. Both are `--paper-width` and both are centred,
+		 * so the middle of one is the middle of the other — the paper turns
+		 * about a single line rather than about two that nearly agree. See
+		 * `--flip` and `--paper-width` in app.css.
+		 *
+		 * At rest `--turn` is nought and this is the identity; under a finger it
+		 * is the angle the paper has been turned back by. The perspective is the
+		 * same 1200px the sheet projects at, so the two halves of the turn are
+		 * seen from one place.
+		 */
+		transform-origin: var(--axis, 50%) 50%;
+		/*
+		 * A plain rule reading the angle; the keyframes animate the angle. See
+		 * `@property --turn` in app.css — everything that is a reading of the
+		 * rotation falls out of that one number rather than being written twice.
+		 */
+		transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		/*
 		 * The paper's own top and bottom, so the scroller inside is exactly the
 		 * frame's box and the content is cut where the paper stops. Cut at the
@@ -442,28 +699,175 @@
 		 * drawn in the margin below the drawn edge, which reads as the panel
 		 * leaking rather than as paper ending.
 		 */
+		/*
+		 * The paper's own top and bottom, and no more: the scroller runs the
+		 * full height of the paper, tears included.
+		 *
+		 * It used to stop at the inner edge of each tear, which cut the writing
+		 * along a straight line a tooth's height short of the teeth — a white
+		 * rectangle doing the work the tear is there to do. The room the
+		 * writing needs above and below is `.scroll`'s own padding instead, so
+		 * a line starts exactly where it always did and is cut, on its way out,
+		 * by the teeth.
+		 */
 		padding-block: var(--paper-top) var(--paper-bottom);
 	}
 
 	/*
-	 * The frame is the drawer's edge and stays put; the content scrolls inside
-	 * it. Framing the scrolled content instead leaves the last line hanging
-	 * outside the border, because an absolutely positioned box in a scroll
-	 * container sizes to the visible box rather than to what it holds.
+	 * Unfurling out of the hinge, after the sheet has folded into it.
+	 *
+	 * The delay is the sheet's half of the turn, and `both` holds the panel
+	 * edge-on for the length of it. That is what lets the panel be in the
+	 * document from the moment of the tap — trap armed, `aria-modal` honoured,
+	 * focus already inside — while still being the second thing seen. Nothing
+	 * is held back for a keyboard or a screen reader; only the drawing waits.
 	 */
+	.unfurling {
+		animation: unfurl var(--flip) ease-out var(--flip) both;
+		will-change: transform;
+	}
+
 	/*
-	 * On the sheet's own drawn edges: the room beside the paper across, and the
-	 * room the tears leave above and below. The sheet closes itself with two
-	 * torn edges and two side edges; the panel closes itself with one drawn
-	 * box, in the same place.
+	 * Not far enough. It swings upright again — it used to snap.
+	 *
+	 * Two animations rather than one: the rotation and the axis are on
+	 * different clocks, because the axis has to be home before the paper is,
+	 * and one keyframe timeline can only be eased one way at a time.
 	 */
-	.frame {
+	.springing {
+		animation:
+			spring-back var(--flip) var(--inertia) forwards,
+			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
+		will-change: transform;
+	}
+
+	/*
+	 * And back into the hinge. `--turn` is where a finger left the paper, so a
+	 * drag that goes far enough hands over to this without a jump; from the ✕
+	 * or from Escape it is nought and the turn starts from flat.
+	 *
+	 * Last of the three deliberately: only one `animation` survives the
+	 * cascade, and closing has to be the one that does however the panel was
+	 * caught — mid-arrival, or mid-spring under a finger that let go.
+	 */
+	.furling {
+		animation:
+			furl var(--flip) ease-in forwards,
+			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
+		pointer-events: none;
+		will-change: transform;
+	}
+
+	/*
+	 * One rotation, going round and round the same way.
+	 *
+	 * Every half-turn is the same movement: the face on its way out leads with
+	 * its right edge and goes to edge-on, and the face arriving settles out of
+	 * its left. So a swipe rightwards always spins the paper the same way, and
+	 * swiping again keeps it spinning rather than winding it back — which is
+	 * what a receipt spun in the hand does. Opening and closing look identical
+	 * because they are: the paper does not know which side it is on.
+	 *
+	 * The near edge does change sides across the handover, since the panel's
+	 * words are set to be read rather than mirrored. Nothing is seen of it:
+	 * both halves are exactly edge-on at that instant. And nothing turns past a
+	 * quarter, so no content is ever shown from behind.
+	 */
+	@keyframes unfurl {
+		from {
+			--turn: -90deg;
+		}
+		to {
+			--turn: 0deg;
+		}
+	}
+
+	@keyframes furl {
+		from {
+			translate: calc(-50% + var(--slide, 0px)) 0;
+		}
+		to {
+			--turn: 90deg;
+			translate: -50% 0;
+		}
+	}
+
+	@keyframes spring-back {
+		from {
+			translate: calc(-50% + var(--slide, 0px)) 0;
+		}
+		to {
+			--turn: 0deg;
+			translate: -50% 0;
+		}
+	}
+
+	/*
+	 * The edges stay put and the content scrolls inside them. Framing the
+	 * scrolled content instead leaves the last line hanging outside, because an
+	 * absolutely positioned box in a scroll container sizes to the visible box
+	 * rather than to what it holds.
+	 *
+	 * Above the scroller, and this is the fix rather than a nicety. The panel's
+	 * own sticky switcher carries an opaque ground the width of the paper, and
+	 * painted over the edges it rubbed them out along the row it stuck to; the
+	 * scrolled prose behind it did the same to the sides. Paper is in front of
+	 * what is written on it.
+	 *
+	 * The ✕ stays above even this: it is a control, and the edge is scenery.
+	 */
+	.edges {
+		position: absolute;
+		inset: 0;
+		/*
+		 * Above the sticky switcher, which carries a ground of its own at 1 and
+		 * is painted later in the document — a tie there goes to the switcher,
+		 * which is how the edge was rubbed out in the first place.
+		 */
+		z-index: 2;
+		pointer-events: none;
+	}
+
+	/*
+	 * The tears sit in the room the panel holds above and below its scroller,
+	 * which is `padding-block` below — so the writing is cut off exactly where
+	 * the paper is torn, and never halfway through a tooth.
+	 */
+	.tear-edge {
+		position: absolute;
+		/*
+		 * In by half a side edge from where the sides are, so the tear runs
+		 * between the two verticals rather than past them: `--edge` is the
+		 * side's box and its stroke runs down the middle of it, so half of that
+		 * is where the corner falls.
+		 */
+		right: calc(var(--paper-x) + var(--edge) / 2);
+		left: calc(var(--paper-x) + var(--edge) / 2);
+	}
+
+	.tear-edge.top {
+		top: var(--paper-top);
+	}
+
+	.tear-edge.bottom {
+		bottom: var(--paper-bottom);
+	}
+
+	/*
+	 * The full height of the paper, tears included, which is where the sheet's
+	 * own sides run.
+	 *
+	 * They overhang into the tears and are cut back by the teeth — the same
+	 * thing the tear does to the writing that scrolls behind it. Stopped flush
+	 * at the tears they ended on a clean horizontal, which is a sheet
+	 * guillotined at three edges and torn at the top.
+	 */
+	.sides {
 		position: absolute;
 		top: var(--paper-top);
 		right: var(--paper-x);
 		bottom: var(--paper-bottom);
 		left: var(--paper-x);
-		pointer-events: none;
 	}
 
 	/*
@@ -490,6 +894,15 @@
 		 * makes the frame the thing that clips.
 		 */
 		padding-inline: calc(var(--paper-x) + var(--paper-inset));
+		/*
+		 * The tears' own height, held inside the scroll rather than outside it.
+		 *
+		 * The first line therefore rests where it has always rested — clear of
+		 * the teeth — but the room above it scrolls away with it, so the line
+		 * passes behind the tear and is cut by the teeth instead of stopping
+		 * short of them. Same at the foot.
+		 */
+		padding-block: var(--tear);
 	}
 
 	/*
@@ -510,11 +923,24 @@
 		align-items: center;
 		justify-content: center;
 		/*
-		 * Above the content it scrolls over, and above the switcher's own
-		 * sticky pill too — the two share the same row, and without this the
-		 * pill, painted later in the document, would win the tie.
+		 * Above the content it scrolls over, above the switcher's own sticky
+		 * pill — the two share the same row — and above the drawn edges, which
+		 * are scenery where this is a control.
 		 */
-		z-index: 2;
+		z-index: 3;
+	}
+
+	/*
+	 * Three pixels of paper on either side of the stroke, so the mark stays
+	 * legible over whatever has been scrolled under it. The stroke is centred on
+	 * the path, so it takes six on top of the ink's own width to clear three.
+	 *
+	 * Drawn under, not over: `.knockout` comes first in the markup and SVG paints
+	 * in document order.
+	 */
+	.knockout {
+		stroke: var(--paper);
+		stroke-width: calc((var(--stroke) + 6) * 1px);
 	}
 
 	/*
