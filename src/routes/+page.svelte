@@ -43,8 +43,8 @@
 	/*
 	 * The menu is the back of this sheet, so opening it turns the sheet over.
 	 *
-	 * One turn, two elements: the paper folds edge-on about its right edge here,
-	 * and the panel unfurls out of that same edge in Menu.svelte, each taking
+	 * One turn, two elements: the paper folds edge-on about its middle here, and
+	 * the panel opens back out about the same axis in Menu.svelte, each taking
 	 * half of `--flip`. They cannot be one element turning through 180° — the
 	 * sheet is in flow and scrolls, the panel is fixed to the viewport, and
 	 * putting both inside one `preserve-3d` box would mean laying the page out
@@ -334,18 +334,20 @@
 		padding: 0 var(--paper-x) var(--paper-bottom);
 
 		/*
-		 * Hinged on the right edge, where the burger is and where the panel has
-		 * always come from. The ✕ that replaces the burger is drawn at the same
-		 * point, a finger's width inside the hinge, so the two barely move: the
-		 * paper turns around the button rather than carrying it off.
+		 * Turned about the middle of the paper, not about an edge.
+		 *
+		 * A receipt turned over is held in the middle and spun; hinged at a side
+		 * it is a door or a page in a book, which is a different object. The
+		 * middle is also the only axis that does not favour a hand: the sheet
+		 * narrows to the same line from both sides at once.
 		 *
 		 * `--eye` is the Y half, and it is not the axis — a rotateY is the same
 		 * rotation wherever the origin sits vertically. It is the vanishing
 		 * point, which `perspective()` takes from the transform-origin too, and
 		 * on a sheet as tall as its list the middle of the element is nowhere
-		 * near the middle of the screen. +page.svelte writes it at the tap.
+		 * near the middle of the screen. This file writes it at the tap.
 		 */
-		transform-origin: 100% var(--eye, 50%);
+		transform-origin: 50% var(--eye, 50%);
 	}
 
 	/*

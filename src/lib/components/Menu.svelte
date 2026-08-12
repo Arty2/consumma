@@ -207,6 +207,19 @@
 			turn = 0;
 		}
 
+		/*
+		 * The gesture belongs to the panel until the finger lifts, wherever the
+		 * paper has got to by then.
+		 *
+		 * Turning it takes it out from under the hand — that is what turning it
+		 * means — and without this the pointer events go to whatever is under
+		 * the finger instead, which partway through a turn is the sheet behind.
+		 * The move stops being seen and the release is never heard, so the paper
+		 * hangs at the angle it had reached. Not a fault of the axis, but the
+		 * middle turns both halves away and finds it every time.
+		 */
+		panel?.setPointerCapture(event.pointerId);
+
 		dragStart = { x: event.clientX, at: performance.now() };
 	}
 
@@ -218,6 +231,7 @@
 	}
 
 	function onpointerup(event: PointerEvent) {
+		panel?.releasePointerCapture(event.pointerId);
 		if (!dragStart || !panel) return;
 
 		const travelled = event.clientX - dragStart.x;
@@ -522,17 +536,17 @@
 		translate: -50% 0;
 
 		/*
-		 * The other side of the sheet's own hinge. The sheet is `--paper-width`
-		 * and centred, and so is this, so the two right edges are one line
-		 * rather than two that nearly agree — see `--flip` and `--paper-width`
-		 * in app.css.
+		 * The sheet's own axis. Both are `--paper-width` and both are centred,
+		 * so the middle of one is the middle of the other — the paper turns
+		 * about a single line rather than about two that nearly agree. See
+		 * `--flip` and `--paper-width` in app.css.
 		 *
 		 * At rest `--turn` is nought and this is the identity; under a finger it
 		 * is the angle the paper has been turned back by. The perspective is the
 		 * same 1200px the sheet projects at, so the two halves of the turn are
 		 * seen from one place.
 		 */
-		transform-origin: 100% 50%;
+		transform-origin: 50% 50%;
 		transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		/*
 		 * The paper's own top and bottom, so the scroller inside is exactly the
@@ -580,22 +594,21 @@
 	}
 
 	/*
-	 * Out of the hinge along the same arc the sheet went into it by, and not
-	 * the mirror of it.
+	 * Back out along the same arc the sheet went in by, and not the mirror of
+	 * it.
 	 *
-	 * The obvious decomposition turns the back face through the angles a real
-	 * sheet's back face passes through, which are the front's reflected — the
-	 * panel would swing in from in front of the reader while the sheet had just
-	 * gone away behind. Both halves are edge-on at the handover so nobody sees
-	 * the join, but the depth cue is visible on either side of it: coming
-	 * forwards, the near edge is magnified, and the panel overhung a 390px
-	 * screen by 21px and cut its own drawn edge off.
+	 * The obvious decomposition turns the panel through the angles a real
+	 * sheet's back face passes through, which are the front's reflected. Both
+	 * halves are edge-on at the handover, so the join itself is never seen —
+	 * but which edge is the near one is visible on either side of it, and the
+	 * mirror swaps it. The sheet turns with its right edge coming forward; the
+	 * mirrored panel opens with its left edge forward instead, and the eye
+	 * follows that cue across the join and reads two sheets rather than one.
 	 *
-	 * So the paper goes to edge-on and comes back out of it, through the same
-	 * orientations in the same direction. One plane, folding shut and opening
-	 * again with the other side up. It is also the only version that needs no
-	 * mirroring: nothing here ever turns past a quarter, so no content is ever
-	 * seen from behind.
+	 * So the paper folds to edge-on and opens back out of it, through the same
+	 * orientations, right edge near throughout. It is also the only version
+	 * that needs no mirroring: nothing here turns past a quarter, so no content
+	 * is ever seen from behind.
 	 */
 	@keyframes unfurl {
 		from {

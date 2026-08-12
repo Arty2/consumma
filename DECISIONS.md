@@ -805,13 +805,17 @@ relative` rather than a transform, which does not apply to an inline box.
     room above and below the tear — expressly so that it would land on the sheet
     rather than beside it. Both files said as much in their comments. But it
     appeared instantly, so the one claim the geometry existed to support was the
-    one thing nobody ever saw. Now the sheet folds edge-on about its right edge
-    and the panel unfurls back out of it, half of `--flip` each.
+    one thing nobody ever saw. Now the sheet folds edge-on and the panel opens
+    back out of the same line, half of `--flip` each.
 
-    The hinge is the right edge because that is where the burger is, and the ✕
-    that replaces it is drawn at the same point, a finger's width inside the
-    hinge. The two barely move: the paper turns around the button under the
-    finger rather than carrying it off.
+    **About the middle of the paper, not an edge.** A receipt turned over is
+    held in the middle and spun; hinged at a side it is a door, or a page in a
+    book, which is a different object. The middle is also the only axis that
+    does not favour a hand — the sheet narrows to the same line from both sides
+    at once. It was built hinged on the right edge first, on the reasoning that
+    the burger is there and the ✕ that replaces it is drawn at the same point,
+    so the two would barely move while the paper turned around them. That is a
+    real property and it is not worth the object it makes.
 
     **Two elements, not one turning through 180°.** The sheet is in flow and
     scrolls with the list; the panel is fixed to the viewport with its own
@@ -819,20 +823,26 @@ relative` rather than a transform, which does not apply to an inline box.
     around the animation, and the page is the thing the animation is about.
 
     **Both halves travel the same arc**, `0 → -90°` and back out of it, rather
-    than the front's angles and their mirror. The mirrored pair is the truer
-    decomposition of a flip and it was tried first: it swings the panel in from
-    in front of the reader while the sheet has just gone away behind, and
-    perspective magnifies whichever edge is nearest. Measured, the panel reached
-    411px on a 390px screen and cut off its own drawn frame. Folding shut and
-    opening again is one plane moving one way, and since nothing turns past a
-    quarter, no content is ever seen from behind and none needs mirroring.
+    than the front's angles and their mirror. The join itself is never seen —
+    both halves are edge-on at that instant — but which edge is the near one is
+    visible on either side of it, and the mirror swaps it. The sheet turns with
+    its right edge coming forward; the mirrored panel opens left-edge-forward,
+    and the eye follows that cue across the join and reads two sheets rather
+    than one. Since nothing turns past a quarter, no content is ever seen from
+    behind and none needs mirroring.
 
-    `transform-origin: 100% var(--eye)`. The `100%` is the hinge. The Y half is
-    not the axis — a `rotateY` is the same rotation wherever the origin sits
-    vertically — it is the vanishing point, which `perspective()` takes from the
-    transform-origin too. Left at the middle of the element, a sheet as tall as
-    its list turns away towards a point a screen or more below the reader.
-    `+page.svelte` writes the viewport's middle there at the tap, one rect read.
+    On the right-edge hinge this was starker and measurable: the mirrored panel
+    magnified its near edge to 411px on a 390px screen and cut off its own drawn
+    frame. About the middle that particular symptom goes — the near half's
+    magnification is paid for by the far half — and both versions stay inside
+    the paper at every width. The near edge is what decides it now.
+
+    `transform-origin: 50% var(--eye)`. The Y half is not the axis — a `rotateY`
+    is the same rotation wherever the origin sits vertically — it is the
+    vanishing point, which `perspective()` takes from the transform-origin too.
+    Left at the middle of the element, a sheet as tall as its list turns away
+    towards a point a screen or more below the reader. `+page.svelte` writes the
+    viewport's middle there at the tap, one rect read.
 
     The panel is in the document from the instant of the tap, with its trap
     armed and its focus taken; only the drawing waits, held edge-on by an
