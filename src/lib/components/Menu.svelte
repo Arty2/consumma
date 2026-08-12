@@ -388,11 +388,17 @@
 		right. That is the whole reason these are not new marks.
 	-->
 	<div class="edges" aria-hidden="true">
-		<div class="tear-edge top"><TornEdge seed="top" mirror /></div>
+		<!--
+			The sides come first so both tears are drawn over them. They run up
+			into the tears and are cut back by the teeth, the same way the
+			writing behind a tear is, and a side drawn after the tear it runs
+			into would cross its own teeth instead.
+		-->
 		<div class="sides">
 			<SideEdge seed="right" side="left" mirror />
 			<SideEdge seed="left" side="right" mirror />
 		</div>
+		<div class="tear-edge top"><TornEdge seed="top" mirror /></div>
 		<div class="tear-edge bottom"><TornEdge seed="bottom" flip mirror /></div>
 	</div>
 
@@ -841,12 +847,20 @@
 		bottom: var(--paper-bottom);
 	}
 
-	/* Between the two tears, which is where the sheet's own sides run. */
+	/*
+	 * The full height of the paper, tears included, which is where the sheet's
+	 * own sides run.
+	 *
+	 * They overhang into the tears and are cut back by the teeth — the same
+	 * thing the tear does to the writing that scrolls behind it. Stopped flush
+	 * at the tears they ended on a clean horizontal, which is a sheet
+	 * guillotined at three edges and torn at the top.
+	 */
 	.sides {
 		position: absolute;
-		top: calc(var(--paper-top) + var(--tear));
+		top: var(--paper-top);
 		right: var(--paper-x);
-		bottom: calc(var(--paper-bottom) + var(--tear));
+		bottom: var(--paper-bottom);
 		left: var(--paper-x);
 	}
 

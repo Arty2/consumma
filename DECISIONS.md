@@ -1100,9 +1100,28 @@ relative` rather than a transform, which does not apply to an inline box.
     other: the inner fill was invisible against the panel's own ground, and the
     straight cut was blamed on the tear being drawn too high.
 
-    The side edges are left alone. They are not jagged, so there is nothing to
-    cut with, and the paper running the last few pixels out to a straight drawn
-    line is what a straight drawn line means.
+    **The sides run up into the tears and are cut back by the teeth.** They used
+    to stop flush at each tear, which ends them on a clean horizontal — a sheet
+    guillotined at three edges and torn at the fourth, and the one thing left
+    saying the tear was a band laid on the paper rather than where the paper
+    gives out. They overhang by a tear at each end now and the teeth take them
+    back, which is the same cut the writing behind a tear gets.
+
+    That only reads if both tears are painted over the sides, and the two faces
+    reach it differently. The panel writes its sides before both tears and needs
+    nothing more. The sheet cannot: its top tear is above the paper in the flow
+    and its bottom tear below it, so whichever order the sides are written in,
+    one tear is on the wrong side of them. Both are lifted instead — positioned,
+    `z-index: 1` — which says it once for the pair.
+
+    The ground closes a full tear **past** the box rather than flush at it. The
+    box is `overflow: visible`, for the zigzag's own stroke, and the sides
+    running up into it carry a round cap that reaches past their box too; closed
+    at nought, that cap came out above the teeth as a stray tick of ink.
+
+    The sides themselves are still not jagged, and that is right: paper running
+    the last few pixels out to a straight drawn line is what a straight drawn
+    line means. It is only their ends that the tear now owns.
 
 ## Known limits
 

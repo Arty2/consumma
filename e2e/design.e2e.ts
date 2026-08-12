@@ -856,7 +856,7 @@ test('the receipt is never shorter than the screen, and grows past it with the l
 	// The whole receipt: the top tear down to the bottom one, tears included.
 	const receipt = () =>
 		page.evaluate(() => {
-			const tears = [...document.querySelectorAll('.page > .tear, .page > .top > .tear')];
+			const tears = [...document.querySelectorAll('.page > .top > .tear, .page > .bottom > .tear')];
 			const page_ = document.querySelector('.page')!.getBoundingClientRect();
 			return { height: page_.height, tears: tears.length };
 		});
@@ -924,15 +924,17 @@ test('the paper is torn, not drawn torn: nothing fills the notches', async ({ pa
 		}
 
 		/*
-		 * Closed along the top of its own box, which every tear draws as its
+		 * Closed past the top of its own box, which every tear draws as its
 		 * outer side — the bottom one is the same svg turned over. Closed along
 		 * the height instead, the fill would be on the inside, where the paper
-		 * already is.
+		 * already is; closed flush at nought it would stop at a box that is
+		 * `overflow: visible`, and the round caps of the sides running up into
+		 * it would come out above the teeth.
 		 */
 		for (const d of await grounds.evaluateAll((paths) =>
 			paths.map((p) => p.getAttribute('d') ?? '')
 		)) {
-			expect(d).toMatch(/ 0 L 0 0 Z$/);
+			expect(d).toMatch(/ L \d+(\.\d+)? -\d+ L 0 -\d+ Z$/);
 		}
 	}
 
@@ -963,4 +965,66 @@ test('the paper is torn, not drawn torn: nothing fills the notches', async ({ pa
 
 	expect(scroll.y).toBeLessThanOrEqual(top.y + 0.5);
 	expect(scroll.y + scroll.height).toBeGreaterThanOrEqual(bottom.y + bottom.height - 0.5);
+});
+
+test('the sides run up into the tears, and the teeth cut them back', async ({ page }) => {
+	/*
+	 * A side edge stopped flush at the tear ends on a clean horizontal, which
+	 * is a sheet guillotined at three edges and torn at the fourth. It runs a
+	 * tear's height past instead, and the teeth cut it back — the same thing
+	 * the tear does to writing that scrolls behind it.
+	 *
+	 * Two facts, and the second is what makes the first anything but a stray
+	 * line: the sides overhang, and both tears are painted over them. Each face
+	 * reaches the second its own way, so what is asserted here is the property
+	 * rather than either mechanism. The panel writes its sides before both
+	 * tears and needs nothing else. The sheet cannot — its top tear is above
+	 * the paper in the flow and its bottom tear below it, so one would always
+	 * be on the wrong side of the sides in between — and lifts both instead.
+	 */
+	for (const root of ['.page', '[role="dialog"]']) {
+		if (root !== '.page') await openMenu(page);
+
+		const seen = await page.evaluate((sel) => {
+			const at = document.querySelector(sel)!;
+			const sides = at.querySelector('.sides')!;
+			const tears = [...at.querySelectorAll('svg.tear')];
+
+			const box = (el: Element) => {
+				const b = el.getBoundingClientRect();
+				return { top: b.top, bottom: b.bottom };
+			};
+
+			/*
+			 * Painted later than the sides, so it covers them. Whichever
+			 * z-index governs wins; a tie goes to document order, which is
+			 * what the panel relies on.
+			 */
+			const layer = (el: Element) => {
+				for (let n: Element | null = el; n; n = n.parentElement) {
+					const z = getComputedStyle(n).zIndex;
+					if (z !== 'auto') return Number(z);
+				}
+				return 0;
+			};
+			const over = (a: Element, b: Element) =>
+				layer(a) !== layer(b)
+					? layer(a) > layer(b)
+					: !!(b.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+			return {
+				count: tears.length,
+				sides: box(sides),
+				tears: tears.map(box),
+				covered: tears.map((t) => over(t, sides))
+			};
+		}, root);
+
+		expect(seen.count).toBe(2);
+		expect(seen.covered).toEqual([true, true]);
+
+		// Up into the top tear, and down into the bottom one.
+		expect(seen.sides.top).toBeLessThanOrEqual(seen.tears[0].top + 0.5);
+		expect(seen.sides.bottom).toBeGreaterThanOrEqual(seen.tears[1].bottom - 0.5);
+	}
 });

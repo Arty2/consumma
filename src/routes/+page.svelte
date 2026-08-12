@@ -423,8 +423,10 @@
 			}
 		}}
 	>
-		<SideEdge seed="left" side="left" />
-		<SideEdge seed="right" side="right" />
+		<div class="sides">
+			<SideEdge seed="left" side="left" />
+			<SideEdge seed="right" side="right" />
+		</div>
 
 		<!--
 			Sync on its own at the left, because it is the one that comes and goes;
@@ -452,7 +454,9 @@
 		{/key}
 	</main>
 
-	<TornEdge seed="bottom" flip />
+	<div class="bottom">
+		<TornEdge seed="bottom" flip />
+	</div>
 </div>
 
 {#if panel === 'menu'}
@@ -641,8 +645,37 @@
 		}
 	}
 
+	/*
+	 * Both tears sit above the sides, which run up into them to be cut.
+	 *
+	 * The top one is written before the sides and the bottom one after, so
+	 * document order alone would put one over them and one under. Positioning
+	 * both and lifting them says it once for the pair, rather than leaving the
+	 * bottom edge cut and the top edge crossing its own teeth.
+	 */
+	.top,
+	.bottom {
+		position: relative;
+		z-index: 1;
+	}
+
 	.top {
 		padding-top: var(--paper-top);
+	}
+
+	/*
+	 * The sides overhang the paper by a tear at each end, and are cut back by
+	 * the teeth — the same thing the tear does to the writing that scrolls
+	 * behind it. Stopped flush at the tears they ended on a clean horizontal,
+	 * which is a sheet guillotined at three edges and torn at the top.
+	 */
+	.sides {
+		position: absolute;
+		top: calc(-1 * var(--tear));
+		right: 0;
+		bottom: calc(-1 * var(--tear));
+		left: 0;
+		pointer-events: none;
 	}
 
 	/*

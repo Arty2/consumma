@@ -48,13 +48,19 @@
 	 * and is cut by them — jagged, tooth by tooth, which is what a torn edge
 	 * cutting something looks like.
 	 *
-	 * Closed along `0`, which is the outside: on the top tear that is the room
-	 * above the sheet, and on the bottom the whole svg is turned over, so it is
-	 * the room below. Nothing is filled on the inside — the paper's own ground
-	 * is already there, and a second one painted over it is the white rectangle
-	 * this replaced.
+	 * Closed a full `HEIGHT` past `0`, which is the outside: on the top tear
+	 * that is the room above the sheet, and on the bottom the whole svg is
+	 * turned over, so it is the room below. Nothing is filled on the inside —
+	 * the paper's own ground is already there, and a second one painted over it
+	 * is the white rectangle this replaced.
+	 *
+	 * Past the box and not merely to it, because the marks this cuts do not
+	 * stop at the box either: the box is `overflow: visible` for its own
+	 * stroke's sake, and the side edges running up into it carry a round cap
+	 * that reaches a little beyond their own. Closed flush at nought, that cap
+	 * came out above the teeth as a stray tick of ink.
 	 */
-	const ground = $derived(d === '' ? '' : `${d} L ${width} 0 L 0 0 Z`);
+	const ground = $derived(d === '' ? '' : `${d} L ${width} ${-HEIGHT} L 0 ${-HEIGHT} Z`);
 </script>
 
 <svg
