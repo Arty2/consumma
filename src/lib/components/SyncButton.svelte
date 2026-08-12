@@ -53,6 +53,26 @@
 	 */
 	const WOBBLES = [0.7, 1.8, 1.2, 2.1];
 
+	/**
+	 * Where the ink lands on each of the four drawings.
+	 *
+	 * A mark that is working reads lighter than one standing still, and the way
+	 * to say that here is not opacity: the sheet has two colours, and a faded
+	 * stroke is a grey. So the same black is laid down less often — the mark
+	 * goes dotted while it works and comes back solid the moment it stops.
+	 *
+	 * The gap and the offset move frame to frame for the same reason the seed
+	 * and the wobble do. One pattern held across all four would be a stencil
+	 * sitting over a wobbling line; shifting it is a pen skipping somewhere new
+	 * each time the mark is redrawn.
+	 */
+	const DOTS = [
+		{ gap: 2.6, shift: 0 },
+		{ gap: 3.1, shift: 1.4 },
+		{ gap: 2.8, shift: 0.6 },
+		{ gap: 3.4, shift: 2 }
+	];
+
 	/*
 	 * Drawn once each, up front, so the strokes never twitch as the count
 	 * changes — the cycling below picks between drawings that already exist
@@ -208,7 +228,13 @@
 			height={SIZE}
 			aria-hidden="true"
 		>
-			<path d={(offline ? slash : waiting ? arrow : refresh)[frame]} class="drawn" />
+			<path
+				d={(offline ? slash : waiting ? arrow : refresh)[frame]}
+				class="drawn"
+				class:drawn--dotted={working}
+				style:--dot-gap={DOTS[frame].gap}
+				style:--dot-shift={DOTS[frame].shift}
+			/>
 		</svg>
 	</button>
 {/if}
@@ -253,6 +279,10 @@
 	 * change of drawing rather than a change of shape, and CSS cannot swap one
 	 * path for another. It replaced a pulse, which grew and faded the mark
 	 * mechanically: the one thing on this sheet that never looked drawn.
+	 *
+	 * Each of those drawings is dotted, on a pattern of its own — see `DOTS`.
+	 * That is how a working mark reads faint here, since fading it would put a
+	 * grey on a sheet that has none.
 	 *
 	 * The circular arrow turns on top of it, because it is a stroke that came
 	 * round and turning is what it already means. The outbox arrow cannot turn
