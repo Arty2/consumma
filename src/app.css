@@ -477,30 +477,41 @@ a {
  * will not: the edge coming forward reaches twice its weight at the point it is
  * nearest, and the one going away is left alone.
  *
- * `--hand` is how far a finger has turned the paper, nought to one, so a drag
+ * `--push` is how far a finger has turned the paper, nought to one, so a drag
  * picks the weight up where it left it rather than starting again from flat.
+ * Not `--hand`, which is the typeface: naming it that made every one of these
+ * declarations invalid at computed-value time, and stroke-width fell back to
+ * its initial 1 without a word being said about it anywhere.
  * Which edge is the near one is not decided here: it is whichever side the
  * selector points at, and that is the right one leaving and the left arriving,
  * on both faces of the paper.
  *
  * Global, like `recentre`, because the sheet and the panel need the same two
  * and are only two elements for reasons that have nothing to do with this.
+ *
+ * Every width here is multiplied through by a length rather than by a number,
+ * and that is load-bearing. `--stroke` is unitless, so `calc(var(--stroke) * 2)`
+ * stays a `calc()` at computed-value time — and two unresolved calcs do not
+ * interpolate: the browser falls back to discrete and steps from one to the
+ * other at the halfway mark. Multiplying by `1px` resolves it to a real length
+ * and the weight ramps. Measured; it stepped for a while and looked like
+ * nothing was happening at all.
  */
 @keyframes near-out {
 	from {
-		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
+		stroke-width: calc(var(--stroke) * (1 + var(--push, 0)) * 1px);
 	}
 	to {
-		stroke-width: calc(var(--stroke) * 2);
+		stroke-width: calc(var(--stroke) * 2px);
 	}
 }
 
 @keyframes near-in {
 	from {
-		stroke-width: calc(var(--stroke) * 2);
+		stroke-width: calc(var(--stroke) * 2px);
 	}
 	to {
-		stroke-width: var(--stroke);
+		stroke-width: calc(var(--stroke) * 1px);
 	}
 }
 

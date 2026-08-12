@@ -224,6 +224,33 @@ test.describe('the edge that comes forward', () => {
 		expect(await weight(page, '.page', 'right')).toBe(base);
 	});
 
+	test('the weight ramps with the turn rather than stepping halfway', async ({ page }) => {
+		await page.goto('/');
+		const base = (await weight(page, '.page', 'left'))!;
+
+		/*
+		 * It stepped for a long time and looked like nothing was happening: a
+		 * `calc()` that stays a `calc()` at computed-value time does not
+		 * interpolate, and the browser falls back to discrete — from one weight
+		 * to the other at the halfway mark, with nothing in between. Nothing
+		 * says so; the only sign is that the effect is invisible.
+		 *
+		 * So this samples the middle of the turn and insists on finding values
+		 * that are neither end.
+		 */
+		await menuButton(page).click();
+
+		const seen = new Set<number>();
+		for (let i = 0; i < 9; i++) {
+			const w = await weight(page, '.page', 'left');
+			if (w !== null) seen.add(Math.round(w * 100) / 100);
+			await page.waitForTimeout(16);
+		}
+
+		const between = [...seen].filter((w) => w > base + 0.05 && w < base * 2 - 0.05);
+		expect(between.length, `saw only ${[...seen].join(', ')}`).toBeGreaterThan(1);
+	});
+
 	test('a finger turning the paper takes the edge with it', async ({ page }) => {
 		await page.goto('/');
 		const base = (await weight(page, '.page', 'left'))!;

@@ -10,7 +10,7 @@
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
-	import { handCross } from '$lib/draw/hand';
+	import { handBack } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
@@ -51,7 +51,7 @@
 
 	/*
 	 * Asking twice to close is asking once. Escape during the furl, or a second
-	 * tap on the ✕, would otherwise restart the turn from the top.
+	 * tap on the arrow, would otherwise restart the turn from the top.
 	 */
 	function close() {
 		if (closing) return;
@@ -95,14 +95,17 @@
 	let logCopied = $state(false);
 
 	/*
-	 * The same size as the burger it stands in for. This is the one control that
-	 * is drawn twice — closed it is three strokes, open it is two — and it has to
-	 * read as one button being looked at from either side, so it keeps the
-	 * burger's size as well as its place.
+	 * The same size as the burger, in the same place, because it is the same
+	 * corner of the same sheet seen from the other side.
+	 *
+	 * An arrow back rather than a ✕. A cross closes something that was put on
+	 * top; nothing was put on top here — the paper was turned over, and what
+	 * this does is turn it back. It is also the one mark on the panel that has
+	 * to say where a tap goes rather than what a thing is.
 	 */
 	const CLOSE = 22;
 
-	const cross = $derived(handCross(CLOSE, { seed: seedFrom('closemenu'), wobble: 0.8 }));
+	const back = $derived(handBack(CLOSE, { seed: seedFrom('backtolist'), wobble: 0.8 }));
 
 	const summary = $derived(statusText(sync.status, sync.unsent, refused));
 	const valid = $derived(normaliseCode(entered) !== null);
@@ -273,7 +276,7 @@
 	class:springing
 	style:--turn="{turn}deg"
 	style:--axis="{axis}%"
-	style:--hand={hand}
+	style:--push={hand}
 	bind:this={panel}
 	use:trap={close}
 	{onpointerdown}
@@ -330,8 +333,8 @@
 				square of paper cut the line it landed on in half, and the panel has
 				no rectangles on it anywhere else.
 			-->
-			<path d={cross} class="drawn knockout" />
-			<path d={cross} class="drawn" />
+			<path d={back} class="drawn knockout" />
+			<path d={back} class="drawn" />
 		</svg>
 	</button>
 
@@ -658,23 +661,23 @@
 	 *
 	 * The same rule as the sheet's, because it is the same paper: leaving, the
 	 * right edge comes forward; arriving, the left. The far edge is never
-	 * touched. Under a finger the weight follows `--hand` directly, and the
+	 * touched. Under a finger the weight follows `--push` directly, and the
 	 * furl picks it up from there rather than starting again from flat.
 	 */
 	.menu :global(svg.edge.left path) {
-		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
+		stroke-width: calc(var(--stroke) * (1 + var(--push, 0)) * 1px);
 	}
 
 	.unfurling :global(svg.edge.right path) {
-		animation: near-in var(--flip) ease-out var(--flip) both;
+		animation: near-in var(--flip) linear var(--flip) both;
 	}
 
 	.springing :global(svg.edge.left path) {
-		animation: near-in var(--flip) ease-out forwards;
+		animation: near-in var(--flip) linear forwards;
 	}
 
 	.furling :global(svg.edge.left path) {
-		animation: near-out var(--flip) ease-in forwards;
+		animation: near-out var(--flip) linear forwards;
 	}
 
 	/*
@@ -834,7 +837,7 @@
 	 */
 	.knockout {
 		stroke: var(--paper);
-		stroke-width: calc(var(--stroke) + 6px);
+		stroke-width: calc((var(--stroke) + 6) * 1px);
 	}
 
 	/*

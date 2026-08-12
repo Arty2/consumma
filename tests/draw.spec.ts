@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	handArrow,
 	handBracket,
+	handBack,
 	handBurger,
 	handCheck,
 	handLine,
@@ -336,6 +337,45 @@ describe('handArrow', () => {
 
 	it('is not the burger', () => {
 		expect(handArrow(SIZE, { seed: 4 })).not.toBe(handBurger(SIZE, { seed: 4 }));
+	});
+});
+
+describe('handBack', () => {
+	const SIZE = 22;
+
+	it('points left, and level rather than on the diagonal', () => {
+		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
+		const [start] = points;
+		const tip = points[2];
+
+		expect(tip.x).toBeLessThan(start.x);
+		// Level: the shaft ends at the height it started at.
+		expect(tip.y).toBeCloseTo(start.y, 6);
+	});
+
+	it('has a head that meets the point of the shaft', () => {
+		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
+		const tip = points[2];
+		expect(points.some((p, i) => i > 2 && p.x === tip.x && p.y === tip.y)).toBe(true);
+	});
+
+	it('stays inside its box, so the button never clips it', () => {
+		for (const seed of [1, 7, 99, 1234]) {
+			for (const { x, y } of endpoints(handBack(SIZE, { seed, wobble: 1 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+			}
+		}
+	});
+
+	it('is stable for a seed', () => {
+		expect(handBack(SIZE, { seed: 4 })).toBe(handBack(SIZE, { seed: 4 }));
+	});
+
+	it('is not the outbox arrow laid on its side', () => {
+		expect(handBack(SIZE, { seed: 4 })).not.toBe(handArrow(SIZE, { seed: 4 }));
 	});
 });
 

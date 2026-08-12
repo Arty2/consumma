@@ -127,7 +127,7 @@
 		paper?.style.setProperty('--turn', `${turn}deg`);
 		paper?.style.setProperty('--axis', `${axis}%`);
 		// How far round the paper is, for the weight of the edge coming forward.
-		paper?.style.setProperty('--hand', `${hand}`);
+		paper?.style.setProperty('--push', `${hand}`);
 	}
 
 	/** Back to a paper nobody has touched. */
@@ -568,19 +568,19 @@
 	 * that component; this is the one thing about them the sheet decides.
 	 */
 	.dragging :global(svg.edge.left path) {
-		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
+		stroke-width: calc(var(--stroke) * (1 + var(--push, 0)) * 1px);
 	}
 
 	.turning :global(svg.edge.left path) {
-		animation: near-out var(--flip) ease-in forwards;
+		animation: near-out var(--flip) linear forwards;
 	}
 
 	.settling :global(svg.edge.left path) {
-		animation: near-in var(--flip) ease-out forwards;
+		animation: near-in var(--flip) linear forwards;
 	}
 
 	.returning :global(svg.edge.right path) {
-		animation: near-in var(--flip) ease-out var(--flip) both;
+		animation: near-in var(--flip) linear var(--flip) both;
 	}
 
 	/*
