@@ -453,6 +453,15 @@
 	</main>
 
 	<TornEdge seed="bottom" flip />
+
+	<!--
+		The far half, out of focus while the paper turns. Last, so everything
+		written on the sheet is behind them and gets blurred; `pointer-events`
+		off, so nothing on the sheet is harder to reach for it. See `.depth` in
+		app.css.
+	-->
+	<div class="depth left" aria-hidden="true"></div>
+	<div class="depth right" aria-hidden="true"></div>
 </div>
 
 {#if panel === 'menu'}
@@ -514,6 +523,8 @@
 	.page {
 		max-width: var(--paper-width);
 		margin: 0 auto;
+		/* The depth panes are absolute and hang off this. */
+		position: relative;
 		padding: 0 var(--paper-x) var(--paper-bottom);
 
 		/*
@@ -568,6 +579,17 @@
 
 	.dragging {
 		translate: var(--slide, 0px) 0;
+	}
+
+	/*
+	 * Only while it is turning. A `blur(0px)` still forces a backdrop root, and
+	 * a sheet as long as its list is not worth holding one over at rest.
+	 */
+	.dragging :global(.depth),
+	.turning :global(.depth),
+	.settling :global(.depth),
+	.returning :global(.depth) {
+		backdrop-filter: blur(calc(var(--far, 0) * var(--depth)));
 	}
 
 	/*

@@ -233,6 +233,19 @@
 	--near-cap: 7;
 
 	/*
+	 * How far out of focus the far half of a turning sheet goes, at the quarter.
+	 *
+	 * This is the one place the two colours are not the whole story, and it is
+	 * deliberate rather than overlooked: a blur of black on white is grey, in the
+	 * same way `--faint` is and for the same reason — it is an optical effect on
+	 * ink, not a third colour anybody chose. It exists only while the paper is
+	 * turning, it is gone the moment it stops, and nothing at rest is ever drawn
+	 * out of focus. Depth of field is what tells an eye that one half of a
+	 * surface is further away, and stroke weight can only say it at an edge.
+	 */
+	--depth: 3px;
+
+	/*
 	 * The perspective both faces are projected at, as a bare number so the
 	 * correction can divide by it. `1200px` in the transforms; the same distance.
 	 */
@@ -503,6 +516,38 @@ a {
  * are only two elements for reasons that have nothing to do with it. Declared
  * outside any component so Svelte leaves the name alone in both.
  */
+/*
+ * The far half of a turning sheet, out of focus.
+ *
+ * Two panes over the paper, each masked so it fades to nothing at the middle
+ * and is whole at its own edge, so the blur comes on gradually across the
+ * surface rather than stopping at a line. Which one is doing anything is the
+ * sign of the sine, the same reading the near edge's weight is: when the left
+ * edge is nearest, the right half is the one going away.
+ *
+ * `backdrop-filter` rather than a filter on the paper itself, so nothing has to
+ * be drawn twice — these blur what is already behind them. It is switched on
+ * only by the classes that mean the paper is turning, in the two components: a
+ * `blur(0px)` still forces a backdrop root, and holding one over a sheet as
+ * long as its list for the life of the page is not worth an effect nobody is
+ * looking at.
+ */
+.depth {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+
+.depth.right {
+	--far: max(0, sin(var(--turn)));
+	mask-image: linear-gradient(to right, transparent, #000);
+}
+
+.depth.left {
+	--far: max(0, -1 * sin(var(--turn)));
+	mask-image: linear-gradient(to left, transparent, #000);
+}
+
 /*
  * The angle the paper is turned to, as one animatable value.
  *

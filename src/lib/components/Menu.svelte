@@ -96,6 +96,8 @@
 	let lead = 0;
 	/** Swinging home after a drag that did not go far enough to close. */
 	let springing = $state(false);
+	/** Under a finger — which is what puts the far half out of focus. */
+	let dragging = $state(false);
 	let dragStart: { x: number; at: number } | null = null;
 
 	/*
@@ -285,6 +287,7 @@
 
 	function onpointerup(event: PointerEvent) {
 		panel?.releasePointerCapture(event.pointerId);
+		dragging = false;
 		if (!dragStart || !panel) return;
 
 		const travelled = event.clientX - dragStart.x;
@@ -309,6 +312,7 @@
 	aria-modal="true"
 	aria-label="Menu"
 	tabindex="-1"
+	class:dragging
 	class:unfurling={entering}
 	class:furling={closing}
 	class:springing
@@ -322,6 +326,7 @@
 	{onpointerup}
 	onpointercancel={() => {
 		dragStart = null;
+		dragging = false;
 		if ((turn > 0 || slide > 0) && !closing) springing = true;
 	}}
 	onanimationend={(event) => {
@@ -361,6 +366,10 @@
 		</div>
 		<div class="tear-edge bottom"><TornEdge seed="bottom" flip mirror /></div>
 	</div>
+
+	<!-- The far half, out of focus while the paper turns. See `.depth` in app.css. -->
+	<div class="depth left" aria-hidden="true"></div>
+	<div class="depth right" aria-hidden="true"></div>
 
 	<button class="close" type="button" onclick={close} aria-label="Close">
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
@@ -668,6 +677,13 @@
 	 * focus already inside — while still being the second thing seen. Nothing
 	 * is held back for a keyboard or a screen reader; only the drawing waits.
 	 */
+	.dragging :global(.depth),
+	.unfurling :global(.depth),
+	.springing :global(.depth),
+	.furling :global(.depth) {
+		backdrop-filter: blur(calc(var(--far, 0) * var(--depth)));
+	}
+
 	.unfurling {
 		animation: unfurl var(--flip) ease-out var(--flip) both;
 		will-change: transform;

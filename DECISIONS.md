@@ -956,7 +956,30 @@ relative` rather than a transform, which does not apply to an inline box.
     last one of its kind: the mark is not moving or changing what it means, only
     being drawn with more of the pen.
 
-84. **A drag rightwards turns the receipt over, from either face.** The sheet is
+84. **The far half of a turning sheet goes out of focus.** A rotation gives an
+    eye two cues about which way a surface is facing, and the app had one of
+    them: the near edge drawn heavier. Weight can only speak at an edge, and the
+    surface between the edges was saying nothing. Depth of field is what says it.
+
+    Two panes over the paper, each masked so it fades to nothing at the middle,
+    so the blur comes on across the surface rather than stopping at a line.
+    Which one is doing anything is the sign of the sine — the same reading the
+    near edge's weight is — so when the left edge is nearest, the right half is
+    the one going away. `backdrop-filter` rather than a filter on the paper, so
+    nothing has to be drawn twice, and switched on only by the classes that mean
+    the paper is turning: `blur(0px)` still forces a backdrop root, and holding
+    one over a sheet as long as its list for the life of the page is not worth
+    an effect nobody is looking at.
+
+    **This is the one place the two colours are not the whole story.** A blur of
+    black on white is grey. It is recorded rather than smuggled: the same kind
+    of grey `--faint` already makes, and for the same reason — an optical effect
+    on ink rather than a third colour anybody chose. What keeps it honest is
+    that it exists only while the paper is turning. Nothing at rest is ever
+    drawn out of focus, and under `prefers-reduced-motion` nothing turns, so
+    nothing blurs.
+
+85. **A drag rightwards turns the receipt over, from either face.** The sheet is
     dragged aside to bring the menu up, and the panel is dragged aside to put it
     back. One gesture on one object, whichever side happens to be showing —
     having it only on the panel made the turn something the paper did to you on
@@ -1010,7 +1033,7 @@ relative` rather than a transform, which does not apply to an inline box.
     both `animationend` handlers have to ignore `recentre`: it ends first, and
     the panel's handler is what unmounts the panel.
 
-85. **The sheet is prerendered, so it may not carry a `style:` directive.**
+86. **The sheet is prerendered, so it may not carry a `style:` directive.**
     Svelte renders one as a literal `style="…"` attribute in the HTML that
     ships, and `style-src 'self'` refuses an inline style outright — the page
     hydrated with two console violations the moment `--turn` and `--axis` were
