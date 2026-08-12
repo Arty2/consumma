@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
 	import ListSwitcher from './ListSwitcher.svelte';
@@ -24,14 +25,35 @@
 	 */
 
 	type Props = {
+		/** Set by the page once the paper has begun turning back over. */
+		closing?: boolean;
 		onclose: () => void;
+		/** The panel's half of the turn is done and it can be taken away. */
+		onclosed?: () => void;
 		onimport: () => void;
 		onexport: () => void;
 		onclear: () => void;
 		ondelete: () => void;
 	};
 
-	let { onclose, onimport, onexport, onclear, ondelete }: Props = $props();
+	let {
+		closing = false,
+		onclose,
+		onclosed,
+		onimport,
+		onexport,
+		onclear,
+		ondelete
+	}: Props = $props();
+
+	/*
+	 * Asking twice to close is asking once. Escape during the furl, or a second
+	 * tap on the ✕, would otherwise restart the turn from the top.
+	 */
+	function close() {
+		if (closing) return;
+		onclose();
+	}
 
 	let entered = $state('');
 	let joining = $state(false);
@@ -41,8 +63,28 @@
 	let copied = $state(false);
 
 	let panel = $state<HTMLElement | null>(null);
-	let offset = $state(0);
+	/*
+	 * How far the paper has been turned back by a finger, in degrees. A drag is
+	 * the same gesture as the animation now — the panel is the back of a sheet
+	 * and pulling it rightwards turns it over, rather than sliding it off to one
+	 * side as though there were somewhere beside the paper for it to go.
+	 */
+	let turn = $state(0);
+	/** Swinging home after a drag that did not go far enough to close. */
+	let springing = $state(false);
 	let dragStart: { x: number; at: number } | null = null;
+
+	/*
+	 * Unfurling, once, on arrival — cleared by its own animationend so the drag
+	 * can take the transform over afterwards.
+	 *
+	 * Asked in JS rather than left to the media query, as every animation here
+	 * is. The reduced-motion backstop in app.css shortens durations but says
+	 * nothing about delays, and this animation is held back half a turn while
+	 * the sheet gets out of the way — under reduced motion that delay would
+	 * survive on its own and leave the panel edge-on and unreadable for it.
+	 */
+	let entering = $state(browser && !matchMedia('(prefers-reduced-motion: reduce)').matches);
 	let logCopied = $state(false);
 
 	/*
@@ -139,19 +181,40 @@
 		}
 
 		entered = '';
-		onclose();
+		close();
 	}
 
-	/* Rightwards only: the menu came from there and goes back the same way. */
+	/*
+	 * Rightwards only: the menu came from there and goes back the same way.
+	 *
+	 * The distance travelled is read as a fraction of the paper's width and
+	 * turned into an angle, so a drag across the whole panel is the whole
+	 * quarter-turn that takes it edge-on. The thresholds below are unchanged —
+	 * it is what they are measured against that moved.
+	 */
 	function onpointerdown(event: PointerEvent) {
-		if (event.button !== 0) return;
+		if (event.button !== 0 || closing) return;
 		if ((event.target as HTMLElement).closest('input, textarea, button')) return;
+
+		/*
+		 * Caught on its way home. It is only ever a few degrees out by then —
+		 * a spring follows a drag too short to close — so it is put flat and the
+		 * new drag is measured from there, rather than handing the finger a
+		 * paper that jumps back to where the last one left it.
+		 */
+		if (springing) {
+			springing = false;
+			turn = 0;
+		}
+
 		dragStart = { x: event.clientX, at: performance.now() };
 	}
 
 	function onpointermove(event: PointerEvent) {
-		if (!dragStart) return;
-		offset = Math.max(0, event.clientX - dragStart.x);
+		if (!dragStart || !panel) return;
+		const travelled = Math.max(0, event.clientX - dragStart.x);
+		// Negative, the way the paper folds: see the keyframes below.
+		turn = Math.min(1, travelled / panel.clientWidth) * -90;
 	}
 
 	function onpointerup(event: PointerEvent) {
@@ -163,8 +226,14 @@
 
 		dragStart = null;
 
-		if (flick || travelled > panel.clientWidth * 0.25) onclose();
-		else offset = 0; // Springs back.
+		/*
+		 * Let go far enough and the paper carries on turning over from wherever
+		 * the finger left it — the furl reads `--turn` for its first frame, so
+		 * there is no jump between the hand and the animation. Short of that it
+		 * swings back upright, which it now actually does: it used to snap.
+		 */
+		if (flick || travelled > panel.clientWidth * 0.25) close();
+		else if (turn < 0) springing = true;
 	}
 </script>
 
@@ -174,22 +243,37 @@
 	aria-modal="true"
 	aria-label="Menu"
 	tabindex="-1"
+	class:unfurling={entering}
+	class:furling={closing}
+	class:springing
+	style:--turn="{turn}deg"
 	bind:this={panel}
-	style:--offset="{offset}px"
-	use:trap={onclose}
+	use:trap={close}
 	{onpointerdown}
 	{onpointermove}
 	{onpointerup}
 	onpointercancel={() => {
 		dragStart = null;
-		offset = 0;
+		if (turn < 0 && !closing) springing = true;
+	}}
+	onanimationend={(event) => {
+		/*
+		 * The panel's own turn, and only that — a boxed button's mark or a row
+		 * inside the switcher would otherwise end the panel's animation for it.
+		 */
+		if (event.target !== panel) return;
+		if (closing) onclosed?.();
+		else if (springing) {
+			springing = false;
+			turn = 0;
+		} else entering = false;
 	}}
 >
 	<div class="frame" aria-hidden="true">
 		<HandRect seed="menu" wobble={2.2} />
 	</div>
 
-	<button class="close" type="button" onclick={onclose} aria-label="Close">
+	<button class="close" type="button" onclick={close} aria-label="Close">
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
 			<path d={cross} class="drawn" />
 		</svg>
@@ -208,7 +292,7 @@
 				dropdown, when open, is ordinary content and scrolls like everything
 				else beneath it.
 			-->
-			<ListSwitcher context="menu" onafterselect={onclose} />
+			<ListSwitcher context="menu" onafterselect={close} />
 
 			<!--
 				Two sentences, never one. How much is waiting is what people want to
@@ -418,8 +502,9 @@
 	 * margins, same room above and below the tear — so opening the menu turns
 	 * the list over rather than sliding something else in front of it.
 	 *
-	 * Centred like the page, so the drag-to-dismiss offset is composed with the
-	 * centring rather than replacing it.
+	 * Centred like the page, and centred with `translate` rather than with
+	 * `transform`, which leaves the transform free for the turn: the two are
+	 * separate properties and compose without either clobbering the other.
 	 */
 	.menu {
 		position: fixed;
@@ -434,7 +519,21 @@
 		flex-direction: column;
 		outline: none;
 		touch-action: pan-y;
-		translate: calc(-50% + var(--offset, 0px)) 0;
+		translate: -50% 0;
+
+		/*
+		 * The other side of the sheet's own hinge. The sheet is `--paper-width`
+		 * and centred, and so is this, so the two right edges are one line
+		 * rather than two that nearly agree — see `--flip` and `--paper-width`
+		 * in app.css.
+		 *
+		 * At rest `--turn` is nought and this is the identity; under a finger it
+		 * is the angle the paper has been turned back by. The perspective is the
+		 * same 1200px the sheet projects at, so the two halves of the turn are
+		 * seen from one place.
+		 */
+		transform-origin: 100% 50%;
+		transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		/*
 		 * The paper's own top and bottom, so the scroller inside is exactly the
 		 * frame's box and the content is cut where the paper stops. Cut at the
@@ -443,6 +542,86 @@
 		 * leaking rather than as paper ending.
 		 */
 		padding-block: var(--paper-top) var(--paper-bottom);
+	}
+
+	/*
+	 * Unfurling out of the hinge, after the sheet has folded into it.
+	 *
+	 * The delay is the sheet's half of the turn, and `both` holds the panel
+	 * edge-on for the length of it. That is what lets the panel be in the
+	 * document from the moment of the tap — trap armed, `aria-modal` honoured,
+	 * focus already inside — while still being the second thing seen. Nothing
+	 * is held back for a keyboard or a screen reader; only the drawing waits.
+	 */
+	.unfurling {
+		animation: unfurl var(--flip) ease-out var(--flip) both;
+		will-change: transform;
+	}
+
+	/* Not far enough. It swings upright again — it used to snap. */
+	.springing {
+		animation: spring-back var(--flip) ease-out forwards;
+		will-change: transform;
+	}
+
+	/*
+	 * And back into the hinge. `--turn` is where a finger left the paper, so a
+	 * drag that goes far enough hands over to this without a jump; from the ✕
+	 * or from Escape it is nought and the turn starts from flat.
+	 *
+	 * Last of the three deliberately: only one `animation` survives the
+	 * cascade, and closing has to be the one that does however the panel was
+	 * caught — mid-arrival, or mid-spring under a finger that let go.
+	 */
+	.furling {
+		animation: furl var(--flip) ease-in forwards;
+		pointer-events: none;
+		will-change: transform;
+	}
+
+	/*
+	 * Out of the hinge along the same arc the sheet went into it by, and not
+	 * the mirror of it.
+	 *
+	 * The obvious decomposition turns the back face through the angles a real
+	 * sheet's back face passes through, which are the front's reflected — the
+	 * panel would swing in from in front of the reader while the sheet had just
+	 * gone away behind. Both halves are edge-on at the handover so nobody sees
+	 * the join, but the depth cue is visible on either side of it: coming
+	 * forwards, the near edge is magnified, and the panel overhung a 390px
+	 * screen by 21px and cut its own drawn edge off.
+	 *
+	 * So the paper goes to edge-on and comes back out of it, through the same
+	 * orientations in the same direction. One plane, folding shut and opening
+	 * again with the other side up. It is also the only version that needs no
+	 * mirroring: nothing here ever turns past a quarter, so no content is ever
+	 * seen from behind.
+	 */
+	@keyframes unfurl {
+		from {
+			transform: perspective(1200px) rotateY(-90deg);
+		}
+		to {
+			transform: perspective(1200px) rotateY(0deg);
+		}
+	}
+
+	@keyframes furl {
+		from {
+			transform: perspective(1200px) rotateY(var(--turn, 0deg));
+		}
+		to {
+			transform: perspective(1200px) rotateY(-90deg);
+		}
+	}
+
+	@keyframes spring-back {
+		from {
+			transform: perspective(1200px) rotateY(var(--turn, 0deg));
+		}
+		to {
+			transform: perspective(1200px) rotateY(0deg);
+		}
 	}
 
 	/*

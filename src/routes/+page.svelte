@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import { browser } from '$app/environment';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
 	import ListSwitcher from '$lib/components/ListSwitcher.svelte';
@@ -38,6 +39,79 @@
 	type Panel = 'menu' | 'import' | 'clear' | 'delete' | null;
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
+
+	/*
+	 * The menu is the back of this sheet, so opening it turns the sheet over.
+	 *
+	 * One turn, two elements: the paper folds edge-on about its right edge here,
+	 * and the panel unfurls out of that same edge in Menu.svelte, each taking
+	 * half of `--flip`. They cannot be one element turning through 180° — the
+	 * sheet is in flow and scrolls, the panel is fixed to the viewport, and
+	 * putting both inside one `preserve-3d` box would mean laying the page out
+	 * around the animation. Factored in two they never have to meet: at the
+	 * handover both are edge-on and neither is drawn.
+	 *
+	 * `flip` is which half is running, and it is not the same question as which
+	 * panel is open — the sheet turns back while the menu is still mounted,
+	 * playing its own half.
+	 */
+	let flip = $state<'open' | 'close' | null>(null);
+	let paper = $state<HTMLElement | null>(null);
+
+	/*
+	 * Face down: turned away, or on its way there.
+	 *
+	 * It has to hold for as long as the menu is up, not just for the half-turn
+	 * that put it there — the panel is still unfurling through the second half,
+	 * and a sheet that sprang upright the moment its own animation ended would
+	 * stand back up behind it in full view.
+	 */
+	const turned = $derived(flip === 'open' && panel === 'menu');
+
+	/*
+	 * Asked here rather than left to the media query, as every animation in this
+	 * app is: the menu is unmounted by its own animationend, and an animation
+	 * that is merely switched off never ends — the panel would stay over the
+	 * sheet for good, with the focus trap still armed.
+	 */
+	const still = () => browser && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	function openMenu() {
+		if (still()) {
+			panel = 'menu';
+			return;
+		}
+
+		/*
+		 * Where the reader is, in the sheet's own coordinates.
+		 *
+		 * `transform: perspective(…)` projects towards the element's own
+		 * transform-origin, and the sheet is as tall as the list — on a long one
+		 * its middle is a screen or two below the fold, and the paper would turn
+		 * away towards a vanishing point nobody is standing at. The Y half of a
+		 * transform-origin makes no difference to a rotateY, so it is free to
+		 * carry the eye instead, and this puts it level with the middle of the
+		 * screen. One rect read, at the tap.
+		 */
+		paper?.style.setProperty('--eye', `${innerHeight / 2 - paper.getBoundingClientRect().top}px`);
+
+		flip = 'open';
+		panel = 'menu';
+	}
+
+	/*
+	 * Closing back onto the sheet, rather than closing to make room for a panel
+	 * over it. The menu stays mounted through its own half of the turn and says
+	 * when it is done; only then is it taken away.
+	 */
+	function closeMenu() {
+		if (still()) {
+			panel = null;
+			return;
+		}
+
+		flip = 'close';
+	}
 
 	/*
 	 * Once, on mount, and never again.
@@ -142,7 +216,20 @@
 	}
 </script>
 
-<div class="page">
+<div
+	class="page"
+	class:turning={turned}
+	class:returning={flip === 'close'}
+	bind:this={paper}
+	onanimationend={(event) => {
+		/*
+		 * The paper's own turn, and only that: a task popping or a checkbox
+		 * sparkling anywhere on the sheet bubbles an animationend through here
+		 * as well, and either would stand the paper up mid-turn.
+		 */
+		if (event.target === paper && flip === 'close') flip = null;
+	}}
+>
 	<!-- Room above the tear, so the stroke is never clipped by the viewport. -->
 	<div class="top">
 		<TornEdge seed="top" />
@@ -168,7 +255,7 @@
 			<ListSwitcher />
 			<div class="controls">
 				<ThemeButton />
-				<MenuButton onopen={() => (panel = 'menu')} />
+				<MenuButton onopen={openMenu} />
 			</div>
 		</div>
 		<!--
@@ -187,7 +274,9 @@
 
 {#if panel === 'menu'}
 	<Menu
-		onclose={() => (panel = null)}
+		closing={flip === 'close'}
+		onclose={closeMenu}
+		onclosed={() => (panel = null)}
 		onimport={onImport}
 		onexport={onExportFromMenu}
 		onclear={() => (panel = 'clear')}
@@ -243,6 +332,56 @@
 		max-width: var(--paper-width);
 		margin: 0 auto;
 		padding: 0 var(--paper-x) var(--paper-bottom);
+
+		/*
+		 * Hinged on the right edge, where the burger is and where the panel has
+		 * always come from. The ✕ that replaces the burger is drawn at the same
+		 * point, a finger's width inside the hinge, so the two barely move: the
+		 * paper turns around the button rather than carrying it off.
+		 *
+		 * `--eye` is the Y half, and it is not the axis — a rotateY is the same
+		 * rotation wherever the origin sits vertically. It is the vanishing
+		 * point, which `perspective()` takes from the transform-origin too, and
+		 * on a sheet as tall as its list the middle of the element is nowhere
+		 * near the middle of the screen. +page.svelte writes it at the tap.
+		 */
+		transform-origin: 100% var(--eye, 50%);
+	}
+
+	/*
+	 * The first half of the turn, and then held: `forwards` keeps the paper
+	 * edge-on for as long as the menu is up, because the panel goes on unfurling
+	 * after this animation has ended.
+	 */
+	.turning {
+		animation: turn-away var(--flip) ease-in forwards;
+		will-change: transform;
+	}
+
+	/*
+	 * The second half. Delayed by one half-turn, since the panel has to furl
+	 * shut before there is anything to come back to; `both` holds the paper
+	 * edge-on through that wait rather than standing it up and turning it away
+	 * again.
+	 */
+	.returning {
+		animation: turn-back var(--flip) ease-out var(--flip) both;
+		will-change: transform;
+	}
+
+	@keyframes turn-away {
+		to {
+			transform: perspective(1200px) rotateY(-90deg);
+		}
+	}
+
+	@keyframes turn-back {
+		from {
+			transform: perspective(1200px) rotateY(-90deg);
+		}
+		to {
+			transform: none;
+		}
 	}
 
 	.top {

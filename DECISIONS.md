@@ -526,13 +526,18 @@ Numbers in brackets are the section of the build plan a decision came from.
     The long press still sets half too; this is a second way to the same place,
     not a replacement.
 
-62. **Two animations, and they are opacity and scale.** A few drawn strokes
+62. **On the sheet, animation is opacity and scale.** A few drawn strokes
     thrown out from a checkbox when it is ticked, and a short swell as a done
     task leaves. No colour, no shadow, nothing that moves a row while it plays.
 
     Both ask `prefers-reduced-motion` in JavaScript rather than hiding in CSS.
     The sparkle is cleared by its own `animationend`, so one that is merely
     invisible never clears and its strokes stay in the document for good.
+
+    This used to say "two animations", full stop, and the menu's turn (§82) is
+    the third. The rule it was reaching for is narrower than the count it kept:
+    a **mark** may not turn, because a drawn stroke that rotates stops meaning
+    what it was drawn to mean. The **paper** may, because it has two sides.
 
 63. **Everything folds shut while a group is carried.** The whole list becomes a
     handful of titles, so there is somewhere visible to put it down. Nothing is
@@ -794,6 +799,54 @@ relative` rather than a transform, which does not apply to an inline box.
     outside, and it is `Sheet` that knows which row is above which. So `Sheet`
     holds the id, as it already holds where an open empty row is sitting, and
     the row clears it as soon as it has taken the caret.
+
+82. **The menu unfurls: the sheet turns over.** The panel had been laid out from
+    the paper's own variables for some time — same width, same margins, same
+    room above and below the tear — expressly so that it would land on the sheet
+    rather than beside it. Both files said as much in their comments. But it
+    appeared instantly, so the one claim the geometry existed to support was the
+    one thing nobody ever saw. Now the sheet folds edge-on about its right edge
+    and the panel unfurls back out of it, half of `--flip` each.
+
+    The hinge is the right edge because that is where the burger is, and the ✕
+    that replaces it is drawn at the same point, a finger's width inside the
+    hinge. The two barely move: the paper turns around the button under the
+    finger rather than carrying it off.
+
+    **Two elements, not one turning through 180°.** The sheet is in flow and
+    scrolls with the list; the panel is fixed to the viewport with its own
+    scroller. Putting both in one `preserve-3d` box means laying the page out
+    around the animation, and the page is the thing the animation is about.
+
+    **Both halves travel the same arc**, `0 → -90°` and back out of it, rather
+    than the front's angles and their mirror. The mirrored pair is the truer
+    decomposition of a flip and it was tried first: it swings the panel in from
+    in front of the reader while the sheet has just gone away behind, and
+    perspective magnifies whichever edge is nearest. Measured, the panel reached
+    411px on a 390px screen and cut off its own drawn frame. Folding shut and
+    opening again is one plane moving one way, and since nothing turns past a
+    quarter, no content is ever seen from behind and none needs mirroring.
+
+    `transform-origin: 100% var(--eye)`. The `100%` is the hinge. The Y half is
+    not the axis — a `rotateY` is the same rotation wherever the origin sits
+    vertically — it is the vanishing point, which `perspective()` takes from the
+    transform-origin too. Left at the middle of the element, a sheet as tall as
+    its list turns away towards a point a screen or more below the reader.
+    `+page.svelte` writes the viewport's middle there at the tap, one rect read.
+
+    The panel is in the document from the instant of the tap, with its trap
+    armed and its focus taken; only the drawing waits, held edge-on by an
+    animation delay. So nothing is held back for a keyboard or a screen reader.
+    That delay is also why `prefers-reduced-motion` is asked in JavaScript here
+    as everywhere else: the backstop in `app.css` shortens durations and says
+    nothing about delays, and a panel left to it alone would hang edge-on and
+    unreadable for exactly as long as the animation it was not playing.
+
+    The drag that dismisses the panel turns it back now, instead of sliding it
+    sideways. It used to translate along X and snap home, under a comment
+    reading "Springs back", which nothing transitioned and which therefore did
+    not. Sliding was also the wrong gesture for a panel that is the back of the
+    sheet: there is nowhere beside the paper for it to go.
 
 ## Known limits
 

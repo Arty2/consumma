@@ -198,6 +198,17 @@
 	--corner-y: calc(var(--paper-top) + var(--tear));
 
 	/*
+	 * Half a turn of the paper.
+	 *
+	 * Opening the menu turns the sheet over, and the two sides of it are two
+	 * elements in two files: the sheet folds edge-on in +page.svelte and the
+	 * panel unfurls out of the same edge in Menu.svelte. Neither half is a whole
+	 * gesture, so the number lives up here with the other measurements both of
+	 * them are laid out from, rather than being written twice and drifting.
+	 */
+	--flip: 150ms;
+
+	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
 	 *
 	 * Every way of deleting something stands in one column out here, clear of

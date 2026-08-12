@@ -445,7 +445,17 @@ test('a long list name truncates in a row rather than overflowing it, in either 
 	const menuGeo = await page.evaluate(() => {
 		const row = document.querySelector('.dropdown.menu .row')!.getBoundingClientRect();
 		const box = document.querySelector('.dropdown.menu')!.getBoundingClientRect();
-		const pill = document.querySelector('button[aria-haspopup="listbox"]')!.getBoundingClientRect();
+		/*
+		 * The menu's pill, not the sheet's. Both are in the document while the
+		 * panel is up, and unscoped this took whichever came first in markup —
+		 * which was the sheet's, and measured the wrong row for as long as the
+		 * two happened to line up. The sheet is turned away behind the panel
+		 * now, so its box is a line on the hinge and the two no longer do.
+		 */
+		const pill = document
+			.querySelector('.menu')!
+			.querySelector('button[aria-haspopup="listbox"]')!
+			.getBoundingClientRect();
 		const close = document.querySelector('.close')!.getBoundingClientRect();
 		return { rowFits: row.width <= box.width + 1, pillRight: pill.right, closeLeft: close.left };
 	});
