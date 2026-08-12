@@ -578,9 +578,18 @@
 		}
 	}
 
+	/*
+	 * Coming back round, not coming back. The sheet went out leading with its
+	 * right edge and returns settling out of its left, a quarter further along
+	 * the same rotation rather than a quarter back down it.
+	 *
+	 * The `from` is the opposite sign to where `.turning` left the paper, and
+	 * nothing is seen of the change: both are edge-on, so the sheet has no width
+	 * at either, and at that moment the panel is over it at full width anyway.
+	 */
 	@keyframes turn-back {
 		from {
-			transform: perspective(1200px) rotateY(-90deg);
+			transform: perspective(1200px) rotateY(90deg);
 		}
 		to {
 			transform: none;

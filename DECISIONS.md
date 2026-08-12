@@ -822,29 +822,42 @@ relative` rather than a transform, which does not apply to an inline box.
     scroller. Putting both in one `preserve-3d` box means laying the page out
     around the animation, and the page is the thing the animation is about.
 
-    **The panel travels the mirror of the sheet's angles**, which is what the
-    back face of one turning sheet does. Sheet `0 → -90°`, panel `90° → 0`; and
-    closing, the panel `0 → 90°` — left edge towards the reader, right edge
-    going back — then the sheet `-90° → 0` out of the same turn. The paper keeps
-    going round rather than changing its mind at the join, which is what a
-    receipt turned over in the hand does.
+    **Every half-turn is the same movement, and the paper only ever spins one
+    way.** The face on its way out leads with its right edge and goes to edge-on
+    (`0 → -90°`); the face arriving settles out of its left (`90° → 0`). Opening
+    and closing are identical, because the paper does not know which side it is
+    on — so a swipe rightwards always spins it the same way, and swiping again
+    carries the rotation on rather than winding it back. A receipt spun in the
+    hand keeps going round; it does not return along the arc it came by.
 
-    The near edge changes sides across the handover, because the panel's words
-    are set to be read rather than mirrored. Nothing is seen of it: both halves
-    are exactly edge-on at that instant. And nothing turns past a quarter, so no
-    content is ever shown from behind.
+    That means a sign flip at each join: `.turning` leaves the sheet at `-90°`
+    and `turn-back` picks it up at `+90°`, a quarter further round rather than a
+    quarter back down. Nothing is seen of it — both are edge-on, the sheet has
+    no width at either, and the panel is over it at full width at that moment
+    anyway. The near edge changes sides at the same join, because the panel's
+    words are set to be read rather than mirrored, and that is invisible for the
+    same reason. Nothing turns past a quarter, so no content is ever shown from
+    behind.
 
-    Two wrong turns on the way here, both recorded because the reasoning for
-    each looked sound and was answering the wrong question. The first was to
-    fold to edge-on and open back out along the same arc, keeping one edge near
-    throughout — continuous to look at, but it is a sheet being folded shut and
-    reopened, not one being turned over. The second was the argument for it: on
-    the right-edge hinge the mirrored panel magnified its near edge to 411px on
-    a 390px screen and cut off its own drawn frame. That is real, and it is an
-    artefact of hinging at an edge. About the middle the near half's
-    magnification is paid for by the far half, and measured at 320, 390 and
-    1280 neither version leaves the paper. The measurement outlived the
-    condition it was taken under.
+    Three wrong turns on the way here, kept because each one's reasoning looked
+    sound and was answering a question nobody had asked.
+
+    The first folded the paper to edge-on and opened it back out along the arc
+    it came in by, keeping one edge near throughout. Continuous to look at, but
+    it is a sheet being folded shut and reopened rather than one being turned
+    over.
+
+    The second was the argument for it: on the right-edge hinge, the version
+    that mirrors magnified its near edge to 411px on a 390px screen and cut off
+    its own drawn frame. Real, and an artefact of hinging at an edge — about the
+    middle the near half's magnification is paid for by the far half, and
+    measured at 320, 390, 768 and 1280 no version leaves the paper. The
+    measurement outlived the condition it was taken under.
+
+    The third had the two halves mirroring each other, which is a true 180°
+    flip and does turn the receipt over — but it reverses on the way back, so a
+    second swipe the same way unwinds the first. Correct for a page in a book,
+    where there is a spine to reverse about. There is no spine here.
 
     `transform-origin: 50% var(--eye)`. The Y half is not the axis — a `rotateY`
     is the same rotation wherever the origin sits vertically — it is the

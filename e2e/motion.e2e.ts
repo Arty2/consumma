@@ -300,8 +300,9 @@ test.describe('turning it back by hand', () => {
 		 */
 		await pull(page, 30, 6);
 
-		// Turned, and turned the way the paper goes round: left edge forward.
-		expect(await panelAngle(page)).toBeGreaterThan(0);
+		// Turned, and turned the way every face leaves: right edge forward, the
+		// same movement the sheet makes on the way out.
+		expect(await panelAngle(page)).toBeLessThan(0);
 
 		await page.mouse.up();
 		await settle(page);
@@ -309,6 +310,43 @@ test.describe('turning it back by hand', () => {
 		// Not far enough, so it swings home rather than snapping there.
 		expect(await panelAngle(page)).toBe(0);
 		await expect(page.getByRole('dialog', dialog)).toBeVisible();
+	});
+
+	test('swiping the same way again keeps it spinning the same way', async ({ page }) => {
+		await page.goto('/');
+
+		/*
+		 * The receipt is one object being spun, so a second swipe rightwards
+		 * carries the rotation on rather than winding it back. Every face leaves
+		 * leading with its right edge and arrives settling out of its left,
+		 * whichever face it is — so both turns look the same, and this samples
+		 * both and checks that they do.
+		 */
+		const leaving = async (target: () => Promise<number>) => {
+			const seen: number[] = [];
+			for (let i = 0; i < 6; i++) {
+				seen.push(await target());
+				await page.waitForTimeout(20);
+			}
+			return seen.filter((deg) => deg !== 0 && deg !== -90);
+		};
+
+		// First swipe: the sheet goes, leading with its right edge.
+		await menuButton(page).click();
+		const sheetOut = await leaving(() => angle(page));
+		await settle(page);
+		expect(sheetOut.length).toBeGreaterThan(0);
+		for (const deg of sheetOut) expect(deg).toBeLessThan(0);
+
+		// Second swipe, the same way: the panel goes, and goes the same way —
+		// not back along the arc the sheet came in by.
+		await page.getByRole('button', { name: 'Close' }).click();
+		const panelOut = await leaving(() => panelAngle(page).catch(() => 0));
+		expect(panelOut.length).toBeGreaterThan(0);
+		for (const deg of panelOut) expect(deg).toBeLessThan(0);
+
+		await settle(page);
+		expect(await angle(page)).toBe(0);
 	});
 
 	test('a drag past the threshold carries on into the turn', async ({ page }) => {

@@ -230,9 +230,9 @@
 	function onpointermove(event: PointerEvent) {
 		if (!dragStart || !panel) return;
 		const travelled = event.clientX - dragStart.x;
-		// Positive: right edge away, left edge towards the reader, which is the
-		// way this half of the turn goes.
-		turn = angleAt(travelled, panel.clientWidth, 1);
+		// Negative, the way every half of this turn goes: the face on its way out
+		// leads with its right edge, whichever face it is.
+		turn = angleAt(travelled, panel.clientWidth, -1);
 		axis = axisAt(travelled, panel.clientWidth);
 	}
 
@@ -252,7 +252,7 @@
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
 		if (commits(travelled, elapsed, panel.clientWidth)) close();
-		else if (turn > 0) springing = true;
+		else if (turn < 0) springing = true;
 	}
 </script>
 
@@ -274,7 +274,7 @@
 	{onpointerup}
 	onpointercancel={() => {
 		dragStart = null;
-		if (turn > 0 && !closing) springing = true;
+		if (turn < 0 && !closing) springing = true;
 	}}
 	onanimationend={(event) => {
 		/*
@@ -618,21 +618,19 @@
 	}
 
 	/*
-	 * The angles a real sheet's back face passes through, which are the front's
-	 * reflected — so the two halves together are one rotation carrying on in one
-	 * direction, rather than the paper folding to edge-on and opening back out
-	 * the way it came.
+	 * One rotation, going round and round the same way.
 	 *
-	 * Closing, the panel's left edge swings towards the reader and its right
-	 * goes back; the sheet then arrives right-edge-first out of the same turn.
-	 * Opening is that run backwards. Either way the paper keeps going round
-	 * instead of changing its mind at the join, which is what a receipt turned
-	 * over in the hand does.
+	 * Every half-turn is the same movement: the face on its way out leads with
+	 * its right edge and goes to edge-on, and the face arriving settles out of
+	 * its left. So a swipe rightwards always spins the paper the same way, and
+	 * swiping again keeps it spinning rather than winding it back — which is
+	 * what a receipt spun in the hand does. Opening and closing look identical
+	 * because they are: the paper does not know which side it is on.
 	 *
-	 * The cost is that the near edge changes sides across the handover, since
-	 * the panel's words are set to be read rather than mirrored. Nothing is
-	 * seen of it: both halves are exactly edge-on at that instant. And nothing
-	 * turns past a quarter, so no content is ever shown from behind.
+	 * The near edge does change sides across the handover, since the panel's
+	 * words are set to be read rather than mirrored. Nothing is seen of it:
+	 * both halves are exactly edge-on at that instant. And nothing turns past a
+	 * quarter, so no content is ever shown from behind.
 	 */
 	@keyframes unfurl {
 		from {
@@ -648,7 +646,7 @@
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
-			transform: perspective(1200px) rotateY(90deg);
+			transform: perspective(1200px) rotateY(-90deg);
 		}
 	}
 
