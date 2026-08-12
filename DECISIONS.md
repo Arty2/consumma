@@ -823,15 +823,21 @@ relative` rather than a transform, which does not apply to an inline box.
     around the animation, and the page is the thing the animation is about.
 
     **Every half-turn is the same movement, and the paper only ever spins one
-    way.** The face on its way out leads with its right edge and goes to edge-on
-    (`0 → -90°`); the face arriving settles out of its left (`90° → 0`). Opening
-    and closing are identical, because the paper does not know which side it is
-    on — so a swipe rightwards always spins it the same way, and swiping again
+    way.** A hand pushing the paper rightwards sends the side under it back and
+    brings the far side forward, the way a revolving door goes — so the face on
+    its way out leads with its **left** edge and goes to edge-on (`0 → 90°`),
+    and the face arriving settles out of its right (`-90° → 0`). Opening and
+    closing are identical, because the paper does not know which side it is on —
+    so a swipe rightwards always spins it the same way, and swiping again
     carries the rotation on rather than winding it back. A receipt spun in the
     hand keeps going round; it does not return along the arc it came by.
 
-    That means a sign flip at each join: `.turning` leaves the sheet at `-90°`
-    and `turn-back` picks it up at `+90°`, a quarter further round rather than a
+    It turned the other way for a while, which read as pulling the paper rather
+    than pushing it: the side under the finger came towards the reader while the
+    finger went the same way, which is not what a hand does to a sheet.
+
+    That means a sign flip at each join: `.turning` leaves the sheet at `90°`
+    and `turn-back` picks it up at `-90°`, a quarter further round rather than a
     quarter back down. Nothing is seen of it — both are edge-on, the sheet has
     no width at either, and the panel is over it at full width at that moment
     anyway. The near edge changes sides at the same join, because the panel's
@@ -894,8 +900,9 @@ relative` rather than a transform, which does not apply to an inline box.
     thickening both would say only that something was happening.
 
     Which side is near is not decided in the keyframes; it is whichever side the
-    selector points at, and that is the right one leaving and the left arriving,
-    on both faces of the paper. Under a finger the weight follows `--hand`, how
+    selector points at, and that is the left one leaving and the right arriving,
+    on both faces of the paper — the far side of a pushed sheet is the one that
+    swings towards you. Under a finger the weight follows `--hand`, how
     far round the paper has been turned from nought to one, so the animation
     picks it up where the drag left it rather than starting again from flat.
 

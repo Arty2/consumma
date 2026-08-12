@@ -198,7 +198,7 @@
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		}
 
-		turn = angleAt(dx, paper.clientWidth, -1);
+		turn = angleAt(dx, paper.clientWidth, 1);
 		axis = axisAt(dx, paper.clientWidth);
 		hand = progress(dx, paper.clientWidth);
 		place();
@@ -226,7 +226,7 @@
 		if (commits(travelled, elapsed, paper.clientWidth)) {
 			flip = 'open';
 			panel = 'menu';
-		} else if (turn < 0) settling = true;
+		} else if (turn > 0) settling = true;
 	}
 
 	/*
@@ -401,7 +401,7 @@
 			dragStart = null;
 			if (dragging) {
 				dragging = false;
-				if (turn < 0) settling = true;
+				if (turn > 0) settling = true;
 			}
 		}}
 	>
@@ -567,19 +567,19 @@
 	 * `:global` because the edge is drawn by SideEdge and its classes belong to
 	 * that component; this is the one thing about them the sheet decides.
 	 */
-	.dragging :global(svg.edge.right path) {
+	.dragging :global(svg.edge.left path) {
 		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
 	}
 
-	.turning :global(svg.edge.right path) {
+	.turning :global(svg.edge.left path) {
 		animation: near-out var(--flip) ease-in forwards;
 	}
 
-	.settling :global(svg.edge.right path) {
+	.settling :global(svg.edge.left path) {
 		animation: near-in var(--flip) ease-out forwards;
 	}
 
-	.returning :global(svg.edge.left path) {
+	.returning :global(svg.edge.right path) {
 		animation: near-in var(--flip) ease-out var(--flip) both;
 	}
 
@@ -599,7 +599,7 @@
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
-			transform: perspective(1200px) rotateY(-90deg);
+			transform: perspective(1200px) rotateY(90deg);
 		}
 	}
 
@@ -623,7 +623,7 @@
 	 */
 	@keyframes turn-back {
 		from {
-			transform: perspective(1200px) rotateY(90deg);
+			transform: perspective(1200px) rotateY(-90deg);
 		}
 		to {
 			transform: none;

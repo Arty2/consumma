@@ -237,7 +237,7 @@
 		const travelled = event.clientX - dragStart.x;
 		// Negative, the way every half of this turn goes: the face on its way out
 		// leads with its right edge, whichever face it is.
-		turn = angleAt(travelled, panel.clientWidth, -1);
+		turn = angleAt(travelled, panel.clientWidth, 1);
 		axis = axisAt(travelled, panel.clientWidth);
 		hand = progress(travelled, panel.clientWidth);
 	}
@@ -258,7 +258,7 @@
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
 		if (commits(travelled, elapsed, panel.clientWidth)) close();
-		else if (turn < 0) springing = true;
+		else if (turn > 0) springing = true;
 	}
 </script>
 
@@ -281,7 +281,7 @@
 	{onpointerup}
 	onpointercancel={() => {
 		dragStart = null;
-		if (turn < 0 && !closing) springing = true;
+		if (turn > 0 && !closing) springing = true;
 	}}
 	onanimationend={(event) => {
 		/*
@@ -323,6 +323,14 @@
 
 	<button class="close" type="button" onclick={close} aria-label="Close">
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
+			<!--
+				The same two strokes drawn twice: once in the paper, wide, and then
+				in the ink on top. It is the mark's own shape held clear of whatever
+				has scrolled under it, rather than a box of ground around it — a
+				square of paper cut the line it landed on in half, and the panel has
+				no rectangles on it anywhere else.
+			-->
+			<path d={cross} class="drawn knockout" />
 			<path d={cross} class="drawn" />
 		</svg>
 	</button>
@@ -653,19 +661,19 @@
 	 * touched. Under a finger the weight follows `--hand` directly, and the
 	 * furl picks it up from there rather than starting again from flat.
 	 */
-	.menu :global(svg.edge.right path) {
+	.menu :global(svg.edge.left path) {
 		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
 	}
 
-	.unfurling :global(svg.edge.left path) {
+	.unfurling :global(svg.edge.right path) {
 		animation: near-in var(--flip) ease-out var(--flip) both;
 	}
 
-	.springing :global(svg.edge.right path) {
+	.springing :global(svg.edge.left path) {
 		animation: near-in var(--flip) ease-out forwards;
 	}
 
-	.furling :global(svg.edge.right path) {
+	.furling :global(svg.edge.left path) {
 		animation: near-out var(--flip) ease-in forwards;
 	}
 
@@ -686,7 +694,7 @@
 	 */
 	@keyframes unfurl {
 		from {
-			transform: perspective(1200px) rotateY(90deg);
+			transform: perspective(1200px) rotateY(-90deg);
 		}
 		to {
 			transform: perspective(1200px) rotateY(0deg);
@@ -698,7 +706,7 @@
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
-			transform: perspective(1200px) rotateY(-90deg);
+			transform: perspective(1200px) rotateY(90deg);
 		}
 	}
 
@@ -814,14 +822,19 @@
 		 * are scenery where this is a control.
 		 */
 		z-index: 3;
+	}
 
-		/*
-		 * Its own ground. The ✕ sits a tear's depth inside the paper, which is
-		 * inside the scroller, so writing passes under it; with one list and no
-		 * switcher there is nothing else up there to stop it, and the mark was
-		 * read through a sentence.
-		 */
-		background: var(--paper);
+	/*
+	 * Three pixels of paper on either side of the stroke, so the mark stays
+	 * legible over whatever has been scrolled under it. The stroke is centred on
+	 * the path, so it takes six on top of the ink's own width to clear three.
+	 *
+	 * Drawn under, not over: `.knockout` comes first in the markup and SVG paints
+	 * in document order.
+	 */
+	.knockout {
+		stroke: var(--paper);
+		stroke-width: calc(var(--stroke) + 6px);
 	}
 
 	/*

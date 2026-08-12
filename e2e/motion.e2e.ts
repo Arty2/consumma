@@ -125,7 +125,7 @@ test.describe('with motion as it comes', () => {
 		 * unfurling through the second half of the turn, so a sheet that stood
 		 * upright at the end of its own animation would do it in full view.
 		 */
-		expect(await angle(page)).toBe(-90);
+		expect(await angle(page)).toBe(90);
 
 		await page.getByRole('button', { name: 'Close' }).click();
 		await expect(page.getByRole('dialog', dialog)).toBeHidden();
@@ -202,14 +202,15 @@ test.describe('the edge that comes forward', () => {
 		await settle(page);
 
 		/*
-		 * The sheet has turned away leading with its right edge, so that is the
-		 * one that came towards the reader and it carries twice the weight. The
-		 * left went away and is untouched — a rotation cannot say which side is
-		 * nearer on its own, since a vertical stroke's width is measured across
-		 * and the turn compresses that axis for both.
+		 * A hand pushing the paper rightwards sends the side under it back and
+		 * brings the far side forward, so it is the left edge that came towards
+		 * the reader and it carries twice the weight. The right went away and is
+		 * untouched — a rotation cannot say which side is nearer on its own,
+		 * since a vertical stroke's width is measured across and the turn
+		 * compresses that axis for both.
 		 */
-		expect(await weight(page, '.page', 'right')).toBeCloseTo(base * 2, 1);
-		expect(await weight(page, '.page', 'left')).toBe(base);
+		expect(await weight(page, '.page', 'left')).toBeCloseTo(base * 2, 1);
+		expect(await weight(page, '.page', 'right')).toBe(base);
 
 		// The panel arrived leading with its left, and has settled back to flat.
 		expect(await weight(page, '[role="dialog"]', 'left')).toBe(base);
@@ -233,15 +234,15 @@ test.describe('the edge that comes forward', () => {
 		// Under the flick, so the paper stays put and can be measured held.
 		await page.mouse.move(box.x + 60, box.y + box.height - 12, { steps: 6 });
 
-		const near = (await weight(page, '.page', 'right'))!;
+		const near = (await weight(page, '.page', 'left'))!;
 		expect(near).toBeGreaterThan(base);
 		expect(near).toBeLessThanOrEqual(base * 2);
 		// The far edge does not move, however far the hand goes.
-		expect(await weight(page, '.page', 'left')).toBe(base);
+		expect(await weight(page, '.page', 'right')).toBe(base);
 
 		await page.mouse.up();
 		await settle(page);
-		expect(await weight(page, '.page', 'right')).toBe(base);
+		expect(await weight(page, '.page', 'left')).toBe(base);
 	});
 });
 
@@ -283,9 +284,9 @@ test.describe('turning it over by hand', () => {
 		// Under the flick, which is 40px however fast the hand was going.
 		await page.mouse.move(from.x + 30, from.y, { steps: 6 });
 
-		// Turned, and turned away from the reader on the right — the sheet's
-		// half of the rotation, which is the negative one.
-		expect(await angle(page)).toBeLessThan(0);
+		// Turned the way a hand pushes it: the side under the finger goes back,
+		// the far side comes forward. That is the positive rotation.
+		expect(await angle(page)).toBeGreaterThan(0);
 
 		// And the axis has given a little, the way a spun sheet's does.
 		expect(await axis(page)).toBeGreaterThan(50);
@@ -313,7 +314,7 @@ test.describe('turning it over by hand', () => {
 
 		// The sheet is face down behind the panel, and the axis is back in the
 		// middle rather than left wherever the hand pushed it.
-		expect(await angle(page)).toBe(-90);
+		expect(await angle(page)).toBe(90);
 		expect(await axis(page)).toBe(50);
 	});
 
@@ -375,9 +376,9 @@ test.describe('turning it back by hand', () => {
 		 */
 		await pull(page, 30, 6);
 
-		// Turned, and turned the way every face leaves: right edge forward, the
-		// same movement the sheet makes on the way out.
-		expect(await panelAngle(page)).toBeLessThan(0);
+		// Turned the way every face leaves, which is the way the hand pushed it —
+		// the same movement the sheet makes on its way out.
+		expect(await panelAngle(page)).toBeGreaterThan(0);
 
 		await page.mouse.up();
 		await settle(page);
@@ -417,7 +418,7 @@ test.describe('turning it back by hand', () => {
 				);
 				await page.waitForTimeout(20);
 			}
-			return seen.filter((deg) => deg !== 0 && deg !== -90);
+			return seen.filter((deg) => deg !== 0 && deg !== 90);
 		};
 
 		// First swipe: the sheet goes, leading with its right edge.
@@ -425,14 +426,14 @@ test.describe('turning it back by hand', () => {
 		const sheetOut = await leaving('.page');
 		await settle(page);
 		expect(sheetOut.length).toBeGreaterThan(0);
-		for (const deg of sheetOut) expect(deg).toBeLessThan(0);
+		for (const deg of sheetOut) expect(deg).toBeGreaterThan(0);
 
 		// Second swipe, the same way: the panel goes, and goes the same way —
 		// not back along the arc the sheet came in by.
 		await page.getByRole('button', { name: 'Close' }).click();
 		const panelOut = await leaving('[role="dialog"]');
 		expect(panelOut.length).toBeGreaterThan(0);
-		for (const deg of panelOut) expect(deg).toBeLessThan(0);
+		for (const deg of panelOut) expect(deg).toBeGreaterThan(0);
 
 		await settle(page);
 		expect(await angle(page)).toBe(0);

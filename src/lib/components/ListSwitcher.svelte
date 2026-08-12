@@ -357,41 +357,23 @@
 	}
 
 	/*
-	 * The menu's own copy stays on the row the ✕ sits on rather than scrolling
-	 * away with the rest of the panel — the same row the burger's own position
-	 * answers to, on the other face of the paper. See Menu.svelte.
+	 * The menu's own copy opens on the row the ✕ sits on — the same row the
+	 * burger answers to, on the other face of the paper — and then scrolls away
+	 * with everything else written on the panel.
+	 *
+	 * It was pinned there for a while, on the reasoning that it answers which
+	 * list this is and so should always be legible. What that bought was an
+	 * opaque band the width of the paper, sliding under the writing and cutting
+	 * whichever line it met in half. The panel is a sheet of paper: one thing
+	 * is written on it and all of it moves together. The ✕ is the only thing
+	 * that stays, because it is a control rather than something written.
 	 */
-	/*
-	 * The sticking is done by the wrapper, not by the row inside it.
-	 *
-	 * A sticky element only travels within its own parent's box, and this
-	 * wrapper is exactly as tall as the row it holds — so the row had nowhere
-	 * to stick and scrolled away with everything else, from the day it was
-	 * written. It looked like it worked because `margin-top` already put it
-	 * where it would have stuck to.
-	 *
-	 * Here the parent is the panel's whole scrolled body, which is what gives
-	 * it the room. The dropdown hangs inside this wrapper and is in flow, so it
-	 * comes along and stays under the pill it belongs to.
-	 *
-	 * Flush with the top of the scroller, which is the panel's own torn edge:
-	 * the padding holding that tear is what puts this a tear's depth inside the
-	 * paper, so it is not offset again here.
-	 */
-	.wrap.menu {
-		position: sticky;
-		top: 0;
-		z-index: 1;
-		/*
-		 * A solid ground, spanning the panel rather than stopping short of the
-		 * ✕, so it covers the whole row it sticks to — an inset box left
-		 * scrolled text showing through beside it. The pill inside is what
-		 * keeps clear of the mark; see below.
-		 */
-		background: var(--paper);
-	}
-
 	.switcher.menu {
+		/*
+		 * Flush with the top of the scroller, which is the panel's own torn
+		 * edge: the padding holding that tear is what puts this a tear's depth
+		 * inside the paper, so it is not offset again here.
+		 */
 		margin-top: 0;
 		margin-bottom: 1.5rem;
 		/*
