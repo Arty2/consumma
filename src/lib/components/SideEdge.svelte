@@ -14,9 +14,13 @@
 	 * whichever axis was compressed.
 	 */
 
-	type Props = { seed: string; side: 'left' | 'right' };
+	/**
+	 * `mirror` turns the edge left for right — the same edge seen from the other
+	 * side of the paper, which is what the menu is drawn with.
+	 */
+	type Props = { seed: string; side: 'left' | 'right'; mirror?: boolean };
 
-	let { seed, side }: Props = $props();
+	let { seed, side, mirror = false }: Props = $props();
 
 	const WIDTH = 9;
 
@@ -29,7 +33,7 @@
 	);
 </script>
 
-<svg class="edge {side}" bind:clientHeight={height} width={WIDTH} aria-hidden="true">
+<svg class="edge {side}" class:mirror bind:clientHeight={height} width={WIDTH} aria-hidden="true">
 	{#if d}
 		<path {d} class="drawn" />
 	{/if}
@@ -59,5 +63,10 @@
 
 	.right {
 		right: 0;
+	}
+
+	/* About its own middle, where the stroke already runs, so it stays put. */
+	.mirror {
+		transform: scaleX(-1);
 	}
 </style>

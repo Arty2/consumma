@@ -322,10 +322,24 @@ test.describe('turning it back by hand', () => {
 		 * whichever face it is — so both turns look the same, and this samples
 		 * both and checks that they do.
 		 */
-		const leaving = async (target: () => Promise<number>) => {
+		/*
+		 * Read with `querySelector` rather than through a locator: the panel is
+		 * taken away at the end of its half of the turn, and a locator asked for
+		 * an element that has gone waits the full timeout for it to come back
+		 * instead of saying so. Nothing there reads as nought and is filtered
+		 * out with the frames where the paper is flat or already edge-on.
+		 */
+		const leaving = async (selector: string) => {
 			const seen: number[] = [];
 			for (let i = 0; i < 6; i++) {
-				seen.push(await target());
+				seen.push(
+					await page.evaluate((s) => {
+						const el = document.querySelector(s);
+						if (!el) return 0;
+						const m = new DOMMatrix(getComputedStyle(el).transform);
+						return Math.round((Math.atan2(-m.m13, m.m11) * 180) / Math.PI) || 0;
+					}, selector)
+				);
 				await page.waitForTimeout(20);
 			}
 			return seen.filter((deg) => deg !== 0 && deg !== -90);
@@ -333,7 +347,7 @@ test.describe('turning it back by hand', () => {
 
 		// First swipe: the sheet goes, leading with its right edge.
 		await menuButton(page).click();
-		const sheetOut = await leaving(() => angle(page));
+		const sheetOut = await leaving('.page');
 		await settle(page);
 		expect(sheetOut.length).toBeGreaterThan(0);
 		for (const deg of sheetOut) expect(deg).toBeLessThan(0);
@@ -341,7 +355,7 @@ test.describe('turning it back by hand', () => {
 		// Second swipe, the same way: the panel goes, and goes the same way —
 		// not back along the arc the sheet came in by.
 		await page.getByRole('button', { name: 'Close' }).click();
-		const panelOut = await leaving(() => panelAngle(page).catch(() => 0));
+		const panelOut = await leaving('[role="dialog"]');
 		expect(panelOut.length).toBeGreaterThan(0);
 		for (const deg of panelOut) expect(deg).toBeLessThan(0);
 

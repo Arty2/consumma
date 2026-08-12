@@ -4,7 +4,9 @@
 	import HandRect from './HandRect.svelte';
 	import ListSwitcher from './ListSwitcher.svelte';
 	import Perforation from './Perforation.svelte';
+	import SideEdge from './SideEdge.svelte';
 	import TextRule from './TextRule.svelte';
+	import TornEdge from './TornEdge.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
@@ -297,8 +299,20 @@
 		} else entering = false;
 	}}
 >
-	<div class="frame" aria-hidden="true">
-		<HandRect seed="menu" wobble={2.2} />
+	<!--
+		The back of the same receipt, closed by the same four edges — and closed
+		with the very seeds the sheet uses, turned left for right. A tear is a
+		tear all the way through the paper: seen from behind it is the same one
+		reversed, and the edge down the sheet's left is the edge down the panel's
+		right. That is the whole reason these are not new marks.
+	-->
+	<div class="edges" aria-hidden="true">
+		<div class="tear-edge top"><TornEdge seed="top" mirror /></div>
+		<div class="sides">
+			<SideEdge seed="right" side="left" mirror />
+			<SideEdge seed="left" side="right" mirror />
+		</div>
+		<div class="tear-edge bottom"><TornEdge seed="bottom" flip mirror /></div>
 	</div>
 
 	<button class="close" type="button" onclick={close} aria-label="Close">
@@ -569,7 +583,14 @@
 		 * drawn in the margin below the drawn edge, which reads as the panel
 		 * leaking rather than as paper ending.
 		 */
-		padding-block: var(--paper-top) var(--paper-bottom);
+		/*
+		 * The paper's own top and bottom, and then the tears themselves, so the
+		 * scroller begins where the paper is torn. The writing is cut off at the
+		 * tear rather than passing behind it — the sheet manages this by
+		 * scrolling the whole page, and the panel has to say it in the padding
+		 * because the scrolling here is inside the paper.
+		 */
+		padding-block: calc(var(--paper-top) + var(--tear)) calc(var(--paper-bottom) + var(--tear));
 	}
 
 	/*
@@ -660,24 +681,57 @@
 	}
 
 	/*
-	 * The frame is the drawer's edge and stays put; the content scrolls inside
-	 * it. Framing the scrolled content instead leaves the last line hanging
-	 * outside the border, because an absolutely positioned box in a scroll
-	 * container sizes to the visible box rather than to what it holds.
+	 * The edges stay put and the content scrolls inside them. Framing the
+	 * scrolled content instead leaves the last line hanging outside, because an
+	 * absolutely positioned box in a scroll container sizes to the visible box
+	 * rather than to what it holds.
+	 *
+	 * Above the scroller, and this is the fix rather than a nicety. The panel's
+	 * own sticky switcher carries an opaque ground the width of the paper, and
+	 * painted over the edges it rubbed them out along the row it stuck to; the
+	 * scrolled prose behind it did the same to the sides. Paper is in front of
+	 * what is written on it.
+	 *
+	 * The ✕ stays above even this: it is a control, and the edge is scenery.
 	 */
-	/*
-	 * On the sheet's own drawn edges: the room beside the paper across, and the
-	 * room the tears leave above and below. The sheet closes itself with two
-	 * torn edges and two side edges; the panel closes itself with one drawn
-	 * box, in the same place.
-	 */
-	.frame {
+	.edges {
 		position: absolute;
-		top: var(--paper-top);
-		right: var(--paper-x);
-		bottom: var(--paper-bottom);
-		left: var(--paper-x);
+		inset: 0;
+		/*
+		 * Above the sticky switcher, which carries a ground of its own at 1 and
+		 * is painted later in the document — a tie there goes to the switcher,
+		 * which is how the edge was rubbed out in the first place.
+		 */
+		z-index: 2;
 		pointer-events: none;
+	}
+
+	/*
+	 * The tears sit in the room the panel holds above and below its scroller,
+	 * which is `padding-block` below — so the writing is cut off exactly where
+	 * the paper is torn, and never halfway through a tooth.
+	 */
+	.tear-edge {
+		position: absolute;
+		right: var(--paper-x);
+		left: var(--paper-x);
+	}
+
+	.tear-edge.top {
+		top: var(--paper-top);
+	}
+
+	.tear-edge.bottom {
+		bottom: var(--paper-bottom);
+	}
+
+	/* Between the two tears, which is where the sheet's own sides run. */
+	.sides {
+		position: absolute;
+		top: calc(var(--paper-top) + var(--tear));
+		right: var(--paper-x);
+		bottom: calc(var(--paper-bottom) + var(--tear));
+		left: var(--paper-x);
 	}
 
 	/*
@@ -724,11 +778,19 @@
 		align-items: center;
 		justify-content: center;
 		/*
-		 * Above the content it scrolls over, and above the switcher's own
-		 * sticky pill too — the two share the same row, and without this the
-		 * pill, painted later in the document, would win the tie.
+		 * Above the content it scrolls over, above the switcher's own sticky
+		 * pill — the two share the same row — and above the drawn edges, which
+		 * are scenery where this is a control.
 		 */
-		z-index: 2;
+		z-index: 3;
+
+		/*
+		 * Its own ground. The ✕ sits a tear's depth inside the paper, which is
+		 * inside the scroller, so writing passes under it; with one list and no
+		 * switcher there is nothing else up there to stop it, and the mark was
+		 * read through a sentence.
+		 */
+		background: var(--paper);
 	}
 
 	/*

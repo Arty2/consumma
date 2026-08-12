@@ -2,9 +2,15 @@
 	import { handTear } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 
-	type Props = { seed: string; flip?: boolean };
+	/**
+	 * `flip` turns the teeth over, for the bottom of a sheet. `mirror` turns the
+	 * tear left for right, which is the same tear seen from the other side of
+	 * the paper — it is what the menu closes itself with, since the menu is this
+	 * sheet's back.
+	 */
+	type Props = { seed: string; flip?: boolean; mirror?: boolean };
 
-	let { seed, flip = false }: Props = $props();
+	let { seed, flip = false, mirror = false }: Props = $props();
 
 	const HEIGHT = 16;
 	/** Roughly one tooth every 16px, whatever the screen is. */
@@ -33,7 +39,14 @@
 	);
 </script>
 
-<svg class="tear" class:flip bind:clientWidth={width} height={HEIGHT} aria-hidden="true">
+<svg
+	class="tear"
+	class:flip
+	class:mirror
+	bind:clientWidth={width}
+	height={HEIGHT}
+	aria-hidden="true"
+>
 	{#if d}
 		<path {d} class="drawn" />
 	{/if}
@@ -52,5 +65,14 @@
 
 	.flip {
 		transform: scaleY(-1);
+	}
+
+	.mirror {
+		transform: scaleX(-1);
+	}
+
+	/* The bottom of the paper, seen from behind: turned over both ways. */
+	.flip.mirror {
+		transform: scale(-1, -1);
 	}
 </style>
