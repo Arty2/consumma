@@ -37,6 +37,20 @@
 				})
 			: ''
 	);
+
+	/*
+	 * The paper itself, up to where it was torn.
+	 *
+	 * The zigzag is only a line; on its own it leaves whatever fills the box
+	 * behind it filling both sides of the tear, so the teeth cut nothing. This
+	 * closes the same path along the inner edge and fills it, so the paper comes
+	 * up to the tear and stops — and the notches are the paper's absence rather
+	 * than a mark drawn over it.
+	 *
+	 * Closed along `HEIGHT`, which is the inside; on the bottom tear the whole
+	 * svg is turned over, so the inside is where it should be there too.
+	 */
+	const ground = $derived(d === '' ? '' : `${d} L ${width} ${HEIGHT} L 0 ${HEIGHT} Z`);
 </script>
 
 <svg
@@ -48,6 +62,7 @@
 	aria-hidden="true"
 >
 	{#if d}
+		<path d={ground} class="ground" />
 		<path {d} class="drawn" />
 	{/if}
 </svg>
@@ -61,6 +76,12 @@
 		/* The teeth reach the edges of the box and the stroke sits on the path,
 		   so half of it falls outside. */
 		overflow: visible;
+	}
+
+	/* The paper, not a mark: filled and never stroked. */
+	.ground {
+		fill: var(--paper);
+		stroke: none;
 	}
 
 	.flip {

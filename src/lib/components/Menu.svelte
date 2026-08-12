@@ -652,6 +652,18 @@
 		max-width: var(--paper-width);
 		z-index: 10;
 		background: var(--paper);
+		/*
+		 * The paper stops at the tears rather than filling the box behind them.
+		 *
+		 * `padding-block` below is the room above and below the paper plus the
+		 * tears themselves, so the content box begins exactly at the inner edge
+		 * of the top tear and ends at the inner edge of the bottom one. Clipped
+		 * to it, the panel's ground runs between the two tears and no further,
+		 * and each tear brings its own ground up to its zigzag. Left to fill the
+		 * whole box it painted paper on both sides of the teeth, so the tear was
+		 * a line drawn on a rectangle rather than the edge of the paper.
+		 */
+		background-clip: content-box;
 		display: flex;
 		flex-direction: column;
 		outline: none;

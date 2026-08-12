@@ -1073,6 +1073,26 @@ relative` rather than a transform, which does not apply to an inline box.
     `e2e/csp.e2e.ts` caught it, which is the whole reason it watches the console
     rather than only reading the header back.
 
+87. **The paper is torn, not drawn torn.** A notch cut out of the top of a
+    receipt has nothing behind it, so nothing may be painted there. The sheet
+    was already right by accident — it has no ground of its own, and what shows
+    through its tears is the body's paper, the same colour, which is why nobody
+    saw it. The panel was not: it painted an opaque rectangle over its whole
+    box, so the zigzag was a line drawn on paper rather than the paper's own
+    edge, and turning the sheet over showed a straight-edged card where a torn
+    one had just been.
+
+    Both now end at the tear. `TornEdge` closes its own zigzag along the inner
+    edge and fills that shape with `--paper`, so the band between the teeth and
+    the body is paper and the teeth themselves are not. The panel keeps its
+    background but clips it to `content-box`, and its `padding-block` is
+    already `--paper-top + --tear` — the ground therefore begins exactly where
+    the tear ends, without a second measurement to keep in step.
+
+    The side edges are left alone. They are not jagged, so there is nothing to
+    show through, and the paper running the last few pixels out to a straight
+    drawn line is what a straight drawn line means.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

@@ -889,3 +889,44 @@ test('the receipt is never shorter than the screen, and grows past it with the l
 	const full = await receipt();
 	expect(full.height).toBeGreaterThan(viewport.height);
 });
+
+test('the paper is torn, not drawn torn: nothing fills the notches', async ({ page }) => {
+	/*
+	 * A zigzag is only a line. Left to fill its own box, whatever is behind it
+	 * paints paper on both sides of the teeth and the tear cuts nothing — it
+	 * reads as a mark drawn on a rectangle rather than as the edge of a sheet.
+	 *
+	 * Two halves to that. Each tear carries its own ground, closed along its
+	 * inner edge, so the paper comes up to the zigzag and stops. And the panel's
+	 * own ground is clipped to its content box, which `padding-block` puts at
+	 * exactly the inner edge of the two tears.
+	 */
+	const paper = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+
+	for (const root of ['.page', '[role="dialog"]']) {
+		if (root !== '.page') await openMenu(page);
+
+		const grounds = page.locator(`${root} svg.tear path.ground`);
+		await expect(grounds).toHaveCount(2);
+
+		for (const fill of await grounds.evaluateAll((paths) =>
+			paths.map((p) => getComputedStyle(p).fill)
+		)) {
+			expect(fill).toBe(paper);
+		}
+
+		// Filled and never stroked: it is the paper, not a mark.
+		for (const stroke of await grounds.evaluateAll((paths) =>
+			paths.map((p) => getComputedStyle(p).stroke)
+		)) {
+			expect(stroke).toBe('none');
+		}
+	}
+
+	// And the panel stops at the tears rather than filling the box behind them.
+	expect(
+		await page
+			.getByRole('dialog', { name: 'Menu' })
+			.evaluate((el) => getComputedStyle(el).backgroundClip)
+	).toBe('content-box');
+});
