@@ -6,6 +6,7 @@ import {
 	DRIFT,
 	LEAD,
 	leadFor,
+	OVER,
 	progress,
 	QUARTER,
 	slideAt,
@@ -70,13 +71,20 @@ describe('progress', () => {
 		expect(progress(SLACK + LEAD, WIDE, LEAD)).toBe(0);
 	});
 
-	it('counts from the end of the lead-in, not from the touch', () => {
-		expect(progress(SLACK + LEAD + 39, WIDE, LEAD)).toBeCloseTo(39 / WIDE, 6);
+	it('waits out the overdrag after the slide has run out', () => {
+		// Hard against the screen and being pushed, and still not turning.
+		expect(progress(SLACK + LEAD + OVER - 1, WIDE, LEAD)).toBe(0);
+		expect(progress(SLACK + LEAD + OVER, WIDE, LEAD)).toBe(0);
 	});
 
-	it('starts turning sooner when there was less room to slide into', () => {
-		// Against the screen already, so the whole drag is the turn.
-		expect(progress(SLACK + 39, WIDE, 0)).toBeCloseTo(39 / WIDE, 6);
+	it('counts from the end of the overdrag, not from the touch', () => {
+		expect(progress(SLACK + LEAD + OVER + 39, WIDE, LEAD)).toBeCloseTo(39 / WIDE, 6);
+	});
+
+	it('still waits out the overdrag when there was no room to slide into', () => {
+		// No slide at all, but the push before the paper gives in is the same.
+		expect(progress(SLACK + OVER, WIDE, 0)).toBe(0);
+		expect(progress(SLACK + OVER + 39, WIDE, 0)).toBeCloseTo(39 / WIDE, 6);
 	});
 
 	it('stops at the whole width, however far the hand goes', () => {
@@ -109,6 +117,7 @@ describe('angleAt', () => {
 	it('leaves the paper flat for the whole of the lead-in', () => {
 		expect(angleAt(SLACK, WIDE, 1, LEAD)).toBe(0);
 		expect(angleAt(SLACK + LEAD, WIDE, 1, LEAD)).toBe(0);
+		expect(angleAt(SLACK + LEAD + OVER, WIDE, 1, LEAD)).toBe(0);
 	});
 });
 
@@ -119,7 +128,7 @@ describe('axisAt', () => {
 
 	it('wanders with the drag, and no further than the drift', () => {
 		expect(axisAt(WIDE * 2, WIDE, LEAD)).toBe(50 + DRIFT);
-		expect(axisAt(SLACK + LEAD + WIDE / 2, WIDE, LEAD)).toBeCloseTo(50 + DRIFT / 2, 6);
+		expect(axisAt(SLACK + LEAD + OVER + WIDE / 2, WIDE, LEAD)).toBeCloseTo(50 + DRIFT / 2, 6);
 	});
 
 	it('only ever moves the way the finger went', () => {
@@ -128,27 +137,37 @@ describe('axisAt', () => {
 });
 
 describe('commits', () => {
+	/** Everything before the paper turns at all, in pixels. */
+	const DEAD = SLACK + LEAD + OVER;
+
 	it('finishes the turn once a quarter of the paper has gone by', () => {
-		expect(commits(WIDE * 0.26, 800, WIDE)).toBe(true);
-		expect(commits(WIDE * 0.24, 800, WIDE)).toBe(false);
+		expect(commits(DEAD + WIDE * 0.26, 800, WIDE, LEAD)).toBe(true);
+		expect(commits(DEAD + WIDE * 0.24, 800, WIDE, LEAD)).toBe(false);
+	});
+
+	it('measures both thresholds on the turn, not on the whole drag', () => {
+		// A flick of forty-one pixels that went entirely into the slide and the
+		// push after it has not turned the paper at all, and commits nothing.
+		expect(commits(41, 100, WIDE, LEAD)).toBe(false);
+		expect(commits(DEAD + 41, 100, WIDE, LEAD)).toBe(true);
 	});
 
 	it('takes a flick as an answer, short but fast', () => {
-		expect(commits(41, 200, WIDE)).toBe(true);
+		expect(commits(DEAD + 41, 200, WIDE, LEAD)).toBe(true);
 		// Far enough but too slow to be a flick, and short of the quarter.
-		expect(commits(41, 400, WIDE)).toBe(false);
+		expect(commits(DEAD + 41, 400, WIDE, LEAD)).toBe(false);
 		// Fast enough but too short to be a flick.
-		expect(commits(39, 100, WIDE)).toBe(false);
+		expect(commits(DEAD + 39, 100, WIDE, LEAD)).toBe(false);
 	});
 
 	it('measures the flick in the hand, not in the paper', () => {
 		// The same flick answers the same on a phone and on a desktop, where
 		// the paper is wider — a hand does not know how wide the paper is.
-		expect(commits(60, 150, 320)).toBe(true);
-		expect(commits(60, 150, 544)).toBe(true);
+		expect(commits(SLACK + OVER + 60, 150, 320, 0)).toBe(true);
+		expect(commits(SLACK + OVER + 60, 150, 544, 0)).toBe(true);
 	});
 
 	it('never commits on a drag that went the other way', () => {
-		expect(commits(-300, 100, WIDE)).toBe(false);
+		expect(commits(-300, 100, WIDE, LEAD)).toBe(false);
 	});
 });

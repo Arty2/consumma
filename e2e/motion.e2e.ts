@@ -293,7 +293,7 @@ test.describe('the edge that comes forward', () => {
 		const y = box.y + box.height - 12;
 		await page.mouse.move(box.x + 30, y);
 		await page.mouse.down();
-		await page.mouse.move(box.x + 30 + 38, y, { steps: 6 });
+		await page.mouse.move(box.x + 30 + 70, y, { steps: 6 });
 
 		const held = (await weight(page, '.page', 'left'))!;
 		expect(held).toBeGreaterThan(base);
@@ -325,9 +325,12 @@ test.describe('the edge that comes forward', () => {
 		const box = (await page.locator('main').boundingBox())!;
 		await page.mouse.move(box.x + 30, box.y + box.height - 12);
 		await page.mouse.down();
-		// Past the lead-in so the paper is turning, and under the 40px flick so
-		// it stays put and can be measured while held.
-		await page.mouse.move(box.x + 30 + 38, box.y + box.height - 12, { steps: 6 });
+		/*
+		 * Past the slide and the overdrag so the paper is turning, and under the
+		 * 40px flick — which is measured on the turn itself, so that is 40 past
+		 * the dead travel rather than 40 from the touch.
+		 */
+		await page.mouse.move(box.x + 30 + 70, box.y + box.height - 12, { steps: 6 });
 
 		const near = (await weight(page, '.page', 'left'))!;
 		expect(near).toBeGreaterThan(base);
@@ -376,9 +379,9 @@ test.describe('turning it over by hand', () => {
 
 		await page.mouse.move(from.x, from.y);
 		await page.mouse.down();
-		// Past the lead-in, and under the flick, which is 40px however fast the
-		// hand was going.
-		await page.mouse.move(from.x + 38, from.y, { steps: 6 });
+		// Past the slide and the overdrag, and under the flick — both of which
+		// are measured on the part of the drag that turns the paper.
+		await page.mouse.move(from.x + 70, from.y, { steps: 6 });
 
 		// Turned the way a hand pushes it: the side under the finger goes back,
 		// the far side comes forward. That is the positive rotation.
@@ -470,7 +473,7 @@ test.describe('turning it back by hand', () => {
 		 * that threshold has not moved; it is only what it is measured against
 		 * that has.
 		 */
-		await pull(page, 38, 6);
+		await pull(page, 70, 6);
 
 		// Turned the way every face leaves, which is the way the hand pushed it —
 		// the same movement the sheet makes on its way out.

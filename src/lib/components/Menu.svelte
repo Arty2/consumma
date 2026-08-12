@@ -273,7 +273,7 @@
 		 * there is no jump between the hand and the animation. Short of that it
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
-		if (commits(travelled, elapsed, panel.clientWidth)) close();
+		if (commits(travelled, elapsed, panel.clientWidth, lead)) close();
 		else if (turn > 0 || slide > 0) springing = true;
 	}
 </script>

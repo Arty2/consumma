@@ -240,7 +240,7 @@
 		 * there is no jump between the hand and the animation, and the panel is
 		 * mounted now to take the second half.
 		 */
-		if (commits(travelled, elapsed, paper.clientWidth)) {
+		if (commits(travelled, elapsed, paper.clientWidth, lead)) {
 			flip = 'open';
 			panel = 'menu';
 		} else if (turn > 0 || slide > 0) settling = true;

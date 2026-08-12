@@ -63,6 +63,18 @@ export function leadFor(room: number): number {
 	return Math.min(LEAD, room);
 }
 
+/**
+ * How much further the hand has to go, once the paper has run out of slide,
+ * before it starts to come round.
+ *
+ * The paper is against the screen and pushing it harder does nothing for a
+ * moment — which is what pushing a sheet that has nowhere left to go feels
+ * like, and what makes the turn read as something the paper gives in to rather
+ * than as the next thing on a scale. It buys back the resistance the lead-in
+ * spends, without letting the paper slide any further to get it.
+ */
+export const OVER = 14;
+
 /** How far the paper has slid, in pixels: the lead-in, before any turn. */
 export function slideAt(travelled: number, lead: number): number {
 	return Math.min(Math.max(0, lead), Math.max(0, travelled - SLACK));
@@ -71,13 +83,14 @@ export function slideAt(travelled: number, lead: number): number {
 /**
  * How much of the paper's width the turn has covered, from 0 to 1.
  *
- * Counted from the end of the lead-in, so the paper is flat for as long as it
- * is only sliding — and so is the weight of its near edge, which is a reading
- * of the rotation and has nothing to say while there is none.
+ * Counted from the end of the lead-in and the overdrag past it, so the paper is
+ * flat for as long as it is only sliding and for the push that follows — and so
+ * is the weight of its near edge, which is a reading of the rotation and has
+ * nothing to say while there is none.
  */
 export function progress(travelled: number, width: number, lead: number): number {
 	if (!(width > 0)) return 0;
-	return Math.min(1, Math.max(0, travelled - SLACK - Math.max(0, lead)) / width);
+	return Math.min(1, turning(travelled, lead) / width);
 }
 
 /**
@@ -96,13 +109,29 @@ export function axisAt(travelled: number, width: number, lead: number): number {
 }
 
 /**
+ * How much of the drag actually went into turning the paper.
+ *
+ * Everything before this went into sliding it and into the push that follows,
+ * neither of which turns anything.
+ */
+function turning(travelled: number, lead: number): number {
+	return Math.max(0, travelled - SLACK - Math.max(0, lead) - OVER);
+}
+
+/**
  * Whether letting go here finishes the turn rather than swinging back.
  *
- * A quarter of the paper's width, or a flick. The flick is counted in pixels
- * and milliseconds rather than as a fraction, because a flick is a movement of
- * the hand and a hand does not know how wide the paper is.
+ * A quarter of the paper's width, or a flick. Both are measured on the part of
+ * the drag that turned the paper, not on the whole of it — with the slide and
+ * the overdrag in front, a flick of forty-one pixels would otherwise commit a
+ * turn that had not visibly begun.
+ *
+ * The flick is counted in pixels and milliseconds rather than as a fraction,
+ * because a flick is a movement of the hand and a hand does not know how wide
+ * the paper is.
  */
-export function commits(travelled: number, elapsed: number, width: number): boolean {
-	const flick = travelled > 40 && elapsed < 250;
-	return flick || travelled > width * 0.25;
+export function commits(travelled: number, elapsed: number, width: number, lead: number): boolean {
+	const turned = turning(travelled, lead);
+	const flick = turned > 40 && elapsed < 250;
+	return flick || turned > width * 0.25;
 }
