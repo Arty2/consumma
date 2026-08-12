@@ -30,7 +30,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits, leadFor, slideAt } from '$lib/turn';
+	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -96,6 +96,8 @@
 	let lead = 0;
 	/** Swinging home after a drag that did not go far enough to close. */
 	let springing = $state(false);
+	/** Whether this gesture turned the paper, and so was not a press. */
+	let moved = false;
 	let dragStart: { x: number; at: number } | null = null;
 
 	/*
@@ -227,12 +229,24 @@
 	 *
 	 * The distance travelled is read as a fraction of the paper's width and
 	 * turned into an angle, so a drag across the whole panel is the whole
-	 * quarter-turn that takes it edge-on. The thresholds below are unchanged —
-	 * it is what they are measured against that moved.
+	 * quarter-turn that takes it edge-on.
+	 *
+	 * It takes hold over the buttons too, and that is where this parts company
+	 * with the sheet. The sheet bails on anything pressable because its rows own
+	 * a press already — the long presses that lift a task and a group — but
+	 * nothing on the panel does: every button here is a tap and nothing more, so
+	 * a finger that starts on SYNC NOW and travels is plainly turning the paper
+	 * rather than pressing anything. Most of the panel is buttons, and a gesture
+	 * that only worked in the gaps between them was a gesture that mostly did
+	 * not work.
+	 *
+	 * Text fields still keep their own drag, which is selecting text.
 	 */
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0 || closing) return;
-		if ((event.target as HTMLElement).closest('input, textarea, button')) return;
+		if ((event.target as HTMLElement).closest('input, textarea')) return;
+
+		moved = false;
 
 		/*
 		 * Caught on its way home. It is only ever a few degrees out by then —
@@ -245,19 +259,6 @@
 			turn = 0;
 			axis = 50;
 		}
-
-		/*
-		 * The gesture belongs to the panel until the finger lifts, wherever the
-		 * paper has got to by then.
-		 *
-		 * Turning it takes it out from under the hand — that is what turning it
-		 * means — and without this the pointer events go to whatever is under
-		 * the finger instead, which partway through a turn is the sheet behind.
-		 * The move stops being seen and the release is never heard, so the paper
-		 * hangs at the angle it had reached. Not a fault of the axis, but the
-		 * middle turns both halves away and finds it every time.
-		 */
-		panel?.setPointerCapture(event.pointerId);
 
 		/*
 		 * The room the panel has to slide into, off its own drawn edge rather
@@ -276,8 +277,30 @@
 	function onpointermove(event: PointerEvent) {
 		if (!dragStart || !panel) return;
 		const travelled = event.clientX - dragStart.x;
-		// Negative, the way every half of this turn goes: the face on its way out
-		// leads with its right edge, whichever face it is.
+
+		if (!moved) {
+			if (travelled <= SLACK) return;
+			moved = true;
+
+			/*
+			 * The gesture belongs to the panel from here until the finger lifts,
+			 * wherever the paper has got to by then. Turning it takes it out from
+			 * under the hand — that is what turning it means — and without this
+			 * the pointer events go to whatever is under the finger instead,
+			 * which partway through a turn is the sheet behind: the move stops
+			 * being seen and the release is never heard, so the paper hangs at
+			 * the angle it reached.
+			 *
+			 * Taken here rather than on the press, now that a press may land on a
+			 * button. Capturing a pointer retargets the click that follows it to
+			 * whatever holds the capture, so taking it on `pointerdown` stopped
+			 * every button on the panel working — the click arrived at the panel
+			 * rather than at the button under the finger. A press that never
+			 * travels never captures, and so is still a press.
+			 */
+			panel.setPointerCapture(event.pointerId);
+		}
+
 		slide = slideAt(travelled, lead);
 		turn = angleAt(travelled, panel.clientWidth, 1, lead);
 		axis = axisAt(travelled, panel.clientWidth, lead);
@@ -320,6 +343,17 @@
 	{onpointerdown}
 	{onpointermove}
 	{onpointerup}
+	onclickcapture={(event) => {
+		/*
+		 * A drag that crossed a button is not a press of it. Swallowed in the
+		 * capture phase, before the button's own handler runs — the sheet does
+		 * the same after a row is dropped, and for the same reason.
+		 */
+		if (!moved) return;
+		moved = false;
+		event.preventDefault();
+		event.stopPropagation();
+	}}
 	onpointercancel={() => {
 		dragStart = null;
 		if ((turn > 0 || slide > 0) && !closing) springing = true;

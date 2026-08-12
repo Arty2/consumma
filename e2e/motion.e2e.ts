@@ -546,6 +546,69 @@ test.describe('turning it back by hand', () => {
 		expect(await angle(page)).toBe(0);
 	});
 
+	test('a drag that starts on a button still turns the paper', async ({ page }) => {
+		await page.goto('/');
+		await menuButton(page).click();
+		await settle(page);
+
+		/*
+		 * Most of the panel is buttons. The sheet bails on anything pressable
+		 * because its rows own a long press already; nothing here does, so a
+		 * finger that starts on a button and travels is turning the paper.
+		 */
+		const box = (await page.getByRole('button', { name: /sync now/i }).boundingBox())!;
+		await page.mouse.move(box.x + 8, box.y + box.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(box.x + 8 + 260, box.y + box.height / 2, { steps: 10 });
+		await page.mouse.up();
+
+		await expect(page.getByRole('dialog', dialog)).toBeHidden();
+		await settle(page);
+		expect(await angle(page)).toBe(0);
+	});
+
+	test('a tap on a button is still a tap, not a turn', async ({ page }) => {
+		await page.goto('/');
+		await menuButton(page).click();
+		await settle(page);
+
+		/*
+		 * The other half of letting the drag start on a button: pressing one has
+		 * to go on working. Debug log toggles in place and says so, which makes
+		 * it the one button here that can be pressed and checked without leaving
+		 * the panel or touching the network.
+		 */
+		const toggle = page.getByRole('button', { name: /debug log/i });
+		await expect(toggle).toHaveText(/off/i);
+		await toggle.click();
+		await expect(toggle).toHaveText(/on/i);
+		await expect(page.getByRole('dialog', dialog)).toBeVisible();
+	});
+
+	test('a drag that crosses a button does not press it', async ({ page }) => {
+		await page.goto('/');
+		await menuButton(page).click();
+		await settle(page);
+
+		/*
+		 * The other half of letting a drag start on a button. Short enough that
+		 * the paper springs back, so the panel is still here to be checked — and
+		 * the toggle it started on has not changed its mind.
+		 */
+		const toggle = page.getByRole('button', { name: /debug log/i });
+		await expect(toggle).toHaveText(/off/i);
+
+		const box = (await toggle.boundingBox())!;
+		await page.mouse.move(box.x + 8, box.y + box.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(box.x + 8 + 70, box.y + box.height / 2, { steps: 6 });
+		await page.mouse.up();
+		await settle(page);
+
+		await expect(page.getByRole('dialog', dialog)).toBeVisible();
+		await expect(toggle).toHaveText(/off/i);
+	});
+
 	test('a drag past the threshold carries on into the turn', async ({ page }) => {
 		await page.goto('/');
 		await menuButton(page).click();

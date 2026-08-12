@@ -1018,6 +1018,21 @@ relative` rather than a transform, which does not apply to an inline box.
     than off the element's box, because the box carries the paper's margin and
     it is the drawn line that must not leave the screen.
 
+    **The two faces draw the line in different places.** On the panel the drag
+    takes hold over the buttons as well. Nothing there owns a press — every
+    button is a tap and nothing more — and most of the panel is buttons, so a
+    gesture that only worked in the gaps between them was a gesture that mostly
+    did not work. A drag that crossed a button is not a press of it, so the
+    click is swallowed in the capture phase, which is what the sheet already
+    does after a row is dropped. Text fields keep their own drag on both sides,
+    which is selecting text.
+
+    Both sides take `setPointerCapture` on the **first move**, not on the press.
+    Capturing a pointer retargets the click that follows it to whatever holds
+    the capture, so taking it on `pointerdown` stopped every button on the panel
+    working — the click arrived at the panel instead of at the button under the
+    finger. A press that never travels never captures, and so is still a press.
+
     On the sheet it takes hold on bare paper only. Everything on the sheet that
     can be pressed already owns a press — the long press that lifts a task, the
     one that lifts a group — and a receipt that turned over when someone meant
