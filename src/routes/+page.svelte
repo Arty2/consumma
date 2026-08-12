@@ -611,6 +611,33 @@
 		padding: 0 var(--paper-inset);
 
 		/*
+		 * The receipt is never shorter than the screen it is on.
+		 *
+		 * A list of three lines used to be a strip of paper a few centimetres
+		 * tall floating at the top of an empty screen, which is a note pinned to
+		 * a wall rather than a receipt. Below this it grows with the list exactly
+		 * as it did: `min-height` sets a floor and nothing else.
+		 *
+		 * The arithmetic is the rest of the sheet subtracted from the screen —
+		 * the room above and below the paper, and the two tears — so the whole
+		 * receipt comes to the viewport rather than this one part of it.
+		 *
+		 * It also makes the two faces the same size. The panel has always been
+		 * `top: 0; bottom: 0`, so on a short list the turn swapped a small paper
+		 * for a screen-tall one, which is the one thing that gave away that
+		 * there were two of them.
+		 *
+		 * `svh` and not `dvh`: the small viewport is the one that does not move
+		 * when a phone shows and hides its chrome. The edges are drawn to their
+		 * measured height and re-cut when it changes, so a paper that breathed
+		 * with the URL bar would re-cut its own sides while being scrolled. The
+		 * two agree whenever this floor is doing anything anyway — a sheet no
+		 * taller than the screen does not scroll, and chrome that is not being
+		 * scrolled does not hide.
+		 */
+		min-height: calc(100svh - var(--paper-top) - var(--paper-bottom) - var(--tear) * 2);
+
+		/*
 		 * A finger going down the page still scrolls it; only sideways is ours,
 		 * and that is the turn. Pinch is spelt out because `pan-y` on its own
 		 * would take zoom away with it, and this is a sheet of words.

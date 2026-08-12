@@ -840,3 +840,52 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 	// And nowhere near the bottom, which is the keyboard's half of the screen.
 	expect(where.bottom).toBeLessThan(where.height / 2);
 });
+
+test('the receipt is never shorter than the screen, and grows past it with the list', async ({
+	page
+}) => {
+	/*
+	 * A list of three lines used to leave a strip of paper a few centimetres
+	 * tall at the top of an empty screen, which is a note pinned to a wall
+	 * rather than a receipt. It also gave away that the sheet and the menu are
+	 * two elements: the panel is `top: 0; bottom: 0` and always was, so the turn
+	 * swapped a small paper for a screen-tall one.
+	 */
+	const viewport = page.viewportSize()!;
+
+	// The whole receipt: the top tear down to the bottom one, tears included.
+	const receipt = () =>
+		page.evaluate(() => {
+			const tears = [...document.querySelectorAll('.page > .tear, .page > .top > .tear')];
+			const page_ = document.querySelector('.page')!.getBoundingClientRect();
+			return { height: page_.height, tears: tears.length };
+		});
+
+	const bare = await receipt();
+	// Both tears are on the page, so this is the paper end to end.
+	expect(bare.tears).toBe(2);
+
+	// Filling the screen, give or take the stroke the tears hang outside their
+	// boxes by.
+	expect(bare.height).toBeGreaterThanOrEqual(viewport.height - 2);
+	expect(bare.height).toBeLessThanOrEqual(viewport.height + 2);
+
+	// The page itself does not scroll while the list is short enough to fit.
+	const scrolls = await page.evaluate(
+		() => document.documentElement.scrollHeight > document.documentElement.clientHeight + 1
+	);
+	expect(scrolls).toBe(false);
+
+	// Enough rows to run off the bottom, and the floor stops being what decides.
+	for (let i = 0; i < 24; i++) {
+		await page.keyboard.press('Escape');
+		await page.getByRole('button', { name: 'Add a task' }).first().click();
+		const input = page.getByRole('textbox', { name: 'New task' });
+		await input.fill(`Item ${i}`);
+		await input.press('Enter');
+	}
+	await page.keyboard.press('Escape');
+
+	const full = await receipt();
+	expect(full.height).toBeGreaterThan(viewport.height);
+});
