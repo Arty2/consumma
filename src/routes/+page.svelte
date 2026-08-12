@@ -14,7 +14,7 @@
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
 	import { drag } from '$lib/dnd/drag.svelte';
-	import { angleAt, axisAt, commits, progress, slideAt, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, leadFor, progress, slideAt, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -75,6 +75,8 @@
 	let hand = 0;
 	/** The lead-in: how far the paper has slid before it begins to turn. */
 	let slide = 0;
+	/** How far it may slide before its drawn edge reaches the screen. */
+	let lead = 0;
 	let dragging = $state(false);
 	let settling = $state(false);
 	let dragStart: { x: number; y: number; at: number } | null = null;
@@ -176,6 +178,16 @@
 		}
 
 		eye();
+
+		/*
+		 * The room the paper has to slide into, measured off its own drawn edge
+		 * rather than off the element's box — the side edge is inset from that
+		 * by the paper's margin, and it is the drawn line that must not leave
+		 * the screen.
+		 */
+		const edge = paper?.querySelector('svg.edge.right')?.getBoundingClientRect();
+		lead = leadFor(edge ? innerWidth - edge.right : 0);
+
 		dragStart = { x: event.clientX, y: event.clientY, at: performance.now() };
 	}
 
@@ -202,10 +214,10 @@
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		}
 
-		slide = slideAt(dx);
-		turn = angleAt(dx, paper.clientWidth, 1);
-		axis = axisAt(dx, paper.clientWidth);
-		hand = progress(dx, paper.clientWidth);
+		slide = slideAt(dx, lead);
+		turn = angleAt(dx, paper.clientWidth, 1, lead);
+		axis = axisAt(dx, paper.clientWidth, lead);
+		hand = progress(dx, paper.clientWidth, lead);
 		place();
 	}
 

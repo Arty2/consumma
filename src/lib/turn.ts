@@ -40,7 +40,7 @@ export const DRIFT = 9;
 export const SLACK = 4;
 
 /**
- * How far the paper slides before it begins to turn, in pixels.
+ * The most the paper ever slides before it begins to turn, in pixels.
  *
  * A sheet pushed sideways goes sideways first. It only starts to come round
  * once it has run out of slide — a hand does not spin a receipt from the
@@ -49,9 +49,23 @@ export const SLACK = 4;
  */
 export const LEAD = 22;
 
+/**
+ * How far the paper may slide, given the room between its edge and the screen.
+ *
+ * It never slides off. On a phone the paper is drawn almost to the edges, so
+ * the room is a few pixels and the slide is barely a nudge before the turn
+ * takes over; on a wide screen there is more room than the lead-in wants and
+ * `LEAD` is what decides. Either way the paper stops where the screen does,
+ * and it is running out of room that starts it turning.
+ */
+export function leadFor(room: number): number {
+	if (!(room > 0)) return 0;
+	return Math.min(LEAD, room);
+}
+
 /** How far the paper has slid, in pixels: the lead-in, before any turn. */
-export function slideAt(travelled: number): number {
-	return Math.min(LEAD, Math.max(0, travelled - SLACK));
+export function slideAt(travelled: number, lead: number): number {
+	return Math.min(Math.max(0, lead), Math.max(0, travelled - SLACK));
 }
 
 /**
@@ -61,9 +75,9 @@ export function slideAt(travelled: number): number {
  * is only sliding — and so is the weight of its near edge, which is a reading
  * of the rotation and has nothing to say while there is none.
  */
-export function progress(travelled: number, width: number): number {
+export function progress(travelled: number, width: number, lead: number): number {
 	if (!(width > 0)) return 0;
-	return Math.min(1, Math.max(0, travelled - SLACK - LEAD) / width);
+	return Math.min(1, Math.max(0, travelled - SLACK - Math.max(0, lead)) / width);
 }
 
 /**
@@ -72,13 +86,13 @@ export function progress(travelled: number, width: number): number {
  * `sign` is which way this side of the paper goes: the sheet turns one way to
  * show the panel, the panel the other to show the sheet back.
  */
-export function angleAt(travelled: number, width: number, sign: 1 | -1): number {
-	return progress(travelled, width) * QUARTER * sign;
+export function angleAt(travelled: number, width: number, sign: 1 | -1, lead: number): number {
+	return progress(travelled, width, lead) * QUARTER * sign;
 }
 
 /** Where the axis has wandered to, as a percentage across the paper. */
-export function axisAt(travelled: number, width: number): number {
-	return 50 + progress(travelled, width) * DRIFT;
+export function axisAt(travelled: number, width: number, lead: number): number {
+	return 50 + progress(travelled, width, lead) * DRIFT;
 }
 
 /**

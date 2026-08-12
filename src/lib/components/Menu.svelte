@@ -16,7 +16,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits, progress, slideAt } from '$lib/turn';
+	import { angleAt, axisAt, commits, leadFor, progress, slideAt } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -79,6 +79,8 @@
 	let hand = $state(0);
 	/** The lead-in: how far the panel has slid before it begins to turn. */
 	let slide = $state(0);
+	/** How far it may slide before its drawn edge reaches the screen. */
+	let lead = 0;
 	/** Swinging home after a drag that did not go far enough to close. */
 	let springing = $state(false);
 	let dragStart: { x: number; at: number } | null = null;
@@ -234,6 +236,14 @@
 		 */
 		panel?.setPointerCapture(event.pointerId);
 
+		/*
+		 * The room the panel has to slide into, off its own drawn edge rather
+		 * than off its box: the edge is inset from that by the paper's margin,
+		 * and it is the drawn line that must not leave the screen.
+		 */
+		const edge = panel?.querySelector('svg.edge.right')?.getBoundingClientRect();
+		lead = leadFor(edge ? innerWidth - edge.right : 0);
+
 		dragStart = { x: event.clientX, at: performance.now() };
 	}
 
@@ -242,10 +252,10 @@
 		const travelled = event.clientX - dragStart.x;
 		// Negative, the way every half of this turn goes: the face on its way out
 		// leads with its right edge, whichever face it is.
-		slide = slideAt(travelled);
-		turn = angleAt(travelled, panel.clientWidth, 1);
-		axis = axisAt(travelled, panel.clientWidth);
-		hand = progress(travelled, panel.clientWidth);
+		slide = slideAt(travelled, lead);
+		turn = angleAt(travelled, panel.clientWidth, 1, lead);
+		axis = axisAt(travelled, panel.clientWidth, lead);
+		hand = progress(travelled, panel.clientWidth, lead);
 	}
 
 	function onpointerup(event: PointerEvent) {

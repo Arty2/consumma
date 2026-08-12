@@ -945,13 +945,21 @@ relative` rather than a transform, which does not apply to an inline box.
     handlers, which is the shape the second copy of anything here has always
     drifted into.
 
-    **A sheet pushed sideways goes sideways first.** The paper slides `LEAD`
-    pixels before it begins to come round, and its near edge is unweighted for
-    the whole of that, because a paper that is not turning has no near edge. A
-    hand does not spin a receipt from the instant it touches it, and rotation
-    that begins on the first pixel reads as a mechanism rather than as paper.
-    The slide is a `translate` and the turn a `transform`, so the two compose
-    without either having to know about the other.
+    **A sheet pushed sideways goes sideways first.** The paper slides before it
+    begins to come round, and its near edge is unweighted for the whole of that,
+    because a paper that is not turning has no near edge. A hand does not spin a
+    receipt from the instant it touches it, and rotation that begins on the
+    first pixel reads as a mechanism rather than as paper. The slide is a
+    `translate` and the turn a `transform`, so the two compose without either
+    having to know about the other.
+
+    How far it may slide is not a constant: it is the room between the paper's
+    own drawn edge and the screen, capped at `LEAD`. The paper never slides off.
+    On a phone it is drawn almost to the edges, so the room is a few pixels and
+    the slide is barely a nudge — running out of room is what starts it turning,
+    which is the truer reading of the two. Measured off the side edge rather
+    than off the element's box, because the box carries the paper's margin and
+    it is the drawn line that must not leave the screen.
 
     On the sheet it takes hold on bare paper only. Everything on the sheet that
     can be pressed already owns a press — the long press that lifts a task, the

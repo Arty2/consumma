@@ -209,7 +209,7 @@ test.describe('the edge that comes forward', () => {
 		 * since a vertical stroke's width is measured across and the turn
 		 * compresses that axis for both.
 		 */
-		expect(await weight(page, '.page', 'left')).toBeCloseTo(base * 4, 1);
+		expect(await weight(page, '.page', 'left')).toBeCloseTo(base * 3, 1);
 		expect(await weight(page, '.page', 'right')).toBe(base);
 
 		// The panel arrived leading with its left, and has settled back to flat.
@@ -247,7 +247,7 @@ test.describe('the edge that comes forward', () => {
 			await page.waitForTimeout(16);
 		}
 
-		const between = [...seen].filter((w) => w > base + 0.05 && w < base * 4 - 0.05);
+		const between = [...seen].filter((w) => w > base + 0.05 && w < base * 3 - 0.05);
 		expect(between.length, `saw only ${[...seen].join(', ')}`).toBeGreaterThan(1);
 	});
 
@@ -331,7 +331,7 @@ test.describe('the edge that comes forward', () => {
 
 		const near = (await weight(page, '.page', 'left'))!;
 		expect(near).toBeGreaterThan(base);
-		expect(near).toBeLessThanOrEqual(base * 4);
+		expect(near).toBeLessThanOrEqual(base * 3);
 		// The far edge does not move, however far the hand goes.
 		expect(await weight(page, '.page', 'right')).toBe(base);
 

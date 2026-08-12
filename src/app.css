@@ -223,7 +223,7 @@
 	 * at the point it is nearest. One number, read by the three keyframes below
 	 * and by the two rules that follow a finger.
 	 */
-	--near-peak: 4;
+	--near-peak: 3;
 
 	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
