@@ -956,28 +956,38 @@ relative` rather than a transform, which does not apply to an inline box.
     last one of its kind: the mark is not moving or changing what it means, only
     being drawn with more of the pen.
 
-84. **The far half of a turning sheet goes out of focus.** A rotation gives an
-    eye two cues about which way a surface is facing, and the app had one of
-    them: the near edge drawn heavier. Weight can only speak at an edge, and the
-    surface between the edges was saying nothing. Depth of field is what says it.
+84. **The far half of a turning sheet cannot be put out of focus, and it was
+    tried.** A rotation gives an eye two cues about which way a surface faces,
+    and the app has one of them: the near edge drawn heavier. Weight can only
+    speak at an edge, and the surface between the edges says nothing. Depth of
+    field is what would say it.
 
-    Two panes over the paper, each masked so it fades to nothing at the middle,
-    so the blur comes on across the surface rather than stopping at a line.
-    Which one is doing anything is the sign of the sine — the same reading the
-    near edge's weight is — so when the left edge is nearest, the right half is
-    the one going away. `backdrop-filter` rather than a filter on the paper, so
-    nothing has to be drawn twice, and switched on only by the classes that mean
-    the paper is turning: `blur(0px)` still forces a backdrop root, and holding
-    one over a sheet as long as its list for the life of the page is not worth
-    an effect nobody is looking at.
+    It shipped for one commit and came straight back out. Two panes over the
+    paper, masked to fade at the middle, blurring with `backdrop-filter` — and
+    the result was a doubled ghost of the whole sheet, offset from the sheet
+    itself. The cause is not tuning. `backdrop-filter` samples its backdrop at
+    the backdrop root, in screen space, and the filtered image is then drawn
+    through the element's own transform: inside a rotated element it is
+    transformed a second time. Switching the panes off in the same paused frame
+    made the ghost vanish, which is how it was pinned down rather than guessed
+    at.
 
-    **This is the one place the two colours are not the whole story.** A blur of
-    black on white is grey. It is recorded rather than smuggled: the same kind
-    of grey `--faint` already makes, and for the same reason — an optical effect
-    on ink rather than a third colour anybody chose. What keeps it honest is
-    that it exists only while the paper is turning. Nothing at rest is ever
-    drawn out of focus, and under `prefers-reduced-motion` nothing turns, so
-    nothing blurs.
+    A gradual blur of live content inside a 3D transform needs the content
+    duplicated — one sharp copy and one blurred, masked against each other — and
+    the content here is the whole list. A uniform `filter: blur()` on the paper
+    would stay in register, because a filter applies before the transform rather
+    than after it, but a sheet uniformly out of focus is not depth of field and
+    says nothing about which half is further away.
+
+    The other way that would work is to take the panes out of the rotation
+    entirely — fixed to the viewport, over where the paper is drawn, driven by
+    the same state — so the blur samples the already-rotated sheet in screen
+    space. That is a real restructure, and it is written down here rather than
+    half-built.
+
+    It also settles a palette question by removing it: a blur of black on white
+    is grey, and while the turn was the one place that might have earned the
+    exception, nothing earns it while it is also broken.
 
 85. **A drag rightwards turns the receipt over, from either face.** The sheet is
     dragged aside to bring the menu up, and the panel is dragged aside to put it
