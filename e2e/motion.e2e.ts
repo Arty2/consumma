@@ -170,6 +170,81 @@ test.describe('with motion as it comes', () => {
 	});
 });
 
+test.describe('the edge that comes forward', () => {
+	/**
+	 * The drawn weight of one side edge, in pixels.
+	 *
+	 * `strokeWidth` comes back as `calc(2.8px)` where the value is a `calc` the
+	 * browser has not flattened, so the number is dug out rather than parsed off
+	 * the front — `parseFloat('calc(2.8px)')` is NaN.
+	 */
+	function weight(page: Page, root: string, side: 'left' | 'right') {
+		return page.evaluate(
+			([r, s]) => {
+				const path = document.querySelector(`${r} svg.edge.${s} path`);
+				if (!path) return null;
+				const raw = getComputedStyle(path).strokeWidth;
+				return Number(raw.match(/-?[\d.]+/)![0]);
+			},
+			[root, side] as const
+		);
+	}
+
+	test('the near edge is drawn twice as heavy, and the far one is left alone', async ({ page }) => {
+		await page.goto('/');
+
+		const base = (await weight(page, '.page', 'left'))!;
+		expect(base).toBeGreaterThan(0);
+		// Flat paper: both sides the same, because neither is nearer.
+		expect(await weight(page, '.page', 'right')).toBe(base);
+
+		await menuButton(page).click();
+		await settle(page);
+
+		/*
+		 * The sheet has turned away leading with its right edge, so that is the
+		 * one that came towards the reader and it carries twice the weight. The
+		 * left went away and is untouched — a rotation cannot say which side is
+		 * nearer on its own, since a vertical stroke's width is measured across
+		 * and the turn compresses that axis for both.
+		 */
+		expect(await weight(page, '.page', 'right')).toBeCloseTo(base * 2, 1);
+		expect(await weight(page, '.page', 'left')).toBe(base);
+
+		// The panel arrived leading with its left, and has settled back to flat.
+		expect(await weight(page, '[role="dialog"]', 'left')).toBe(base);
+		expect(await weight(page, '[role="dialog"]', 'right')).toBe(base);
+
+		await page.getByRole('button', { name: 'Close' }).click();
+		await settle(page);
+
+		// Home again, and nothing left heavy behind.
+		expect(await weight(page, '.page', 'left')).toBe(base);
+		expect(await weight(page, '.page', 'right')).toBe(base);
+	});
+
+	test('a finger turning the paper takes the edge with it', async ({ page }) => {
+		await page.goto('/');
+		const base = (await weight(page, '.page', 'left'))!;
+
+		const box = (await page.locator('main').boundingBox())!;
+		await page.mouse.move(box.x + 30, box.y + box.height - 12);
+		await page.mouse.down();
+		// Under the flick, so the paper stays put and can be measured held.
+		await page.mouse.move(box.x + 60, box.y + box.height - 12, { steps: 6 });
+
+		const near = (await weight(page, '.page', 'right'))!;
+		expect(near).toBeGreaterThan(base);
+		expect(near).toBeLessThanOrEqual(base * 2);
+		// The far edge does not move, however far the hand goes.
+		expect(await weight(page, '.page', 'left')).toBe(base);
+
+		await page.mouse.up();
+		await settle(page);
+		expect(await weight(page, '.page', 'right')).toBe(base);
+	});
+});
+
 test.describe('turning it over by hand', () => {
 	/**
 	 * Where the axis sits, as a percentage across the paper.

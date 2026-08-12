@@ -880,7 +880,33 @@ relative` rather than a transform, which does not apply to an inline box.
     not. Sliding was also the wrong gesture for a panel that is the back of the
     sheet: there is nowhere beside the paper for it to go.
 
-83. **A drag rightwards turns the receipt over, from either face.** The sheet is
+83. **The edge coming forward is drawn twice as heavy.** A sheet turning about
+    its middle brings one side towards the reader and sends the other away, and
+    the transform says almost nothing about which. Worse than nothing: a vertical
+    stroke's width is measured across the paper, so the rotation that ought to
+    thicken the near edge compresses it instead, and both sides come out thinner
+    than they started. Measured at 45°, a near edge magnified by perspective to
+    1.13 and compressed by 0.71 lands at 0.8 of its own weight.
+
+    So the weight is drawn rather than derived. `near-out` and `near-in` in
+    app.css take the near edge to `--stroke * 2` at the point it is nearest, and
+    the far edge is not touched at all — the asymmetry is the whole signal, and
+    thickening both would say only that something was happening.
+
+    Which side is near is not decided in the keyframes; it is whichever side the
+    selector points at, and that is the right one leaving and the left arriving,
+    on both faces of the paper. Under a finger the weight follows `--hand`, how
+    far round the paper has been turned from nought to one, so the animation
+    picks it up where the drag left it rather than starting again from flat.
+
+    It is worth naming what this breaks: §62 says animation here is opacity and
+    scale. A stroke gaining weight is neither, and it is not a colour or a shadow
+    either — it is the line drawn heavier, which is what a nearer line looks like
+    in a drawing. That is the same argument the turn itself won, and it is the
+    last one of its kind: the mark is not moving or changing what it means, only
+    being drawn with more of the pen.
+
+84. **A drag rightwards turns the receipt over, from either face.** The sheet is
     dragged aside to bring the menu up, and the panel is dragged aside to put it
     back. One gesture on one object, whichever side happens to be showing —
     having it only on the panel made the turn something the paper did to you on
@@ -918,7 +944,7 @@ relative` rather than a transform, which does not apply to an inline box.
     both `animationend` handlers have to ignore `recentre`: it ends first, and
     the panel's handler is what unmounts the panel.
 
-84. **The sheet is prerendered, so it may not carry a `style:` directive.**
+85. **The sheet is prerendered, so it may not carry a `style:` directive.**
     Svelte renders one as a literal `style="…"` attribute in the HTML that
     ships, and `style-src 'self'` refuses an inline style outright — the page
     hydrated with two console violations the moment `--turn` and `--axis` were

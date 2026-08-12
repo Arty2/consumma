@@ -14,7 +14,7 @@
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
 	import { drag } from '$lib/dnd/drag.svelte';
-	import { angleAt, axisAt, commits, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, progress, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -71,6 +71,8 @@
 	 */
 	let turn = 0;
 	let axis = 50;
+	/** How far round, nought to one — the weight of the edge coming forward. */
+	let hand = 0;
 	let dragging = $state(false);
 	let settling = $state(false);
 	let dragStart: { x: number; y: number; at: number } | null = null;
@@ -124,12 +126,15 @@
 	function place() {
 		paper?.style.setProperty('--turn', `${turn}deg`);
 		paper?.style.setProperty('--axis', `${axis}%`);
+		// How far round the paper is, for the weight of the edge coming forward.
+		paper?.style.setProperty('--hand', `${hand}`);
 	}
 
 	/** Back to a paper nobody has touched. */
 	function flat() {
 		turn = 0;
 		axis = 50;
+		hand = 0;
 		place();
 	}
 
@@ -195,6 +200,7 @@
 
 		turn = angleAt(dx, paper.clientWidth, -1);
 		axis = axisAt(dx, paper.clientWidth);
+		hand = progress(dx, paper.clientWidth);
 		place();
 	}
 
@@ -547,6 +553,34 @@
 			settle var(--flip) ease-out forwards,
 			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
 		will-change: transform;
+	}
+
+	/*
+	 * The edge coming towards the reader, drawn heavier — see `near-out` and
+	 * `near-in` in app.css for why the transform cannot do this on its own.
+	 *
+	 * Leaving, the sheet turns its right edge forward; arriving, its left. So
+	 * the weight is on the right on the way out and on the left on the way
+	 * back, and the far edge is never touched. Each rides its own half's clock,
+	 * delay included, so the two stay in step.
+	 *
+	 * `:global` because the edge is drawn by SideEdge and its classes belong to
+	 * that component; this is the one thing about them the sheet decides.
+	 */
+	.dragging :global(svg.edge.right path) {
+		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
+	}
+
+	.turning :global(svg.edge.right path) {
+		animation: near-out var(--flip) ease-in forwards;
+	}
+
+	.settling :global(svg.edge.right path) {
+		animation: near-in var(--flip) ease-out forwards;
+	}
+
+	.returning :global(svg.edge.left path) {
+		animation: near-in var(--flip) ease-out var(--flip) both;
 	}
 
 	/*

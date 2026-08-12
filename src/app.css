@@ -466,6 +466,44 @@ a {
  * are only two elements for reasons that have nothing to do with it. Declared
  * outside any component so Svelte leaves the name alone in both.
  */
+/*
+ * The near edge of a turning sheet, drawn heavier.
+ *
+ * A rotation about the middle brings one side of the paper towards the reader
+ * and sends the other away, and the transform alone says almost nothing about
+ * which — a vertical stroke's width is measured across, so the same rotation
+ * that ought to thicken the near edge compresses it instead, and both sides
+ * come out thinner than they started. This is the hand doing what the geometry
+ * will not: the edge coming forward reaches twice its weight at the point it is
+ * nearest, and the one going away is left alone.
+ *
+ * `--hand` is how far a finger has turned the paper, nought to one, so a drag
+ * picks the weight up where it left it rather than starting again from flat.
+ * Which edge is the near one is not decided here: it is whichever side the
+ * selector points at, and that is the right one leaving and the left arriving,
+ * on both faces of the paper.
+ *
+ * Global, like `recentre`, because the sheet and the panel need the same two
+ * and are only two elements for reasons that have nothing to do with this.
+ */
+@keyframes near-out {
+	from {
+		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
+	}
+	to {
+		stroke-width: calc(var(--stroke) * 2);
+	}
+}
+
+@keyframes near-in {
+	from {
+		stroke-width: calc(var(--stroke) * 2);
+	}
+	to {
+		stroke-width: var(--stroke);
+	}
+}
+
 @keyframes recentre {
 	from {
 		transform-origin: var(--axis, 50%) var(--eye, 50%);

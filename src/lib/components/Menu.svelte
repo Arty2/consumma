@@ -16,7 +16,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits } from '$lib/turn';
+	import { angleAt, axisAt, commits, progress } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -75,6 +75,8 @@
 	let turn = $state(0);
 	/** Where the axis has been pushed to, as a percentage across the paper. */
 	let axis = $state(50);
+	/** How far round, nought to one — the weight of the edge coming forward. */
+	let hand = $state(0);
 	/** Swinging home after a drag that did not go far enough to close. */
 	let springing = $state(false);
 	let dragStart: { x: number; at: number } | null = null;
@@ -211,6 +213,7 @@
 			springing = false;
 			turn = 0;
 			axis = 50;
+			hand = 0;
 		}
 
 		/*
@@ -236,6 +239,7 @@
 		// leads with its right edge, whichever face it is.
 		turn = angleAt(travelled, panel.clientWidth, -1);
 		axis = axisAt(travelled, panel.clientWidth);
+		hand = progress(travelled, panel.clientWidth);
 	}
 
 	function onpointerup(event: PointerEvent) {
@@ -269,6 +273,7 @@
 	class:springing
 	style:--turn="{turn}deg"
 	style:--axis="{axis}%"
+	style:--hand={hand}
 	bind:this={panel}
 	use:trap={close}
 	{onpointerdown}
@@ -296,6 +301,7 @@
 			springing = false;
 			turn = 0;
 			axis = 50;
+			hand = 0;
 		} else entering = false;
 	}}
 >
@@ -636,6 +642,31 @@
 			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
 		pointer-events: none;
 		will-change: transform;
+	}
+
+	/*
+	 * The edge coming towards the reader, drawn heavier — `near-out` and
+	 * `near-in` in app.css say why the transform cannot do it on its own.
+	 *
+	 * The same rule as the sheet's, because it is the same paper: leaving, the
+	 * right edge comes forward; arriving, the left. The far edge is never
+	 * touched. Under a finger the weight follows `--hand` directly, and the
+	 * furl picks it up from there rather than starting again from flat.
+	 */
+	.menu :global(svg.edge.right path) {
+		stroke-width: calc(var(--stroke) * (1 + var(--hand, 0)));
+	}
+
+	.unfurling :global(svg.edge.left path) {
+		animation: near-in var(--flip) ease-out var(--flip) both;
+	}
+
+	.springing :global(svg.edge.right path) {
+		animation: near-in var(--flip) ease-out forwards;
+	}
+
+	.furling :global(svg.edge.right path) {
+		animation: near-out var(--flip) ease-in forwards;
 	}
 
 	/*
