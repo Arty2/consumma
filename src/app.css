@@ -397,6 +397,23 @@ button {
 }
 
 /*
+ * Faint without leaving the ink.
+ *
+ * `.drawn--faint` above fades the stroke, which on two colours is a grey — and
+ * there are no greys here. The same lightness comes out of the ink the mark is
+ * already drawn in by laying it down less often: the same black, dotted. The
+ * dash is zero-length and `.drawn` caps round, so every one is a round dot the
+ * width of the stroke itself.
+ *
+ * Gap and offset are left to whoever sets them, so a mark that boils can put
+ * its dots somewhere new on every drawing rather than wear one pattern.
+ */
+.drawn--dotted {
+	stroke-dasharray: 0 var(--dot-gap, 3);
+	stroke-dashoffset: var(--dot-shift, 0);
+}
+
+/*
  * A link, which is the one thing on the sheet that is not just words.
  *
  * Underlined with a drawn stroke like every other underline here, but as a
