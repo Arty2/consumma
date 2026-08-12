@@ -41,13 +41,44 @@ pnpm dev
 | `pnpm check`     | `svelte-check` against the strict tsconfig          |
 | `pnpm lint`      | Prettier and ESLint                                 |
 | `pnpm gates`     | The rules a linter cannot enforce (see below)       |
+| `pnpm quick`     | Gates, types and unit tests — no browser, no build  |
 | `pnpm test:unit` | Vitest, including the merge property tests from M1  |
 | `pnpm test:e2e`  | Playwright against a production build on port 4173  |
 | `pnpm test`      | Gates, unit tests and end-to-end tests in one go    |
 | `pnpm build`     | Production build through `@sveltejs/adapter-vercel` |
 
-CI runs all of them on every push and pull request, plus
-`pnpm audit --prod --audit-level high`. Nothing deploys from Actions.
+`pnpm quick` is the one to run while working. It answers in about a quarter of
+a minute because it never starts a browser; `pnpm test` is what to run before
+asking for a change to land. Nothing deploys from Actions.
+
+### Open a pull request as a draft
+
+CI is two jobs, and which of them runs is decided by whether the pull request
+is a draft.
+
+|                              | Runs                                                                                          | Takes |
+| ---------------------------- | --------------------------------------------------------------------------------------------- | ----- |
+| Draft pull request           | `check` — gates, types, lint, unit                                                            | ~40s  |
+| Ready for review, and `main` | `check` **and** `full` — the above plus Playwright, the bundle budget and `pnpm audit --prod` | ~90s  |
+
+So **open it as a draft and leave it there while you work**. Every push gets
+the short answer, which is the one that catches the ordinary mistake: a type
+error, a lint failure, a broken gate, a unit test. Mark it ready for review
+when you want it merged, and the whole suite runs before it can be.
+
+Marking it ready is not optional politeness — `full` is the only thing that
+runs Playwright, so a pull request that never leaves draft has never had its
+end-to-end tests run. `main` always runs both, which is the net under all of
+this.
+
+The full suite can also be asked for by hand from the Actions tab
+(`workflow_dispatch`) without marking anything ready.
+
+Two more things decide whether CI runs at all. A commit touching only `.md`
+files is skipped, since prose cannot break a build — so a README-only change
+shows no checks, and that is correct rather than stuck. And a newer push
+cancels the run still going for the older one, because it says everything the
+older one did.
 
 ### The gates
 
