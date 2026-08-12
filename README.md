@@ -7,6 +7,15 @@ what reaches the server is ciphertext and a room id derived from the same code.
 Black on white, handwritten, no chrome. The sheet is a sheet, and the only
 words on it are the ones someone wrote.
 
+### Etymology
+
+The name is short for Latin _consummare_, "to complete" — the verb behind
+English _consummate_, and the root of _consummatum_, its perfect passive
+participle: "it is finished." That's the toast the sheet shows, once, when the
+last open task on it is ticked. It isn't _consumere_ ("to consume," the root
+of _consumer_), though the two look close enough to sit well on a shopping
+list — the name is about finishing the list, not using things up.
+
 - Project page: [heracl.es/consumma](https://heracl.es/consumma)
 - Demo: [consumma.vercel.app](https://consumma.vercel.app)
 - Source: [github.com/arty2/consumma](https://github.com/arty2/consumma)
@@ -54,18 +63,32 @@ The PWA's raster icons are the one exception, and they are drawn by
 the sheet. The gate exempts `static/icons` only while that directory is
 gitignored — otherwise the exemption would become the place to hide an image.
 
-## Two things you have to be told
+## Interactions
 
-Neither is discoverable by looking at the sheet, which is the accepted cost of
-keeping it clean.
+Every row answers to the same three gestures — tap, double tap, long-press —
+and what each does depends where it lands. One tap always does the common
+thing; a second tap inside about a third of a second opens it for editing
+instead.
 
-- **Long-press a checkbox to set a task half done.** Tapping toggles it between
-  to-do and done; holding for about half a second gives you the third state.
-  Holding a half-done task returns it to to-do. On a keyboard, `Space` toggles
-  and `Shift+Space` sets half.
-- **Long-press the text of a row to pick it up and drag it**, including into
-  another group. There is no drag handle. The checkbox keeps its own
-  long-press, so the two gestures never collide.
+- **A task's checkbox**: tap to toggle to-do and done. Long-press it, about
+  half a second, to set the third state, half done; long-press a half-done
+  task to return it to to-do. On a keyboard, `Space` toggles and
+  `Shift+Space` sets half.
+- **A task's text**: tap to tick the task off, the same as the checkbox.
+  Double tap to open it for editing. Long-press to pick the row up and drag
+  it, including into another group — there's no drag handle, and the
+  checkbox keeps its own long-press so the two never collide. Once a task is
+  done, an ✕ appears beside it to remove it outright.
+- **A group's title**: tap to fold or unfold the group. Double tap to open
+  its name for editing. Long-press to pick up the whole group and drag it.
+  The fold icon beside the title only ever folds, for anyone who'd rather aim
+  at that than the title.
+- **The list switcher pill**: tap opens the dropdown of every list on this
+  device. A second tap inside the window cancels that and cycles to the next
+  list instead.
+
+The long-presses aren't discoverable by looking at the sheet, which is the
+accepted cost of keeping it clean.
 
 ## What it does not do
 
