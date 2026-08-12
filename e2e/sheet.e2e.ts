@@ -457,16 +457,23 @@ test('Enter on a task opens a fresh one directly beneath it', async ({ page }) =
 	await fresh.fill('Butter');
 	await fresh.press('Enter');
 
+	/*
+	 * `expect.poll` rather than `expect(await order())`: reading the rows is a
+	 * one-shot evaluate, and a bare expect around one does not retry. The row
+	 * commits and the next opens in the same keydown, so the assertion could
+	 * land between the two and see the list mid-write — rarely, and only under
+	 * enough load to matter, which is exactly what CI is.
+	 */
 	// Between the two, not on the end — and the next one carries on below it.
-	expect(await order()).toStrictEqual(['Bread', 'Butter', 'Milk']);
+	await expect.poll(order).toStrictEqual(['Bread', 'Butter', 'Milk']);
 
 	await fresh.fill('Jam');
 	await fresh.press('Enter');
-	expect(await order()).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
+	await expect.poll(order).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
 
 	await page.keyboard.press('Escape');
 	await page.reload();
-	expect(await order()).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
+	await expect.poll(order).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
 });
 
 test('tapping a task takes the caret with it, to the end of what it says', async ({ page }) => {

@@ -13,6 +13,23 @@ export default defineConfig({
 	testDir: 'e2e',
 	testMatch: '**/*.e2e.{ts,js}',
 	/*
+	 * Tests within a file run in parallel too, not just files against each
+	 * other. Nothing here shares state across tests: the sync suite answers its
+	 * own requests in Node from a `FakeBlobs` map rebuilt per test, and workers
+	 * are separate processes, so a test never sees another's room.
+	 *
+	 * Without this the suite was as slow as its longest file, which is the sync
+	 * one — seventeen tests in a single lane.
+	 */
+	fullyParallel: true,
+	workers: process.env.CI ? 4 : '50%',
+	/*
+	 * One retry on CI. Not a licence for flaky tests: it is cover for the real
+	 * timing edges left in the suite, where a wait sits close to the interval it
+	 * is waiting on. A retry that passes still shows up in the report as flaky.
+	 */
+	retries: process.env.CI ? 1 : 0,
+	/*
 	 * Never reused, on any machine.
 	 *
 	 * `!process.env.CI` meant that locally a preview server already listening on
