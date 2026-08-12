@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { angleAt, axisAt, commits, DRIFT, progress, QUARTER, SLACK } from '../src/lib/turn';
+import {
+	angleAt,
+	axisAt,
+	commits,
+	DRIFT,
+	LEAD,
+	progress,
+	QUARTER,
+	slideAt,
+	SLACK
+} from '../src/lib/turn';
 
 /*
  * The arithmetic behind turning the paper by hand. Both sides of the receipt
@@ -9,16 +19,35 @@ import { angleAt, axisAt, commits, DRIFT, progress, QUARTER, SLACK } from '../sr
 
 const WIDE = 390;
 
+describe('slideAt', () => {
+	it('does not move under a tap that was not quite still', () => {
+		expect(slideAt(0)).toBe(0);
+		expect(slideAt(SLACK)).toBe(0);
+	});
+
+	it('follows the finger for the length of the lead-in', () => {
+		expect(slideAt(SLACK + 5)).toBe(5);
+		expect(slideAt(SLACK + LEAD)).toBe(LEAD);
+	});
+
+	it('stops there, and the turn takes over', () => {
+		expect(slideAt(SLACK + LEAD + 400)).toBe(LEAD);
+	});
+});
+
 describe('progress', () => {
-	it('is nothing until the drag is past the slack', () => {
+	it('is nothing while the paper is only sliding', () => {
 		expect(progress(0, WIDE)).toBe(0);
 		expect(progress(SLACK, WIDE)).toBe(0);
 		// A tap is never perfectly still; the paper must not twitch under one.
 		expect(progress(SLACK - 1, WIDE)).toBe(0);
+		// Still sliding, so still flat — and so the near edge is still unweighted.
+		expect(progress(SLACK + LEAD - 1, WIDE)).toBe(0);
+		expect(progress(SLACK + LEAD, WIDE)).toBe(0);
 	});
 
-	it('counts from the end of the slack, not from the touch', () => {
-		expect(progress(SLACK + 39, WIDE)).toBeCloseTo(39 / WIDE, 6);
+	it('counts from the end of the lead-in, not from the touch', () => {
+		expect(progress(SLACK + LEAD + 39, WIDE)).toBeCloseTo(39 / WIDE, 6);
 	});
 
 	it('stops at the whole width, however far the hand goes', () => {
@@ -48,8 +77,9 @@ describe('angleAt', () => {
 		expect(angleAt(travelled, WIDE, 1)).toBe(-angleAt(travelled, WIDE, -1));
 	});
 
-	it('leaves the paper flat until the drag is past the slack', () => {
+	it('leaves the paper flat for the whole of the lead-in', () => {
 		expect(angleAt(SLACK, WIDE, 1)).toBe(0);
+		expect(angleAt(SLACK + LEAD, WIDE, 1)).toBe(0);
 	});
 });
 
@@ -60,7 +90,7 @@ describe('axisAt', () => {
 
 	it('wanders with the drag, and no further than the drift', () => {
 		expect(axisAt(WIDE * 2, WIDE)).toBe(50 + DRIFT);
-		expect(axisAt(SLACK + WIDE / 2, WIDE)).toBeCloseTo(50 + DRIFT / 2, 6);
+		expect(axisAt(SLACK + LEAD + WIDE / 2, WIDE)).toBeCloseTo(50 + DRIFT / 2, 6);
 	});
 
 	it('only ever moves the way the finger went', () => {

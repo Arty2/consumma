@@ -219,6 +219,13 @@
 	--inertia: cubic-bezier(0.22, 1.2, 0.36, 1);
 
 	/*
+	 * How many times its own weight the near edge of the turning paper reaches,
+	 * at the point it is nearest. One number, read by the three keyframes below
+	 * and by the two rules that follow a finger.
+	 */
+	--near-peak: 4;
+
+	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
 	 *
 	 * Every way of deleting something stands in one column out here, clear of
@@ -499,16 +506,35 @@ a {
  */
 @keyframes near-out {
 	from {
-		stroke-width: calc(var(--stroke) * (1 + var(--push, 0)) * 1px);
+		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
 	}
 	to {
-		stroke-width: calc(var(--stroke) * 2px);
+		stroke-width: calc(var(--stroke) * var(--near-peak) * 1px);
 	}
 }
 
 @keyframes near-in {
 	from {
-		stroke-width: calc(var(--stroke) * 2px);
+		stroke-width: calc(var(--stroke) * var(--near-peak) * 1px);
+	}
+	to {
+		stroke-width: calc(var(--stroke) * 1px);
+	}
+}
+
+/*
+ * Back to nothing from wherever the hand got to, which is not the same as
+ * `near-in` and was written as if it were.
+ *
+ * A drag that stops short leaves the paper part-turned and its near edge part
+ * weighted. Springing home from the peak meant the edge first jumped to its
+ * full weight and then came down — the line got heavier on the way back, while
+ * the paper was straightening and the edge going away from the reader. It
+ * starts from where the finger left it now.
+ */
+@keyframes near-home {
+	from {
+		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
 	}
 	to {
 		stroke-width: calc(var(--stroke) * 1px);

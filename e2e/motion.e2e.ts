@@ -190,7 +190,7 @@ test.describe('the edge that comes forward', () => {
 		);
 	}
 
-	test('the near edge is drawn twice as heavy, and the far one is left alone', async ({ page }) => {
+	test('the near edge reaches its full weight, and the far one is left alone', async ({ page }) => {
 		await page.goto('/');
 
 		const base = (await weight(page, '.page', 'left'))!;
@@ -209,7 +209,7 @@ test.describe('the edge that comes forward', () => {
 		 * since a vertical stroke's width is measured across and the turn
 		 * compresses that axis for both.
 		 */
-		expect(await weight(page, '.page', 'left')).toBeCloseTo(base * 2, 1);
+		expect(await weight(page, '.page', 'left')).toBeCloseTo(base * 4, 1);
 		expect(await weight(page, '.page', 'right')).toBe(base);
 
 		// The panel arrived leading with its left, and has settled back to flat.
@@ -247,8 +247,75 @@ test.describe('the edge that comes forward', () => {
 			await page.waitForTimeout(16);
 		}
 
-		const between = [...seen].filter((w) => w > base + 0.05 && w < base * 2 - 0.05);
+		const between = [...seen].filter((w) => w > base + 0.05 && w < base * 4 - 0.05);
 		expect(between.length, `saw only ${[...seen].join(', ')}`).toBeGreaterThan(1);
+	});
+
+	test('nothing is weighted while the paper is only sliding', async ({ page }) => {
+		await page.goto('/');
+		const base = (await weight(page, '.page', 'left'))!;
+
+		const box = (await page.locator('main').boundingBox())!;
+		const y = box.y + box.height - 12;
+		await page.mouse.move(box.x + 30, y);
+		await page.mouse.down();
+
+		/*
+		 * A sheet pushed sideways goes sideways first, and a paper that is not
+		 * turning has no near edge. Inside the lead-in the weight is the weight
+		 * it always was.
+		 */
+		await page.mouse.move(box.x + 30 + 14, y, { steps: 3 });
+		expect(await angle(page)).toBe(0);
+		expect(await weight(page, '.page', 'left')).toBe(base);
+		expect(await weight(page, '.page', 'right')).toBe(base);
+
+		/*
+		 * And it has moved, rather than sitting in a dead zone doing nothing.
+		 * Read off `translate` and not `transform`: they are separate properties
+		 * here on purpose, so that the slide and the turn compose without either
+		 * having to know about the other.
+		 */
+		const slid = await page.locator('.page').evaluate((el) => {
+			return parseFloat(getComputedStyle(el).translate) || 0;
+		});
+		expect(slid).toBeGreaterThan(0);
+
+		await page.mouse.up();
+		await settle(page);
+	});
+
+	test('springing home never makes the edge heavier on the way back', async ({ page }) => {
+		await page.goto('/');
+		const base = (await weight(page, '.page', 'left'))!;
+
+		const box = (await page.locator('main').boundingBox())!;
+		const y = box.y + box.height - 12;
+		await page.mouse.move(box.x + 30, y);
+		await page.mouse.down();
+		await page.mouse.move(box.x + 30 + 38, y, { steps: 6 });
+
+		const held = (await weight(page, '.page', 'left'))!;
+		expect(held).toBeGreaterThan(base);
+
+		/*
+		 * Let go short of the threshold and the paper straightens up. Its near
+		 * edge is going away from the reader the whole time, so the weight can
+		 * only fall. It used to spring from the peak instead of from where the
+		 * finger left it, so the line got heavier as the paper flattened —
+		 * backwards, and the wrong way round twice over.
+		 */
+		await page.mouse.up();
+
+		for (let i = 0; i < 8; i++) {
+			const w = await weight(page, '.page', 'left');
+			if (w !== null)
+				expect(w, `heavier than the ${held} it was let go at`).toBeLessThan(held + 0.05);
+			await page.waitForTimeout(16);
+		}
+
+		await settle(page);
+		expect(await weight(page, '.page', 'left')).toBe(base);
 	});
 
 	test('a finger turning the paper takes the edge with it', async ({ page }) => {
@@ -258,12 +325,13 @@ test.describe('the edge that comes forward', () => {
 		const box = (await page.locator('main').boundingBox())!;
 		await page.mouse.move(box.x + 30, box.y + box.height - 12);
 		await page.mouse.down();
-		// Under the flick, so the paper stays put and can be measured held.
-		await page.mouse.move(box.x + 60, box.y + box.height - 12, { steps: 6 });
+		// Past the lead-in so the paper is turning, and under the 40px flick so
+		// it stays put and can be measured while held.
+		await page.mouse.move(box.x + 30 + 38, box.y + box.height - 12, { steps: 6 });
 
 		const near = (await weight(page, '.page', 'left'))!;
 		expect(near).toBeGreaterThan(base);
-		expect(near).toBeLessThanOrEqual(base * 2);
+		expect(near).toBeLessThanOrEqual(base * 4);
 		// The far edge does not move, however far the hand goes.
 		expect(await weight(page, '.page', 'right')).toBe(base);
 
@@ -308,8 +376,9 @@ test.describe('turning it over by hand', () => {
 
 		await page.mouse.move(from.x, from.y);
 		await page.mouse.down();
-		// Under the flick, which is 40px however fast the hand was going.
-		await page.mouse.move(from.x + 30, from.y, { steps: 6 });
+		// Past the lead-in, and under the flick, which is 40px however fast the
+		// hand was going.
+		await page.mouse.move(from.x + 38, from.y, { steps: 6 });
 
 		// Turned the way a hand pushes it: the side under the finger goes back,
 		// the far side comes forward. That is the positive rotation.
@@ -401,7 +470,7 @@ test.describe('turning it back by hand', () => {
 		 * that threshold has not moved; it is only what it is measured against
 		 * that has.
 		 */
-		await pull(page, 30, 6);
+		await pull(page, 38, 6);
 
 		// Turned the way every face leaves, which is the way the hand pushed it —
 		// the same movement the sheet makes on its way out.

@@ -37,12 +37,33 @@ export const DRIFT = 9;
  * A tap on a phone is never perfectly still, and without this the paper twitches
  * under every one of them.
  */
-export const SLACK = 6;
+export const SLACK = 4;
 
-/** How much of the paper's width a drag has covered, from 0 to 1. */
+/**
+ * How far the paper slides before it begins to turn, in pixels.
+ *
+ * A sheet pushed sideways goes sideways first. It only starts to come round
+ * once it has run out of slide — a hand does not spin a receipt from the
+ * instant it touches it, and rotation that begins on the first pixel reads as
+ * a mechanism rather than as paper.
+ */
+export const LEAD = 22;
+
+/** How far the paper has slid, in pixels: the lead-in, before any turn. */
+export function slideAt(travelled: number): number {
+	return Math.min(LEAD, Math.max(0, travelled - SLACK));
+}
+
+/**
+ * How much of the paper's width the turn has covered, from 0 to 1.
+ *
+ * Counted from the end of the lead-in, so the paper is flat for as long as it
+ * is only sliding — and so is the weight of its near edge, which is a reading
+ * of the rotation and has nothing to say while there is none.
+ */
 export function progress(travelled: number, width: number): number {
 	if (!(width > 0)) return 0;
-	return Math.min(1, Math.max(0, travelled - SLACK) / width);
+	return Math.min(1, Math.max(0, travelled - SLACK - LEAD) / width);
 }
 
 /**

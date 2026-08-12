@@ -886,7 +886,7 @@ relative` rather than a transform, which does not apply to an inline box.
     not. Sliding was also the wrong gesture for a panel that is the back of the
     sheet: there is nowhere beside the paper for it to go.
 
-83. **The edge coming forward is drawn twice as heavy.** A sheet turning about
+83. **The edge coming forward is drawn heavier as it comes.** A sheet turning about
     its middle brings one side towards the reader and sends the other away, and
     the transform says almost nothing about which. Worse than nothing: a vertical
     stroke's width is measured across the paper, so the rotation that ought to
@@ -894,10 +894,29 @@ relative` rather than a transform, which does not apply to an inline box.
     than they started. Measured at 45°, a near edge magnified by perspective to
     1.13 and compressed by 0.71 lands at 0.8 of its own weight.
 
-    So the weight is drawn rather than derived. `near-out` and `near-in` in
-    app.css take the near edge to `--stroke * 2` at the point it is nearest, and
-    the far edge is not touched at all — the asymmetry is the whole signal, and
-    thickening both would say only that something was happening.
+    So the weight is drawn rather than derived. `near-out`, `near-in` and
+    `near-home` in app.css take the near edge to `--near-peak` times its own
+    weight at the point it is nearest, and the far edge is not touched at all —
+    the asymmetry is the whole signal, and thickening both would say only that
+    something was happening.
+
+    Two ways it was written and did not work, both silent. `--hand` was already
+    the typeface, so naming the drag progress the same made every one of these
+    declarations invalid at computed-value time and `stroke-width` fell back to
+    its initial 1 — the panel's own left edge had been drawing at 1px rather
+    than 1.4 at rest for the same reason. And with valid values it still
+    stepped: `--stroke` is unitless, so `calc(var(--stroke) * 2)` stays a
+    `calc()`, and two unresolved calcs do not interpolate. Multiplying through
+    by `1px` resolves them. The timing is `linear` rather than eased, because
+    the weight is a reading of how near the edge is and not of how far through
+    the animation it is; easing both put nearly all of it into the last few
+    degrees, where the paper is edge-on and there is nothing to see.
+
+    `near-home` is separate from `near-in` and that is the point of it. A drag
+    that stops short leaves the paper part-turned and its near edge part
+    weighted, and springing home from the peak made the line grow heavier while
+    the paper was straightening and the edge going away from the reader —
+    backwards, and the wrong way round twice over.
 
     Which side is near is not decided in the keyframes; it is whichever side the
     selector points at, and that is the left one leaving and the right arriving,
@@ -925,6 +944,14 @@ relative` rather than a transform, which does not apply to an inline box.
     rotation. It is a module with a test rather than a pair of near-identical
     handlers, which is the shape the second copy of anything here has always
     drifted into.
+
+    **A sheet pushed sideways goes sideways first.** The paper slides `LEAD`
+    pixels before it begins to come round, and its near edge is unweighted for
+    the whole of that, because a paper that is not turning has no near edge. A
+    hand does not spin a receipt from the instant it touches it, and rotation
+    that begins on the first pixel reads as a mechanism rather than as paper.
+    The slide is a `translate` and the turn a `transform`, so the two compose
+    without either having to know about the other.
 
     On the sheet it takes hold on bare paper only. Everything on the sheet that
     can be pressed already owns a press — the long press that lifts a task, the

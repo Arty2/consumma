@@ -16,7 +16,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits, progress } from '$lib/turn';
+	import { angleAt, axisAt, commits, progress, slideAt } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -77,6 +77,8 @@
 	let axis = $state(50);
 	/** How far round, nought to one — the weight of the edge coming forward. */
 	let hand = $state(0);
+	/** The lead-in: how far the panel has slid before it begins to turn. */
+	let slide = $state(0);
 	/** Swinging home after a drag that did not go far enough to close. */
 	let springing = $state(false);
 	let dragStart: { x: number; at: number } | null = null;
@@ -240,6 +242,7 @@
 		const travelled = event.clientX - dragStart.x;
 		// Negative, the way every half of this turn goes: the face on its way out
 		// leads with its right edge, whichever face it is.
+		slide = slideAt(travelled);
 		turn = angleAt(travelled, panel.clientWidth, 1);
 		axis = axisAt(travelled, panel.clientWidth);
 		hand = progress(travelled, panel.clientWidth);
@@ -261,7 +264,7 @@
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
 		if (commits(travelled, elapsed, panel.clientWidth)) close();
-		else if (turn > 0) springing = true;
+		else if (turn > 0 || slide > 0) springing = true;
 	}
 </script>
 
@@ -277,6 +280,7 @@
 	style:--turn="{turn}deg"
 	style:--axis="{axis}%"
 	style:--push={hand}
+	style:--slide="{slide}px"
 	bind:this={panel}
 	use:trap={close}
 	{onpointerdown}
@@ -284,7 +288,7 @@
 	{onpointerup}
 	onpointercancel={() => {
 		dragStart = null;
-		if (turn > 0 && !closing) springing = true;
+		if ((turn > 0 || slide > 0) && !closing) springing = true;
 	}}
 	onanimationend={(event) => {
 		/*
@@ -305,6 +309,7 @@
 			turn = 0;
 			axis = 50;
 			hand = 0;
+			slide = 0;
 		} else entering = false;
 	}}
 >
@@ -578,7 +583,7 @@
 		flex-direction: column;
 		outline: none;
 		touch-action: pan-y;
-		translate: -50% 0;
+		translate: calc(-50% + var(--slide, 0px)) 0;
 
 		/*
 		 * The sheet's own axis. Both are `--paper-width` and both are centred,
@@ -633,7 +638,7 @@
 	 */
 	.springing {
 		animation:
-			spring-back var(--flip) ease-out forwards,
+			spring-back var(--flip) var(--inertia) forwards,
 			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
 		will-change: transform;
 	}
@@ -665,7 +670,7 @@
 	 * furl picks it up from there rather than starting again from flat.
 	 */
 	.menu :global(svg.edge.left path) {
-		stroke-width: calc(var(--stroke) * (1 + var(--push, 0)) * 1px);
+		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
 	}
 
 	.unfurling :global(svg.edge.right path) {
@@ -673,7 +678,7 @@
 	}
 
 	.springing :global(svg.edge.left path) {
-		animation: near-in var(--flip) linear forwards;
+		animation: near-home var(--flip) linear forwards;
 	}
 
 	.furling :global(svg.edge.left path) {
@@ -706,18 +711,22 @@
 
 	@keyframes furl {
 		from {
+			translate: calc(-50% + var(--slide, 0px)) 0;
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			translate: -50% 0;
 			transform: perspective(1200px) rotateY(90deg);
 		}
 	}
 
 	@keyframes spring-back {
 		from {
+			translate: calc(-50% + var(--slide, 0px)) 0;
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			translate: -50% 0;
 			transform: perspective(1200px) rotateY(0deg);
 		}
 	}

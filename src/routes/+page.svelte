@@ -14,7 +14,7 @@
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
 	import { drag } from '$lib/dnd/drag.svelte';
-	import { angleAt, axisAt, commits, progress, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, progress, slideAt, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -73,6 +73,8 @@
 	let axis = 50;
 	/** How far round, nought to one — the weight of the edge coming forward. */
 	let hand = 0;
+	/** The lead-in: how far the paper has slid before it begins to turn. */
+	let slide = 0;
 	let dragging = $state(false);
 	let settling = $state(false);
 	let dragStart: { x: number; y: number; at: number } | null = null;
@@ -128,6 +130,7 @@
 		paper?.style.setProperty('--axis', `${axis}%`);
 		// How far round the paper is, for the weight of the edge coming forward.
 		paper?.style.setProperty('--push', `${hand}`);
+		paper?.style.setProperty('--slide', `${slide}px`);
 	}
 
 	/** Back to a paper nobody has touched. */
@@ -135,6 +138,7 @@
 		turn = 0;
 		axis = 50;
 		hand = 0;
+		slide = 0;
 		place();
 	}
 
@@ -198,6 +202,7 @@
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		}
 
+		slide = slideAt(dx);
 		turn = angleAt(dx, paper.clientWidth, 1);
 		axis = axisAt(dx, paper.clientWidth);
 		hand = progress(dx, paper.clientWidth);
@@ -226,7 +231,7 @@
 		if (commits(travelled, elapsed, paper.clientWidth)) {
 			flip = 'open';
 			panel = 'menu';
-		} else if (turn > 0) settling = true;
+		} else if (turn > 0 || slide > 0) settling = true;
 	}
 
 	/*
@@ -401,7 +406,7 @@
 			dragStart = null;
 			if (dragging) {
 				dragging = false;
-				if (turn > 0) settling = true;
+				if (turn > 0 || slide > 0) settling = true;
 			}
 		}}
 	>
@@ -527,6 +532,12 @@
 	 * as its list is not held on a compositor layer for the life of the page.
 	 */
 	.dragging {
+		/*
+		 * The slide is a `translate` rather than part of the transform, so the
+		 * two compose without either having to know about the other — the same
+		 * arrangement the panel uses to stay centred while it turns.
+		 */
+		translate: var(--slide, 0px) 0;
 		transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		will-change: transform;
 	}
@@ -550,7 +561,7 @@
 	/* A drag that stopped short. The paper swings back up and the axis home. */
 	.settling {
 		animation:
-			settle var(--flip) ease-out forwards,
+			settle var(--flip) var(--inertia) forwards,
 			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
 		will-change: transform;
 	}
@@ -568,7 +579,7 @@
 	 * that component; this is the one thing about them the sheet decides.
 	 */
 	.dragging :global(svg.edge.left path) {
-		stroke-width: calc(var(--stroke) * (1 + var(--push, 0)) * 1px);
+		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
 	}
 
 	.turning :global(svg.edge.left path) {
@@ -576,7 +587,7 @@
 	}
 
 	.settling :global(svg.edge.left path) {
-		animation: near-in var(--flip) linear forwards;
+		animation: near-home var(--flip) linear forwards;
 	}
 
 	.returning :global(svg.edge.right path) {
@@ -596,18 +607,22 @@
 
 	@keyframes turn-away {
 		from {
+			translate: var(--slide, 0px) 0;
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			translate: 0 0;
 			transform: perspective(1200px) rotateY(90deg);
 		}
 	}
 
 	@keyframes settle {
 		from {
+			translate: var(--slide, 0px) 0;
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			translate: 0 0;
 			transform: perspective(1200px) rotateY(0deg);
 		}
 	}
