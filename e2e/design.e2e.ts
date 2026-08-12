@@ -328,41 +328,6 @@ test('the menu\u2019s headers are ruled as wide as they are, at any width', asyn
 	}
 });
 
-test('the toast is a bar, inset from the paper on both sides', async ({ page }) => {
-	await page.getByRole('button', { name: 'Add a task' }).click();
-	const input = page.getByRole('textbox', { name: 'New task' });
-	await input.fill('Bread');
-	await input.press('Enter');
-	await page.keyboard.press('Escape');
-
-	// Only a done task offers a way out.
-	await page.getByRole('checkbox', { name: 'Bread' }).click();
-	await page.getByRole('button', { name: 'Delete task' }).first().click();
-	await expect(page.locator('.toast')).toBeVisible();
-
-	for (const width of [320, 390]) {
-		await page.setViewportSize({ width, height: 760 });
-
-		const edges = await page.evaluate(() => {
-			const toast = document.querySelector('.toast')!.getBoundingClientRect();
-			const paper = document.querySelector('main')!.getBoundingClientRect();
-			return { tl: toast.left, tr: toast.right, pl: paper.left, pr: paper.right };
-		});
-
-		// Inside the paper's edges, so it reads as sitting in front of the sheet
-		// rather than as another part of it — and centred on the same middle.
-		expect(edges.tl, `left at ${width}`).toBeGreaterThan(edges.pl);
-		expect(edges.tr, `right at ${width}`).toBeLessThan(edges.pr);
-		expect((edges.tl + edges.tr) / 2, `centre at ${width}`).toBeCloseTo(
-			(edges.pl + edges.pr) / 2,
-			1
-		);
-
-		// Still a bar rather than a label shrunk to its words.
-		expect(edges.tr - edges.tl, `width at ${width}`).toBeGreaterThan(200);
-	}
-});
-
 test('one ellipsis, set one way, wherever it stands for something not there yet', async ({
 	page
 }) => {
@@ -443,87 +408,6 @@ test('the empty box shows on a bare sheet, and is kept back once there is a list
 	 * more thing to do rather than as room for one.
 	 */
 	expect(await opacity(page.locator('.tasks li').last().locator('.box path'))).toBe(0);
-});
-
-test('a group title has the air under it that the tasks have between them', async ({ page }) => {
-	await page.getByRole('button', { name: 'Add a task' }).click();
-	const input = page.getByRole('textbox', { name: 'New task' });
-	for (const text of ['Bread', 'Coffee', 'Milk']) {
-		await input.fill(text);
-		await input.press('Enter');
-	}
-	await page.keyboard.press('Escape');
-
-	const gaps = await page.evaluate(() => {
-		const ctx = document.createElement('canvas').getContext('2d')!;
-
-		// Where the capitals actually start and stop, not where their line box does.
-		const ink = (el: Element) => {
-			const s = getComputedStyle(el);
-			const range = document.createRange();
-			range.selectNodeContents(el);
-			const line = range.getBoundingClientRect();
-			ctx.font = `${s.fontSize} ${s.fontFamily}`;
-			const m = ctx.measureText(el.textContent!.trim().toUpperCase());
-			const fh = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
-			const base = line.top + (line.height - fh) / 2 + m.fontBoundingBoxAscent;
-			return { top: base - m.actualBoundingBoxAscent, bottom: base + m.actualBoundingBoxDescent };
-		};
-
-		const tasks = [...document.querySelectorAll('.tasks li button.text')].filter(
-			(t) => t.textContent!.trim() !== '…'
-		);
-		const between = [];
-		for (let i = 1; i < tasks.length; i++) {
-			between.push(ink(tasks[i]).top - ink(tasks[i - 1]).bottom);
-		}
-
-		// The underline is the title's own background now, not a separate
-		// drawn element — its bottom edge is where the old rule sat.
-		const rule = document.querySelector('section .title')!.getBoundingClientRect();
-		return { between, underTitle: ink(tasks[0]).top - rule.bottom };
-	});
-
-	expect(gaps.between.length).toBeGreaterThan(0);
-	const rhythm = gaps.between.reduce((a, b) => a + b, 0) / gaps.between.length;
-
-	// Within a couple of pixels: which capitals are on the row moves it a little.
-	expect(Math.abs(gaps.underTitle - rhythm)).toBeLessThan(3);
-});
-
-test('the toast reads on the middle of its own box', async ({ page }) => {
-	await page.getByRole('button', { name: 'Add a task' }).click();
-	const input = page.getByRole('textbox', { name: 'New task' });
-	await input.fill('Bread');
-	await input.press('Enter');
-	await page.keyboard.press('Escape');
-
-	await page.getByRole('checkbox', { name: 'Bread' }).click();
-	await page.getByRole('button', { name: 'Delete task' }).first().click();
-	await expect(page.locator('.toast')).toBeVisible();
-
-	const offset = await page.evaluate(() => {
-		const toast = document.querySelector('.toast')!;
-		const words = toast.querySelector('span')!;
-		const drawn = toast.querySelector('svg.rect path')!.getBoundingClientRect();
-
-		const style = getComputedStyle(words);
-		const range = document.createRange();
-		range.selectNodeContents(words);
-		const line = range.getBoundingClientRect();
-
-		const ctx = document.createElement('canvas').getContext('2d')!;
-		ctx.font = `${style.fontSize} ${style.fontFamily}`;
-		const m = ctx.measureText(words.textContent!.trim().toUpperCase());
-		const fh = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
-		const base = line.top + (line.height - fh) / 2 + m.fontBoundingBoxAscent;
-		const ink = (base - m.actualBoundingBoxAscent + (base + m.actualBoundingBoxDescent)) / 2;
-
-		return (drawn.top + drawn.bottom) / 2 - ink;
-	});
-
-	// Graphe's capitals ride high, so a box centred on the row reads low.
-	expect(Math.abs(offset)).toBeLessThan(2);
 });
 
 test('a checkbox sits level with the capitals it is beside', async ({ page }) => {

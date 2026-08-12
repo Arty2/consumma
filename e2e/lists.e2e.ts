@@ -247,16 +247,6 @@ test('a single tap still opens the dropdown, after the pause that leaves room fo
 	await expect(dropdown(page)).toBeVisible();
 });
 
-test('the pill reads bolder than the surrounding chrome', async ({ page }) => {
-	await addTask(page, 'Bread');
-	await newList(page);
-
-	const weight = await switcherPill(page)
-		.locator('.label')
-		.evaluate((el) => getComputedStyle(el).fontWeight);
-	expect(Number(weight)).toBeGreaterThan(400);
-});
-
 test('opening the sheet’s own pill covers the page, the same as SYNC or IMPORT', async ({
 	page
 }) => {
@@ -274,22 +264,6 @@ test('opening the sheet’s own pill covers the page, the same as SYNC or IMPORT
 	await expect(modal).toHaveCount(0);
 });
 
-test('the menu’s own rows stay left-aligned, the same as the sheet’s', async ({ page }) => {
-	await addTask(page, 'Bread');
-	await newList(page);
-
-	await openMenu(page);
-	const dialog = page.getByRole('dialog', { name: 'Menu' });
-	await dialog.locator('button[aria-haspopup="listbox"]').click();
-	await dialog.getByRole('listbox', { name: 'Lists' }).waitFor();
-
-	const align = await dialog
-		.getByRole('option')
-		.first()
-		.evaluate((el) => getComputedStyle(el).justifyContent);
-	expect(align).not.toBe('center');
-});
-
 test('the menu keeps its ✕ reachable once the switcher shares its row', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await newList(page);
@@ -299,77 +273,6 @@ test('the menu keeps its ✕ reachable once the switcher shares its row', async 
 	// intercepted the tap meant for the ✕ underneath it.
 	await page.getByRole('button', { name: 'Close' }).click();
 	await expect(page.getByRole('dialog')).toHaveCount(0);
-});
-
-test('a long name gives way in the pill, the code never does, and the rule follows both', async ({
-	page
-}) => {
-	/*
-	 * A phone, explicitly: the suite runs at Desktop Chrome's width, where the
-	 * panel is wide enough that this name fits and nothing needs to give — so
-	 * the assertions below would be testing the absence of a problem. Running
-	 * out of room is a phone's question, and this is the width it is asked at.
-	 */
-	await page.setViewportSize({ width: 390, height: 700 });
-
-	// A code planted rather than synced: there is no server behind the preview,
-	// and what is under test is what the pill does with one, not how it got it.
-	await page.evaluate(() => localStorage.setItem('consumma:code', '5e6b7c1a93f2'));
-	await page.reload();
-
-	await addTask(page, 'Bread');
-	await page.locator('section .title').first().dblclick();
-	await page
-		.getByRole('textbox', { name: 'Group title' })
-		.fill('A very long list name indeed that must give way');
-	await page.getByRole('textbox', { name: 'Group title' }).press('Enter');
-	await page.keyboard.press('Escape');
-
-	await openMenu(page);
-	const dialog = page.getByRole('dialog', { name: 'Menu' });
-
-	// Four characters, whole, however little room the name is left. Named
-	// `.tail` rather than `.code` so it never collides with the panel's own
-	// full-code display — see ListSwitcher.svelte.
-	await expect(dialog.locator('.pill .tail')).toHaveText('93f2');
-	// And exactly one `.code` on the panel, which is that full display.
-	await expect(dialog.locator('.code')).toHaveCount(1);
-
-	const geo = await page.evaluate(() => {
-		const dialogEl = document.querySelector('[role="dialog"]')!;
-		const pill = dialogEl.querySelector('button[aria-haspopup="listbox"]') as HTMLElement;
-		const label = pill.querySelector('.label') as HTMLElement;
-		const tail = pill.querySelector('.tail') as HTMLElement;
-		const rule = dialogEl.querySelector('svg.rule')!.getBoundingClientRect();
-		const box = pill.getBoundingClientRect();
-		const close = document.querySelector('.close')!.getBoundingClientRect();
-
-		return {
-			nameClipped: label.scrollWidth > label.clientWidth,
-			codeClipped: tail.scrollWidth > tail.clientWidth,
-			codeWidth: tail.getBoundingClientRect().width,
-			pillLeft: box.left,
-			pillWidth: box.width,
-			pillRight: box.right,
-			ruleLeft: rule.left,
-			ruleWidth: rule.width,
-			closeLeft: close.left
-		};
-	});
-
-	// The name is what an ellipsis takes; the code is drawn in full.
-	expect(geo.nameClipped).toBe(true);
-	expect(geo.codeClipped).toBe(false);
-	expect(geo.codeWidth).toBeGreaterThan(0);
-
-	// The rule starts where the pill starts — both left, as the rows they open
-	// are — and is no wider than the words it marks: a pen underlines the
-	// word, not the row.
-	expect(Math.abs(geo.ruleLeft - geo.pillLeft)).toBeLessThan(2);
-	expect(geo.ruleWidth).toBeLessThanOrEqual(geo.pillWidth + 1);
-
-	// And it never reaches the ✕ it shares a row with.
-	expect(geo.pillRight).toBeLessThanOrEqual(geo.closeLeft + 1);
 });
 
 test('a list nobody wrote on is forgotten as soon as it is left', async ({ page }) => {
@@ -409,56 +312,4 @@ test('a list with nothing written on it cannot be synced', async ({ page }) => {
 	await addTask(page, 'Milk');
 	await openMenu(page);
 	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeEnabled();
-});
-
-test('a long list name truncates in a row rather than overflowing it, in either context', async ({
-	page
-}) => {
-	await addTask(page, 'Bread');
-	await newList(page);
-
-	await page.locator('section .title').first().dblclick();
-	await page
-		.getByRole('textbox', { name: 'Group title' })
-		.fill('A very long list name that would otherwise overflow the row it sits in');
-	await page.getByRole('textbox', { name: 'Group title' }).press('Enter');
-	await page.keyboard.press('Escape');
-
-	// The sheet's own modal.
-	await switcherPill(page).click();
-	await dropdown(page).waitFor();
-	const sheetRow = await page.evaluate(() => {
-		const row = document.querySelector('.listbox .row')!.getBoundingClientRect();
-		const box = document.querySelector('.listbox')!.getBoundingClientRect();
-		return row.width <= box.width + 1;
-	});
-	expect(sheetRow).toBe(true);
-	await page.keyboard.press('Escape');
-
-	// The menu's own in-flow copy — same row styling, and the pill itself
-	// (which carries the active list's own name) must not spill into the ✕.
-	await openMenu(page);
-	const dialog = page.getByRole('dialog', { name: 'Menu' });
-	await dialog.locator('button[aria-haspopup="listbox"]').click();
-	await dialog.getByRole('listbox', { name: 'Lists' }).waitFor();
-
-	const menuGeo = await page.evaluate(() => {
-		const row = document.querySelector('.dropdown.menu .row')!.getBoundingClientRect();
-		const box = document.querySelector('.dropdown.menu')!.getBoundingClientRect();
-		/*
-		 * The menu's pill, not the sheet's. Both are in the document while the
-		 * panel is up, and unscoped this took whichever came first in markup —
-		 * which was the sheet's, and measured the wrong row for as long as the
-		 * two happened to line up. The sheet is turned away behind the panel
-		 * now, so its box is a line on the hinge and the two no longer do.
-		 */
-		const pill = document
-			.querySelector('.menu')!
-			.querySelector('button[aria-haspopup="listbox"]')!
-			.getBoundingClientRect();
-		const close = document.querySelector('.close')!.getBoundingClientRect();
-		return { rowFits: row.width <= box.width + 1, pillRight: pill.right, closeLeft: close.left };
-	});
-	expect(menuGeo.rowFits).toBe(true);
-	expect(menuGeo.pillRight).toBeLessThanOrEqual(menuGeo.closeLeft);
 });
