@@ -204,12 +204,20 @@ test.describe('the edge that comes forward', () => {
 		/*
 		 * A hand pushing the paper rightwards sends the side under it back and
 		 * brings the far side forward, so it is the left edge that came towards
-		 * the reader and it carries twice the weight. The right went away and is
-		 * untouched — a rotation cannot say which side is nearer on its own,
-		 * since a vertical stroke's width is measured across and the turn
-		 * compresses that axis for both.
+		 * the reader and carries the weight.
+		 *
+		 * The drawn width is not the wanted multiple. It is that multiple with
+		 * the compression the turn is about to apply divided back out of it, so
+		 * at the quarter — where the paper is edge-on and the compression is
+		 * total — it stands at the cap. What is three times is what reaches the
+		 * screen, and no computed style can say that.
+		 *
+		 * The right edge went away and is untouched, *exactly* untouched, which
+		 * is the assertion that matters: the correction is weighted by how near
+		 * an edge is, and the version before this applied it to both and had the
+		 * far edge thickening as the paper went edge-on.
 		 */
-		expect(await weight(page, '.page', 'left')).toBeCloseTo(base * 3, 1);
+		expect(await weight(page, '.page', 'left')).toBeGreaterThan(base * 2);
 		expect(await weight(page, '.page', 'right')).toBe(base);
 
 		// The panel arrived leading with its left, and has settled back to flat.

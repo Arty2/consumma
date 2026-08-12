@@ -14,7 +14,7 @@
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
 	import { drag } from '$lib/dnd/drag.svelte';
-	import { angleAt, axisAt, commits, leadFor, progress, slideAt, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -71,8 +71,6 @@
 	 */
 	let turn = 0;
 	let axis = 50;
-	/** How far round, nought to one — the weight of the edge coming forward. */
-	let hand = 0;
 	/** The lead-in: how far the paper has slid before it begins to turn. */
 	let slide = 0;
 	/** How far it may slide before its drawn edge reaches the screen. */
@@ -113,7 +111,14 @@
 	 * begins the drag, since the sheet may have been scrolled since the last one.
 	 */
 	function eye() {
-		paper?.style.setProperty('--eye', `${innerHeight / 2 - paper.getBoundingClientRect().top}px`);
+		if (!paper) return;
+		paper.style.setProperty('--eye', `${innerHeight / 2 - paper.getBoundingClientRect().top}px`);
+		/*
+		 * Half the paper's width, which the near edge's weight needs to undo the
+		 * perspective magnification and which CSS has no way of asking for. A
+		 * bare number, because it is divided by a bare number.
+		 */
+		paper.style.setProperty('--half', `${paper.clientWidth / 2}`);
 	}
 
 	/*
@@ -130,8 +135,6 @@
 	function place() {
 		paper?.style.setProperty('--turn', `${turn}deg`);
 		paper?.style.setProperty('--axis', `${axis}%`);
-		// How far round the paper is, for the weight of the edge coming forward.
-		paper?.style.setProperty('--push', `${hand}`);
 		paper?.style.setProperty('--slide', `${slide}px`);
 	}
 
@@ -139,7 +142,6 @@
 	function flat() {
 		turn = 0;
 		axis = 50;
-		hand = 0;
 		slide = 0;
 		place();
 	}
@@ -217,7 +219,6 @@
 		slide = slideAt(dx, lead);
 		turn = angleAt(dx, paper.clientWidth, 1, lead);
 		axis = axisAt(dx, paper.clientWidth, lead);
-		hand = progress(dx, paper.clientWidth, lead);
 		place();
 	}
 
@@ -543,15 +544,30 @@
 	 * Under a finger. The transform is only here while it is, so a sheet as long
 	 * as its list is not held on a compositor layer for the life of the page.
 	 */
-	.dragging {
+	/*
+	 * The transform is a plain rule reading the angle, and the keyframes animate
+	 * the angle. Written the other way round — the angle in the keyframes and
+	 * the transform beside it — the two had to be kept in step by hand, and
+	 * anything else reading the angle was reading a number the paper was not at.
+	 *
+	 * Only while it is turning, so a sheet as long as its list is not held on a
+	 * compositor layer for the life of the page.
+	 */
+	.dragging,
+	.turning,
+	.settling,
+	.returning {
 		/*
 		 * The slide is a `translate` rather than part of the transform, so the
 		 * two compose without either having to know about the other — the same
 		 * arrangement the panel uses to stay centred while it turns.
 		 */
-		translate: var(--slide, 0px) 0;
 		transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		will-change: transform;
+	}
+
+	.dragging {
+		translate: var(--slide, 0px) 0;
 	}
 
 	/*
@@ -567,7 +583,6 @@
 		animation:
 			turn-away var(--flip) ease-in forwards,
 			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
-		will-change: transform;
 	}
 
 	/* A drag that stopped short. The paper swings back up and the axis home. */
@@ -575,35 +590,6 @@
 		animation:
 			settle var(--flip) var(--inertia) forwards,
 			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
-		will-change: transform;
-	}
-
-	/*
-	 * The edge coming towards the reader, drawn heavier — see `near-out` and
-	 * `near-in` in app.css for why the transform cannot do this on its own.
-	 *
-	 * Leaving, the sheet turns its right edge forward; arriving, its left. So
-	 * the weight is on the right on the way out and on the left on the way
-	 * back, and the far edge is never touched. Each rides its own half's clock,
-	 * delay included, so the two stay in step.
-	 *
-	 * `:global` because the edge is drawn by SideEdge and its classes belong to
-	 * that component; this is the one thing about them the sheet decides.
-	 */
-	.dragging :global(svg.edge.left path) {
-		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
-	}
-
-	.turning :global(svg.edge.left path) {
-		animation: near-out var(--flip) linear forwards;
-	}
-
-	.settling :global(svg.edge.left path) {
-		animation: near-home var(--flip) linear forwards;
-	}
-
-	.returning :global(svg.edge.right path) {
-		animation: near-in var(--flip) linear var(--flip) both;
 	}
 
 	/*
@@ -614,46 +600,44 @@
 	 */
 	.returning {
 		animation: turn-back var(--flip) ease-out var(--flip) both;
-		will-change: transform;
 	}
 
 	@keyframes turn-away {
 		from {
 			translate: var(--slide, 0px) 0;
-			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			--turn: 90deg;
 			translate: 0 0;
-			transform: perspective(1200px) rotateY(90deg);
 		}
 	}
 
 	@keyframes settle {
 		from {
 			translate: var(--slide, 0px) 0;
-			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			--turn: 0deg;
 			translate: 0 0;
-			transform: perspective(1200px) rotateY(0deg);
 		}
 	}
 
 	/*
 	 * Coming back round, not coming back. The sheet went out leading with its
-	 * right edge and returns settling out of its left, a quarter further along
+	 * left edge and returns settling out of its right, a quarter further along
 	 * the same rotation rather than a quarter back down it.
 	 *
-	 * The `from` is the opposite sign to where `.turning` left the paper, and
-	 * nothing is seen of the change: both are edge-on, so the sheet has no width
-	 * at either, and at that moment the panel is over it at full width anyway.
+	 * Stated rather than inherited, unlike the two above: this one does not
+	 * continue from where the paper is, it picks it up a quarter round the other
+	 * side. Nothing is seen of the jump — both are edge-on, the sheet has no
+	 * width at either, and the panel is over it at full width at that moment.
 	 */
 	@keyframes turn-back {
 		from {
-			transform: perspective(1200px) rotateY(-90deg);
+			--turn: -90deg;
 		}
 		to {
-			transform: none;
+			--turn: 0deg;
 		}
 	}
 

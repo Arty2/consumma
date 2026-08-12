@@ -226,6 +226,19 @@
 	--near-peak: 3;
 
 	/*
+	 * How far the correction above is allowed to go. Past this the paper is all
+	 * but edge-on and the arithmetic is asking for a stroke wider than the paper
+	 * it is drawn on.
+	 */
+	--near-cap: 7;
+
+	/*
+	 * The perspective both faces are projected at, as a bare number so the
+	 * correction can divide by it. `1200px` in the transforms; the same distance.
+	 */
+	--persp: 1200;
+
+	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
 	 *
 	 * Every way of deleting something stands in one column out here, clear of
@@ -491,71 +504,81 @@ a {
  * outside any component so Svelte leaves the name alone in both.
  */
 /*
- * The near edge of a turning sheet, drawn heavier.
+ * The angle the paper is turned to, as one animatable value.
  *
- * A rotation about the middle brings one side of the paper towards the reader
- * and sends the other away, and the transform alone says almost nothing about
- * which — a vertical stroke's width is measured across, so the same rotation
- * that ought to thicken the near edge compresses it instead, and both sides
- * come out thinner than they started. This is the hand doing what the geometry
- * will not: the edge coming forward reaches twice its weight at the point it is
- * nearest, and the one going away is left alone.
- *
- * `--push` is how far a finger has turned the paper, nought to one, so a drag
- * picks the weight up where it left it rather than starting again from flat.
- * Not `--hand`, which is the typeface: naming it that made every one of these
- * declarations invalid at computed-value time, and stroke-width fell back to
- * its initial 1 without a word being said about it anywhere.
- * Which edge is the near one is not decided here: it is whichever side the
- * selector points at, and that is the right one leaving and the left arriving,
- * on both faces of the paper.
- *
- * Global, like `recentre`, because the sheet and the panel need the same two
- * and are only two elements for reasons that have nothing to do with this.
- *
- * Every width here is multiplied through by a length rather than by a number,
- * and that is load-bearing. `--stroke` is unitless, so `calc(var(--stroke) * 2)`
- * stays a `calc()` at computed-value time — and two unresolved calcs do not
- * interpolate: the browser falls back to discrete and steps from one to the
- * other at the halfway mark. Multiplying by `1px` resolves it to a real length
- * and the weight ramps. Measured; it stepped for a while and looked like
- * nothing was happening at all.
+ * Registered, so it interpolates: the keyframes below animate this and the
+ * transform is a plain rule reading it, rather than the angle being written
+ * twice and having to be kept in step. Everything that is a reading of the
+ * rotation — which edge is near, how heavy it is drawn — falls out of this one
+ * number, for a finger and for an animation alike.
  */
-@keyframes near-out {
-	from {
-		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
-	}
-	to {
-		stroke-width: calc(var(--stroke) * var(--near-peak) * 1px);
-	}
-}
-
-@keyframes near-in {
-	from {
-		stroke-width: calc(var(--stroke) * var(--near-peak) * 1px);
-	}
-	to {
-		stroke-width: calc(var(--stroke) * 1px);
-	}
+@property --turn {
+	syntax: '<angle>';
+	inherits: true;
+	initial-value: 0deg;
 }
 
 /*
- * Back to nothing from wherever the hand got to, which is not the same as
- * `near-in` and was written as if it were.
+ * The near edge of a turning sheet, drawn heavier — and drawn heavier by
+ * exactly as much as the rotation is about to take away.
  *
- * A drag that stops short leaves the paper part-turned and its near edge part
- * weighted. Springing home from the peak meant the edge first jumped to its
- * full weight and then came down — the line got heavier on the way back, while
- * the paper was straightening and the edge going away from the reader. It
- * starts from where the finger left it now.
+ * A rotation cannot say on its own which side of the paper is nearer. Worse: a
+ * vertical stroke's width is measured across the paper, so the turn that ought
+ * to thicken the near edge compresses it by `cos`, while perspective magnifies
+ * whatever is nearest by the square of its distance ratio. Drawn at three times
+ * its weight, the near edge arrives on screen at rather less than three, and by
+ * a different amount at every angle.
+ *
+ * So the wanted weight is stated in what the reader sees and the geometry is
+ * divided back out. `--near` is how near this edge is, nought to one; `--half`
+ * is half the paper's width in pixels, which only JavaScript can measure. The
+ * clamp is what keeps it finite: at a quarter turn the paper is edge-on, the
+ * compression is nothing and the correction is infinite, so the weight stops
+ * at `--near-cap` for the last few degrees, where there is nothing left to see
+ * anyway.
+ *
+ * Which edge is the near one is not a state anything has to be told. It is the
+ * sign of the sine: leaving, the paper turns positive and its left edge comes
+ * forward; arriving, negative and its right. `max(0, …)` gives the far edge
+ * nought and leaves it drawn exactly as it always was.
  */
-@keyframes near-home {
-	from {
-		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
-	}
-	to {
-		stroke-width: calc(var(--stroke) * 1px);
-	}
+svg.edge.left {
+	--near: max(0, sin(var(--turn)));
+}
+
+svg.edge.right {
+	--near: max(0, -1 * sin(var(--turn)));
+}
+
+svg.edge .drawn {
+	/* Never nought: the divisor at a quarter turn, before the clamp catches it. */
+	--near-flat: max(0.02, cos(var(--turn)));
+	--near-lens: calc(
+		var(--persp) * var(--persp) /
+			(
+				(var(--persp) - var(--half, 0) * var(--near, 0)) *
+					(var(--persp) - var(--half, 0) * var(--near, 0))
+			)
+	);
+	/*
+	 * A blend between one and the corrected peak, weighted by how near this edge
+	 * is — and not the corrected want on its own, which is the version that had
+	 * the far edge thickening as the paper went edge-on: with `--near` of nought
+	 * it still divided by the compression and came out at one over cosine. This
+	 * way the far edge falls out at exactly one and the correction never reaches
+	 * it. Both ends are exact and the middle is within a fiftieth of what the
+	 * geometry asks for.
+	 */
+	stroke-width: calc(
+		var(--stroke) *
+			clamp(
+				1,
+				(1 - var(--near, 0)) + var(--near, 0) * var(--near-peak) / var(--near-flat) /
+					var(--near-lens),
+				var(--near-cap)
+			) *
+			1px
+	);
 }
 
 @keyframes recentre {

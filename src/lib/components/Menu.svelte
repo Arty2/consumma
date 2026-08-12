@@ -1,3 +1,17 @@
+<script module lang="ts">
+	/*
+	 * Where the panel was left, for as long as the app is open and no longer.
+	 *
+	 * Coming back to a menu scrolled to the top after going down it to press
+	 * something is the panel forgetting a place you were just standing in. But
+	 * it is not a preference either: it belongs to this visit the way a finger
+	 * held in a page belongs to this reading. Module scope, so it is shared by
+	 * however many times the panel is opened and dies with the tab — nothing in
+	 * `KEYS`, nothing on disk. Arriving still writes nothing.
+	 */
+	let remembered = 0;
+</script>
+
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import CodeField from './CodeField.svelte';
@@ -16,7 +30,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits, leadFor, progress, slideAt } from '$lib/turn';
+	import { angleAt, axisAt, commits, leadFor, slideAt } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -66,6 +80,7 @@
 	let copied = $state(false);
 
 	let panel = $state<HTMLElement | null>(null);
+	let scroller = $state<HTMLElement | null>(null);
 	/*
 	 * How far the paper has been turned back by a finger, in degrees. A drag is
 	 * the same gesture as the animation now — the panel is the back of a sheet
@@ -75,8 +90,6 @@
 	let turn = $state(0);
 	/** Where the axis has been pushed to, as a percentage across the paper. */
 	let axis = $state(50);
-	/** How far round, nought to one — the weight of the edge coming forward. */
-	let hand = $state(0);
 	/** The lead-in: how far the panel has slid before it begins to turn. */
 	let slide = $state(0);
 	/** How far it may slide before its drawn edge reaches the screen. */
@@ -129,6 +142,17 @@
 	 * The link is bare. The code is never a query parameter or a fragment.
 	 */
 	const invitation = $derived(sync.code ? `${location.origin}\n${formatCode(sync.code)}` : '');
+
+	/*
+	 * Back where it was left. Set before the first paint the panel is visible
+	 * for — it unfurls a half-turn after the tap, so there is time in hand — and
+	 * guarded, because a panel shorter than it was cannot be scrolled that far
+	 * and the browser would clamp it to something that then gets written back.
+	 */
+	$effect(() => {
+		if (!scroller || remembered === 0) return;
+		scroller.scrollTop = remembered;
+	});
 
 	// Nothing else advances the clock, so the cooldown would never clear while
 	// the menu is open and looking at it.
@@ -220,7 +244,6 @@
 			springing = false;
 			turn = 0;
 			axis = 50;
-			hand = 0;
 		}
 
 		/*
@@ -243,6 +266,9 @@
 		 */
 		const edge = panel?.querySelector('svg.edge.right')?.getBoundingClientRect();
 		lead = leadFor(edge ? innerWidth - edge.right : 0);
+		// See `eye()` in +page.svelte: the near edge's weight needs this and CSS
+		// has no way of asking for it.
+		panel?.style.setProperty('--half', `${panel.clientWidth / 2}`);
 
 		dragStart = { x: event.clientX, at: performance.now() };
 	}
@@ -255,7 +281,6 @@
 		slide = slideAt(travelled, lead);
 		turn = angleAt(travelled, panel.clientWidth, 1, lead);
 		axis = axisAt(travelled, panel.clientWidth, lead);
-		hand = progress(travelled, panel.clientWidth, lead);
 	}
 
 	function onpointerup(event: PointerEvent) {
@@ -289,7 +314,6 @@
 	class:springing
 	style:--turn="{turn}deg"
 	style:--axis="{axis}%"
-	style:--push={hand}
 	style:--slide="{slide}px"
 	bind:this={panel}
 	use:trap={close}
@@ -318,7 +342,6 @@
 			springing = false;
 			turn = 0;
 			axis = 50;
-			hand = 0;
 			slide = 0;
 		} else entering = false;
 	}}
@@ -353,7 +376,13 @@
 		</svg>
 	</button>
 
-	<div class="scroll">
+	<div
+		class="scroll"
+		bind:this={scroller}
+		onscroll={() => {
+			if (scroller) remembered = scroller.scrollTop;
+		}}
+	>
 		<div class="body">
 			<!--
 				Answers which list this is before anything else in the panel does —
@@ -607,6 +636,11 @@
 		 * seen from one place.
 		 */
 		transform-origin: var(--axis, 50%) 50%;
+		/*
+		 * A plain rule reading the angle; the keyframes animate the angle. See
+		 * `@property --turn` in app.css — everything that is a reading of the
+		 * rotation falls out of that one number rather than being written twice.
+		 */
 		transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		/*
 		 * The paper's own top and bottom, so the scroller inside is exactly the
@@ -671,31 +705,6 @@
 	}
 
 	/*
-	 * The edge coming towards the reader, drawn heavier — `near-out` and
-	 * `near-in` in app.css say why the transform cannot do it on its own.
-	 *
-	 * The same rule as the sheet's, because it is the same paper: leaving, the
-	 * right edge comes forward; arriving, the left. The far edge is never
-	 * touched. Under a finger the weight follows `--push` directly, and the
-	 * furl picks it up from there rather than starting again from flat.
-	 */
-	.menu :global(svg.edge.left path) {
-		stroke-width: calc(var(--stroke) * (1 + var(--push, 0) * (var(--near-peak) - 1)) * 1px);
-	}
-
-	.unfurling :global(svg.edge.right path) {
-		animation: near-in var(--flip) linear var(--flip) both;
-	}
-
-	.springing :global(svg.edge.left path) {
-		animation: near-home var(--flip) linear forwards;
-	}
-
-	.furling :global(svg.edge.left path) {
-		animation: near-out var(--flip) linear forwards;
-	}
-
-	/*
 	 * One rotation, going round and round the same way.
 	 *
 	 * Every half-turn is the same movement: the face on its way out leads with
@@ -712,32 +721,30 @@
 	 */
 	@keyframes unfurl {
 		from {
-			transform: perspective(1200px) rotateY(-90deg);
+			--turn: -90deg;
 		}
 		to {
-			transform: perspective(1200px) rotateY(0deg);
+			--turn: 0deg;
 		}
 	}
 
 	@keyframes furl {
 		from {
 			translate: calc(-50% + var(--slide, 0px)) 0;
-			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			--turn: 90deg;
 			translate: -50% 0;
-			transform: perspective(1200px) rotateY(90deg);
 		}
 	}
 
 	@keyframes spring-back {
 		from {
 			translate: calc(-50% + var(--slide, 0px)) 0;
-			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
+			--turn: 0deg;
 			translate: -50% 0;
-			transform: perspective(1200px) rotateY(0deg);
 		}
 	}
 

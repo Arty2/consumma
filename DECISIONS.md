@@ -912,7 +912,31 @@ relative` rather than a transform, which does not apply to an inline box.
     the animation it is; easing both put nearly all of it into the last few
     degrees, where the paper is edge-on and there is nothing to see.
 
-    `near-home` is separate from `near-in` and that is the point of it. A drag
+    **What `--near-peak` names is what reaches the screen, not what is drawn.**
+    Three times the weight, drawn, arrives as rather less than three and by a
+    different amount at every angle. So the wanted multiple is stated in what the
+    reader sees and the geometry is divided back out: `cos` for the compression,
+    and the square of the distance ratio for the perspective magnification, which
+    needs half the paper's width — `--half`, measured in JavaScript because CSS
+    cannot ask. Measured across a turn the on-screen weight now tracks the want
+    exactly to about sixty degrees, and the drawn stroke stands at `--near-cap`
+    by the quarter, where the paper is edge-on and there is nothing to see.
+
+    It is written as a blend between one and the corrected peak, weighted by
+    `--near`, rather than as the corrected want on its own. The difference is the
+    far edge: with `--near` of nought the plain version still divided by the
+    compression and came out at one over cosine, so the edge going _away_ from
+    the reader thickened as the paper turned. Both ends of the blend are exact
+    and the middle is within a fiftieth of what the geometry asks for.
+
+    Which edge is near is not a state anything is told. It is the sign of the
+    sine — `max(0, sin(--turn))` on the left, its negation on the right — which
+    is why `--turn` is registered with `@property`: registered, it interpolates,
+    so the transform becomes a plain rule reading the angle and everything that
+    is a reading of the rotation falls out of that one number. Three keyframe
+    blocks and a whole custom property went with it.
+
+    `near-home` was separate from `near-in` and that was the point of it. A drag
     that stops short leaves the paper part-turned and its near edge part
     weighted, and springing home from the peak made the line grow heavier while
     the paper was straightening and the edge going away from the reader —
