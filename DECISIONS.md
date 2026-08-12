@@ -1073,25 +1073,36 @@ relative` rather than a transform, which does not apply to an inline box.
     `e2e/csp.e2e.ts` caught it, which is the whole reason it watches the console
     rather than only reading the header back.
 
-87. **The paper is torn, not drawn torn.** A notch cut out of the top of a
-    receipt has nothing behind it, so nothing may be painted there. The sheet
-    was already right by accident — it has no ground of its own, and what shows
-    through its tears is the body's paper, the same colour, which is why nobody
-    saw it. The panel was not: it painted an opaque rectangle over its whole
-    box, so the zigzag was a line drawn on paper rather than the paper's own
-    edge, and turning the sheet over showed a straight-edged card where a torn
-    one had just been.
+87. **The paper is torn, not drawn torn, and the teeth are what cuts.** On two
+    colours the ground behind a tear is the same white as the paper in front of
+    it, so nothing about a filled box is visible until something passes behind
+    the teeth. In the panel something does — the writing scrolls — and it was
+    cut along a straight line a tooth's height short of the teeth, which floated
+    clear above it. A zigzag with a white rectangle doing its work.
 
-    Both now end at the tear. `TornEdge` closes its own zigzag along the inner
-    edge and fills that shape with `--paper`, so the band between the teeth and
-    the body is paper and the teeth themselves are not. The panel keeps its
-    background but clips it to `content-box`, and its `padding-block` is
-    already `--paper-top + --tear` — the ground therefore begins exactly where
-    the tear ends, without a second measurement to keep in step.
+    **The fill goes on the outer side.** `TornEdge` closes its zigzag along the
+    top of its own box and fills that, so what is past the tear is not paper and
+    anything travelling that way is cut tooth by tooth. The bottom tear is the
+    same svg turned over, so its outer side is the room below. Nothing is filled
+    on the inside: the paper's own ground is already there, and a second one
+    painted over it is the rectangle this replaced.
+
+    **The scroller runs the full height of the paper, tears included.** That is
+    the other half, and neither half cuts anything alone. `.menu` pads by
+    `--paper-top`/`--paper-bottom` and no more; the room the writing needs clear
+    of the teeth is `.scroll`'s own `padding-block: var(--tear)`, held inside
+    the scroll rather than outside it. A line therefore rests exactly where it
+    always rested, and it is the room above it that scrolls away, carrying the
+    line up behind the tear to be cut there.
+
+    An earlier pass had the fill on the inside and the scroller stopping at the
+    tear's inner edge. Both were wrong in the same direction and each hid the
+    other: the inner fill was invisible against the panel's own ground, and the
+    straight cut was blamed on the tear being drawn too high.
 
     The side edges are left alone. They are not jagged, so there is nothing to
-    show through, and the paper running the last few pixels out to a straight
-    drawn line is what a straight drawn line means.
+    cut with, and the paper running the last few pixels out to a straight drawn
+    line is what a straight drawn line means.
 
 ## Known limits
 

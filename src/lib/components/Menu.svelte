@@ -653,15 +653,13 @@
 		z-index: 10;
 		background: var(--paper);
 		/*
-		 * The paper stops at the tears rather than filling the box behind them.
+		 * The paper begins where the paper begins, not at the viewport.
 		 *
-		 * `padding-block` below is the room above and below the paper plus the
-		 * tears themselves, so the content box begins exactly at the inner edge
-		 * of the top tear and ends at the inner edge of the bottom one. Clipped
-		 * to it, the panel's ground runs between the two tears and no further,
-		 * and each tear brings its own ground up to its zigzag. Left to fill the
-		 * whole box it painted paper on both sides of the teeth, so the tear was
-		 * a line drawn on a rectangle rather than the edge of the paper.
+		 * `padding-block` below is the room the sheet keeps above and below
+		 * itself, so the content box starts at the top tear's outer edge and
+		 * ends at the bottom one's. Clipped to it, the panel's ground is the
+		 * paper and the margins around it are not — which is what lets each
+		 * tear's own ground cut into it from outside.
 		 */
 		background-clip: content-box;
 		display: flex;
@@ -696,13 +694,17 @@
 		 * leaking rather than as paper ending.
 		 */
 		/*
-		 * The paper's own top and bottom, and then the tears themselves, so the
-		 * scroller begins where the paper is torn. The writing is cut off at the
-		 * tear rather than passing behind it — the sheet manages this by
-		 * scrolling the whole page, and the panel has to say it in the padding
-		 * because the scrolling here is inside the paper.
+		 * The paper's own top and bottom, and no more: the scroller runs the
+		 * full height of the paper, tears included.
+		 *
+		 * It used to stop at the inner edge of each tear, which cut the writing
+		 * along a straight line a tooth's height short of the teeth — a white
+		 * rectangle doing the work the tear is there to do. The room the
+		 * writing needs above and below is `.scroll`'s own padding instead, so
+		 * a line starts exactly where it always did and is cut, on its way out,
+		 * by the teeth.
 		 */
-		padding-block: calc(var(--paper-top) + var(--tear)) calc(var(--paper-bottom) + var(--tear));
+		padding-block: var(--paper-top) var(--paper-bottom);
 	}
 
 	/*
@@ -872,6 +874,15 @@
 		 * makes the frame the thing that clips.
 		 */
 		padding-inline: calc(var(--paper-x) + var(--paper-inset));
+		/*
+		 * The tears' own height, held inside the scroll rather than outside it.
+		 *
+		 * The first line therefore rests where it has always rested — clear of
+		 * the teeth — but the room above it scrolls away with it, so the line
+		 * passes behind the tear and is cut by the teeth instead of stopping
+		 * short of them. Same at the foot.
+		 */
+		padding-block: var(--tear);
 	}
 
 	/*

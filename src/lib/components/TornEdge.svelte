@@ -39,18 +39,22 @@
 	);
 
 	/*
-	 * The paper itself, up to where it was torn.
+	 * What is past the tear, which is not paper.
 	 *
-	 * The zigzag is only a line; on its own it leaves whatever fills the box
-	 * behind it filling both sides of the tear, so the teeth cut nothing. This
-	 * closes the same path along the inner edge and fills it, so the paper comes
-	 * up to the tear and stops — and the notches are the paper's absence rather
-	 * than a mark drawn over it.
+	 * The zigzag is only a line; laid over writing it lets the writing go on
+	 * past it, so the tear reads as a mark drawn across the page rather than as
+	 * where the page stops. This closes the same path along the **outer** edge
+	 * and fills that side with paper, so anything scrolling up meets the teeth
+	 * and is cut by them — jagged, tooth by tooth, which is what a torn edge
+	 * cutting something looks like.
 	 *
-	 * Closed along `HEIGHT`, which is the inside; on the bottom tear the whole
-	 * svg is turned over, so the inside is where it should be there too.
+	 * Closed along `0`, which is the outside: on the top tear that is the room
+	 * above the sheet, and on the bottom the whole svg is turned over, so it is
+	 * the room below. Nothing is filled on the inside — the paper's own ground
+	 * is already there, and a second one painted over it is the white rectangle
+	 * this replaced.
 	 */
-	const ground = $derived(d === '' ? '' : `${d} L ${width} ${HEIGHT} L 0 ${HEIGHT} Z`);
+	const ground = $derived(d === '' ? '' : `${d} L ${width} 0 L 0 0 Z`);
 </script>
 
 <svg
@@ -78,7 +82,7 @@
 		overflow: visible;
 	}
 
-	/* The paper, not a mark: filled and never stroked. */
+	/* Not a mark: filled and never stroked. */
 	.ground {
 		fill: var(--paper);
 		stroke: none;

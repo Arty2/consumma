@@ -892,14 +892,15 @@ test('the receipt is never shorter than the screen, and grows past it with the l
 
 test('the paper is torn, not drawn torn: nothing fills the notches', async ({ page }) => {
 	/*
-	 * A zigzag is only a line. Left to fill its own box, whatever is behind it
-	 * paints paper on both sides of the teeth and the tear cuts nothing — it
-	 * reads as a mark drawn on a rectangle rather than as the edge of a sheet.
+	 * A zigzag is only a line. Laid over writing it lets the writing carry on
+	 * past it, so the tear reads as a mark drawn across the page rather than as
+	 * where the page stops.
 	 *
-	 * Two halves to that. Each tear carries its own ground, closed along its
-	 * inner edge, so the paper comes up to the zigzag and stops. And the panel's
-	 * own ground is clipped to its content box, which `padding-block` puts at
-	 * exactly the inner edge of the two tears.
+	 * Each tear carries its own ground on the **outer** side of its teeth — so
+	 * what is past the tear is not paper, and anything travelling that way is
+	 * cut tooth by tooth. Fill it on the inner side instead and the paper is
+	 * painted twice while the writing is cut, a tooth's height short, by a
+	 * straight line: a white rectangle doing the tear's work.
 	 */
 	const paper = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 
@@ -921,6 +922,18 @@ test('the paper is torn, not drawn torn: nothing fills the notches', async ({ pa
 		)) {
 			expect(stroke).toBe('none');
 		}
+
+		/*
+		 * Closed along the top of its own box, which every tear draws as its
+		 * outer side — the bottom one is the same svg turned over. Closed along
+		 * the height instead, the fill would be on the inside, where the paper
+		 * already is.
+		 */
+		for (const d of await grounds.evaluateAll((paths) =>
+			paths.map((p) => p.getAttribute('d') ?? '')
+		)) {
+			expect(d).toMatch(/ 0 L 0 0 Z$/);
+		}
 	}
 
 	// And the panel stops at the tears rather than filling the box behind them.
@@ -929,4 +942,25 @@ test('the paper is torn, not drawn torn: nothing fills the notches', async ({ pa
 			.getByRole('dialog', { name: 'Menu' })
 			.evaluate((el) => getComputedStyle(el).backgroundClip)
 	).toBe('content-box');
+
+	/*
+	 * The panel's writing travels the full height of the paper, tears included.
+	 *
+	 * This is what leaves the cut to the teeth. Stop the scroller at the inner
+	 * edge of each tear and a line vanishes along a straight edge a tooth's
+	 * height short of them, with the teeth floating clear above it — which is
+	 * the failure the ground above cannot catch on its own, since both halves
+	 * have to be true for the tear to cut anything.
+	 */
+	const box = async (sel: string) => {
+		const b = await page.locator(sel).boundingBox();
+		if (!b) throw new Error(`no box for ${sel}`);
+		return b;
+	};
+	const scroll = await box('[role="dialog"] .scroll');
+	const top = await box('[role="dialog"] .tear-edge.top');
+	const bottom = await box('[role="dialog"] .tear-edge.bottom');
+
+	expect(scroll.y).toBeLessThanOrEqual(top.y + 0.5);
+	expect(scroll.y + scroll.height).toBeGreaterThanOrEqual(bottom.y + bottom.height - 0.5);
 });
