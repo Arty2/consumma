@@ -822,20 +822,29 @@ relative` rather than a transform, which does not apply to an inline box.
     scroller. Putting both in one `preserve-3d` box means laying the page out
     around the animation, and the page is the thing the animation is about.
 
-    **Both halves travel the same arc**, `0 → -90°` and back out of it, rather
-    than the front's angles and their mirror. The join itself is never seen —
-    both halves are edge-on at that instant — but which edge is the near one is
-    visible on either side of it, and the mirror swaps it. The sheet turns with
-    its right edge coming forward; the mirrored panel opens left-edge-forward,
-    and the eye follows that cue across the join and reads two sheets rather
-    than one. Since nothing turns past a quarter, no content is ever seen from
-    behind and none needs mirroring.
+    **The panel travels the mirror of the sheet's angles**, which is what the
+    back face of one turning sheet does. Sheet `0 → -90°`, panel `90° → 0`; and
+    closing, the panel `0 → 90°` — left edge towards the reader, right edge
+    going back — then the sheet `-90° → 0` out of the same turn. The paper keeps
+    going round rather than changing its mind at the join, which is what a
+    receipt turned over in the hand does.
 
-    On the right-edge hinge this was starker and measurable: the mirrored panel
-    magnified its near edge to 411px on a 390px screen and cut off its own drawn
-    frame. About the middle that particular symptom goes — the near half's
-    magnification is paid for by the far half — and both versions stay inside
-    the paper at every width. The near edge is what decides it now.
+    The near edge changes sides across the handover, because the panel's words
+    are set to be read rather than mirrored. Nothing is seen of it: both halves
+    are exactly edge-on at that instant. And nothing turns past a quarter, so no
+    content is ever shown from behind.
+
+    Two wrong turns on the way here, both recorded because the reasoning for
+    each looked sound and was answering the wrong question. The first was to
+    fold to edge-on and open back out along the same arc, keeping one edge near
+    throughout — continuous to look at, but it is a sheet being folded shut and
+    reopened, not one being turned over. The second was the argument for it: on
+    the right-edge hinge the mirrored panel magnified its near edge to 411px on
+    a 390px screen and cut off its own drawn frame. That is real, and it is an
+    artefact of hinging at an edge. About the middle the near half's
+    magnification is paid for by the far half, and measured at 320, 390 and
+    1280 neither version leaves the paper. The measurement outlived the
+    condition it was taken under.
 
     `transform-origin: 50% var(--eye)`. The Y half is not the axis — a `rotateY`
     is the same rotation wherever the origin sits vertically — it is the

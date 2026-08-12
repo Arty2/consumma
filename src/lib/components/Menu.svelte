@@ -226,8 +226,8 @@
 	function onpointermove(event: PointerEvent) {
 		if (!dragStart || !panel) return;
 		const travelled = Math.max(0, event.clientX - dragStart.x);
-		// Negative, the way the paper folds: see the keyframes below.
-		turn = Math.min(1, travelled / panel.clientWidth) * -90;
+		// The way the turn goes: right edge away, left edge towards the reader.
+		turn = Math.min(1, travelled / panel.clientWidth) * 90;
 	}
 
 	function onpointerup(event: PointerEvent) {
@@ -247,7 +247,7 @@
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
 		if (flick || travelled > panel.clientWidth * 0.25) close();
-		else if (turn < 0) springing = true;
+		else if (turn > 0) springing = true;
 	}
 </script>
 
@@ -268,7 +268,7 @@
 	{onpointerup}
 	onpointercancel={() => {
 		dragStart = null;
-		if (turn < 0 && !closing) springing = true;
+		if (turn > 0 && !closing) springing = true;
 	}}
 	onanimationend={(event) => {
 		/*
@@ -594,25 +594,25 @@
 	}
 
 	/*
-	 * Back out along the same arc the sheet went in by, and not the mirror of
-	 * it.
+	 * The angles a real sheet's back face passes through, which are the front's
+	 * reflected — so the two halves together are one rotation carrying on in one
+	 * direction, rather than the paper folding to edge-on and opening back out
+	 * the way it came.
 	 *
-	 * The obvious decomposition turns the panel through the angles a real
-	 * sheet's back face passes through, which are the front's reflected. Both
-	 * halves are edge-on at the handover, so the join itself is never seen —
-	 * but which edge is the near one is visible on either side of it, and the
-	 * mirror swaps it. The sheet turns with its right edge coming forward; the
-	 * mirrored panel opens with its left edge forward instead, and the eye
-	 * follows that cue across the join and reads two sheets rather than one.
+	 * Closing, the panel's left edge swings towards the reader and its right
+	 * goes back; the sheet then arrives right-edge-first out of the same turn.
+	 * Opening is that run backwards. Either way the paper keeps going round
+	 * instead of changing its mind at the join, which is what a receipt turned
+	 * over in the hand does.
 	 *
-	 * So the paper folds to edge-on and opens back out of it, through the same
-	 * orientations, right edge near throughout. It is also the only version
-	 * that needs no mirroring: nothing here turns past a quarter, so no content
-	 * is ever seen from behind.
+	 * The cost is that the near edge changes sides across the handover, since
+	 * the panel's words are set to be read rather than mirrored. Nothing is
+	 * seen of it: both halves are exactly edge-on at that instant. And nothing
+	 * turns past a quarter, so no content is ever shown from behind.
 	 */
 	@keyframes unfurl {
 		from {
-			transform: perspective(1200px) rotateY(-90deg);
+			transform: perspective(1200px) rotateY(90deg);
 		}
 		to {
 			transform: perspective(1200px) rotateY(0deg);
@@ -624,7 +624,7 @@
 			transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		}
 		to {
-			transform: perspective(1200px) rotateY(-90deg);
+			transform: perspective(1200px) rotateY(90deg);
 		}
 	}
 

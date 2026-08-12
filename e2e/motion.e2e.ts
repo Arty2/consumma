@@ -193,8 +193,8 @@ test.describe('turning it back by hand', () => {
 		 */
 		await pull(page, 30, 6);
 
-		// Turned, and turned the way the paper folds, which is negative.
-		expect(await panelAngle(page)).toBeLessThan(0);
+		// Turned, and turned the way the paper goes round: left edge forward.
+		expect(await panelAngle(page)).toBeGreaterThan(0);
 
 		await page.mouse.up();
 		await settle(page);

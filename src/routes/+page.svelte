@@ -43,9 +43,9 @@
 	/*
 	 * The menu is the back of this sheet, so opening it turns the sheet over.
 	 *
-	 * One turn, two elements: the paper folds edge-on about its middle here, and
-	 * the panel opens back out about the same axis in Menu.svelte, each taking
-	 * half of `--flip`. They cannot be one element turning through 180° — the
+	 * One turn, two elements: the paper turns edge-on about its middle here and
+	 * the panel carries the same rotation on in Menu.svelte, each taking half of
+	 * `--flip`. They cannot be one element turning through 180° — the
 	 * sheet is in flow and scrolls, the panel is fixed to the viewport, and
 	 * putting both inside one `preserve-3d` box would mean laying the page out
 	 * around the animation. Factored in two they never have to meet: at the
