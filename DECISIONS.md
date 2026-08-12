@@ -1119,6 +1119,25 @@ relative` rather than a transform, which does not apply to an inline box.
     running up into it carry a round cap that reaches past their box too; closed
     at nought, that cap came out above the teeth as a stray tick of ink.
 
+    **The tears stop on the two verticals rather than running past them.** The
+    zigzag used to be drawn to the full width of the paper while the sides sit
+    half a `--edge` in from it — that is where a side's stroke runs in its own
+    box — so each tear overshot its corner by a few pixels and left a whisker of
+    the paper's edge sticking out into the margin. Trimming both tears by that
+    half gives the two marks one corner.
+
+    Which puts the outer half of each vertical, and the cap on the end of it,
+    outside the fill: the ground's own boundary is the line the tear starts on.
+    So it carries a strip past each end — `PAD` further out, and down as far as
+    the corner the zigzag made there and no further, because below the corner
+    the side is the paper's own edge and has to be seen. The left corner is the
+    midline, where every tear starts; the right one is wherever the last tooth
+    landed, which the path is the only place that records.
+
+    The strips are outside the tear's span and nowhere else. One rectangle
+    across the whole width would be simpler and wrong: it would cut the paper
+    straight along the midline wherever a tooth reached above it.
+
     The sides themselves are still not jagged, and that is right: paper running
     the last few pixels out to a straight drawn line is what a straight drawn
     line means. It is only their ends that the tear now owns.

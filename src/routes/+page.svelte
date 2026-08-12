@@ -657,6 +657,14 @@
 	.bottom {
 		position: relative;
 		z-index: 1;
+		/*
+		 * Trimmed to the two side edges, so the tear runs between them rather
+		 * than past them. `--edge` is the side's box and its stroke runs down
+		 * the middle of it, so half of that is where the corner is: the zigzag
+		 * now ends on the vertical instead of overshooting it by a few pixels
+		 * and leaving a whisker of paper's edge sticking out into the margin.
+		 */
+		padding-inline: calc(var(--edge) / 2);
 	}
 
 	.top {

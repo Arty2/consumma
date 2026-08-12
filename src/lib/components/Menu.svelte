@@ -835,8 +835,14 @@
 	 */
 	.tear-edge {
 		position: absolute;
-		right: var(--paper-x);
-		left: var(--paper-x);
+		/*
+		 * In by half a side edge from where the sides are, so the tear runs
+		 * between the two verticals rather than past them: `--edge` is the
+		 * side's box and its stroke runs down the middle of it, so half of that
+		 * is where the corner falls.
+		 */
+		right: calc(var(--paper-x) + var(--edge) / 2);
+		left: calc(var(--paper-x) + var(--edge) / 2);
 	}
 
 	.tear-edge.top {

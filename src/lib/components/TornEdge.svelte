@@ -59,8 +59,43 @@
 	 * stroke's sake, and the side edges running up into it carry a round cap
 	 * that reaches a little beyond their own. Closed flush at nought, that cap
 	 * came out above the teeth as a stray tick of ink.
+	 *
+	 * Two strips carry that past the ends as well.
+	 *
+	 * The box is trimmed to the two side edges, so the tear begins and ends on
+	 * the line running down the middle of one — which leaves the outer half of
+	 * that line, and the cap on the end of it, standing clear of the fill. The
+	 * strips are the same paper reaching `PAD` further out at each end, down as
+	 * far as the corner the tear made there and no further: below the corner
+	 * the side edge is the paper's own edge and has to be seen. Only outside
+	 * the tear's own span, so nothing is filled over a notch — one rectangle
+	 * across the whole width would cut the paper straight along the midline
+	 * wherever a tooth reached above it.
 	 */
-	const ground = $derived(d === '' ? '' : `${d} L ${width} ${-HEIGHT} L 0 ${-HEIGHT} Z`);
+	const PAD = 6;
+
+	/*
+	 * The two corners: where the zigzag starts, and where it stopped.
+	 *
+	 * It starts at the midline and ends on a full-width tooth, which is
+	 * somewhere else — so the right-hand strip has to follow it down, and the
+	 * path is the only place that says where that is. `handPath` writes plain
+	 * numbers separated by spaces, so the last of them is the y it ended on.
+	 */
+	const ends = $derived.by(() => {
+		const at = d.split(' ');
+		return { left: HEIGHT / 2, right: d === '' ? HEIGHT / 2 : Number(at[at.length - 1]) };
+	});
+
+	const ground = $derived(
+		d === ''
+			? ''
+			: [
+					`${d} L ${width} ${-HEIGHT} L 0 ${-HEIGHT} Z`,
+					`M ${-PAD} ${-HEIGHT} L 0 ${-HEIGHT} L 0 ${ends.left} L ${-PAD} ${ends.left} Z`,
+					`M ${width} ${-HEIGHT} L ${width + PAD} ${-HEIGHT} L ${width + PAD} ${ends.right} L ${width} ${ends.right} Z`
+				].join(' ')
+	);
 </script>
 
 <svg

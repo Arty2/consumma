@@ -930,11 +930,16 @@ test('the paper is torn, not drawn torn: nothing fills the notches', async ({ pa
 		 * already is; closed flush at nought it would stop at a box that is
 		 * `overflow: visible`, and the round caps of the sides running up into
 		 * it would come out above the teeth.
+		 *
+		 * Three closed shapes: the tear itself and a strip past each end, which
+		 * carries the same paper out over the outer half of the vertical the
+		 * tear now stops on.
 		 */
 		for (const d of await grounds.evaluateAll((paths) =>
 			paths.map((p) => p.getAttribute('d') ?? '')
 		)) {
-			expect(d).toMatch(/ L \d+(\.\d+)? -\d+ L 0 -\d+ Z$/);
+			expect(d).toContain(' L 0 -16 Z');
+			expect(d.match(/Z/g)).toHaveLength(3);
 		}
 	}
 
@@ -992,7 +997,7 @@ test('the sides run up into the tears, and the teeth cut them back', async ({ pa
 
 			const box = (el: Element) => {
 				const b = el.getBoundingClientRect();
-				return { top: b.top, bottom: b.bottom };
+				return { top: b.top, bottom: b.bottom, left: b.left, right: b.right };
 			};
 
 			/*
@@ -1016,7 +1021,8 @@ test('the sides run up into the tears, and the teeth cut them back', async ({ pa
 				count: tears.length,
 				sides: box(sides),
 				tears: tears.map(box),
-				covered: tears.map((t) => over(t, sides))
+				covered: tears.map((t) => over(t, sides)),
+				edge: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--edge'))
 			};
 		}, root);
 
@@ -1026,5 +1032,17 @@ test('the sides run up into the tears, and the teeth cut them back', async ({ pa
 		// Up into the top tear, and down into the bottom one.
 		expect(seen.sides.top).toBeLessThanOrEqual(seen.tears[0].top + 0.5);
 		expect(seen.sides.bottom).toBeGreaterThanOrEqual(seen.tears[1].bottom - 0.5);
+
+		/*
+		 * And the tears stop on the two verticals rather than running past
+		 * them. A side's stroke runs down the middle of its own box, so half of
+		 * `--edge` in from where the sides start is where the corner is; drawn
+		 * to the full width the zigzag overshot it and left a whisker of the
+		 * paper's edge sticking out into the margin on either side.
+		 */
+		for (const tear of seen.tears) {
+			expect(tear.left).toBeCloseTo(seen.sides.left + seen.edge / 2, 1);
+			expect(tear.right).toBeCloseTo(seen.sides.right - seen.edge / 2, 1);
+		}
 	}
 });
