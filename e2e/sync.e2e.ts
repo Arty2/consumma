@@ -523,6 +523,13 @@ test('the mark works while the sync is in flight, and goes out on a fade', async
 	expect(await animation()).toBe('none');
 	const idle = await mark.locator('path').getAttribute('d');
 
+	// And solid, in full ink: a mark standing still is not doing anything.
+	const resting = await mark.locator('path').evaluate((el) => {
+		const style = getComputedStyle(el);
+		return { dashes: style.strokeDasharray, stroke: style.stroke, opacity: style.opacity };
+	});
+	expect(resting.dashes).toBe('none');
+
 	/*
 	 * The same fake server, answering slowly. Registered over the one `device`
 	 * put down, and calling it rather than continuing to the network — there is
@@ -542,16 +549,28 @@ test('the mark works while the sync is in flight, and goes out on a fade', async
 	const seen = await page.evaluate(async () => {
 		const drawings = new Set<string>();
 		const animations = new Set<string>();
+		const dots = new Set<string>();
+		const inks = new Set<string>();
 
 		for (let i = 0; i < 24; i++) {
 			const svg = document.querySelector('.sync svg');
 			const path = svg?.querySelector('path');
-			if (path) drawings.add(path.getAttribute('d') ?? '');
+			if (path) {
+				drawings.add(path.getAttribute('d') ?? '');
+				const style = getComputedStyle(path);
+				dots.add(`${style.strokeDasharray} @ ${style.strokeDashoffset}`);
+				inks.add(`${style.stroke} @ ${style.opacity}`);
+			}
 			if (svg) animations.add(getComputedStyle(svg).animationName);
 			await new Promise((resolve) => setTimeout(resolve, 40));
 		}
 
-		return { drawings: [...drawings], animations: [...animations] };
+		return {
+			drawings: [...drawings],
+			animations: [...animations],
+			dots: [...dots],
+			inks: [...inks]
+		};
 	});
 
 	// More than one drawing went past, and never more than the four there are.
@@ -561,6 +580,22 @@ test('the mark works while the sync is in flight, and goes out on a fade', async
 	expect(seen.animations).toStrictEqual(['none']);
 	// And the mark it rests on is the one it started from.
 	expect(seen.drawings).toContain(idle);
+
+	/*
+	 * Every one of those drawings is dotted, and each carries a pattern of its
+	 * own — one pattern held across all four would be a stencil laid over a
+	 * wobbling line rather than a pen skipping somewhere new each redraw.
+	 */
+	expect(seen.dots.length).toBeGreaterThan(1);
+	expect(seen.dots.length).toBeLessThanOrEqual(4);
+	expect(seen.dots.some((dash) => dash.startsWith('none'))).toBe(false);
+
+	/*
+	 * The whole point of dotting: it is the ink laid down less often, not the
+	 * ink faded. Fading it would be a grey, and there are no greys here — so
+	 * the colour and the opacity are exactly what they are at rest.
+	 */
+	expect(seen.inks).toStrictEqual([`${resting.stroke} @ ${resting.opacity}`]);
 
 	/*
 	 * And then it leaves. The button vanishing is the only sign the corner gives
