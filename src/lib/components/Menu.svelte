@@ -14,6 +14,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
+	import { angleAt, axisAt, commits } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -70,6 +71,8 @@
 	 * side as though there were somewhere beside the paper for it to go.
 	 */
 	let turn = $state(0);
+	/** Where the axis has been pushed to, as a percentage across the paper. */
+	let axis = $state(50);
 	/** Swinging home after a drag that did not go far enough to close. */
 	let springing = $state(false);
 	let dragStart: { x: number; at: number } | null = null;
@@ -205,6 +208,7 @@
 		if (springing) {
 			springing = false;
 			turn = 0;
+			axis = 50;
 		}
 
 		/*
@@ -225,9 +229,11 @@
 
 	function onpointermove(event: PointerEvent) {
 		if (!dragStart || !panel) return;
-		const travelled = Math.max(0, event.clientX - dragStart.x);
-		// The way the turn goes: right edge away, left edge towards the reader.
-		turn = Math.min(1, travelled / panel.clientWidth) * 90;
+		const travelled = event.clientX - dragStart.x;
+		// Positive: right edge away, left edge towards the reader, which is the
+		// way this half of the turn goes.
+		turn = angleAt(travelled, panel.clientWidth, 1);
+		axis = axisAt(travelled, panel.clientWidth);
 	}
 
 	function onpointerup(event: PointerEvent) {
@@ -236,7 +242,6 @@
 
 		const travelled = event.clientX - dragStart.x;
 		const elapsed = performance.now() - dragStart.at;
-		const flick = travelled > 40 && elapsed < 250;
 
 		dragStart = null;
 
@@ -246,7 +251,7 @@
 		 * there is no jump between the hand and the animation. Short of that it
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
-		if (flick || travelled > panel.clientWidth * 0.25) close();
+		if (commits(travelled, elapsed, panel.clientWidth)) close();
 		else if (turn > 0) springing = true;
 	}
 </script>
@@ -261,6 +266,7 @@
 	class:furling={closing}
 	class:springing
 	style:--turn="{turn}deg"
+	style:--axis="{axis}%"
 	bind:this={panel}
 	use:trap={close}
 	{onpointerdown}
@@ -276,10 +282,18 @@
 		 * inside the switcher would otherwise end the panel's animation for it.
 		 */
 		if (event.target !== panel) return;
+		/*
+		 * The axis comes home on a shorter clock than the turn, so it ends
+		 * first. Taken as the turn's own end it would hand the panel back to
+		 * the page before the paper had finished going over.
+		 */
+		if (event.animationName === 'recentre') return;
+
 		if (closing) onclosed?.();
 		else if (springing) {
 			springing = false;
 			turn = 0;
+			axis = 50;
 		} else entering = false;
 	}}
 >
@@ -546,7 +560,7 @@
 		 * same 1200px the sheet projects at, so the two halves of the turn are
 		 * seen from one place.
 		 */
-		transform-origin: 50% 50%;
+		transform-origin: var(--axis, 50%) 50%;
 		transform: perspective(1200px) rotateY(var(--turn, 0deg));
 		/*
 		 * The paper's own top and bottom, so the scroller inside is exactly the
@@ -572,9 +586,17 @@
 		will-change: transform;
 	}
 
-	/* Not far enough. It swings upright again — it used to snap. */
+	/*
+	 * Not far enough. It swings upright again — it used to snap.
+	 *
+	 * Two animations rather than one: the rotation and the axis are on
+	 * different clocks, because the axis has to be home before the paper is,
+	 * and one keyframe timeline can only be eased one way at a time.
+	 */
 	.springing {
-		animation: spring-back var(--flip) ease-out forwards;
+		animation:
+			spring-back var(--flip) ease-out forwards,
+			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
 		will-change: transform;
 	}
 
@@ -588,7 +610,9 @@
 	 * caught — mid-arrival, or mid-spring under a finger that let go.
 	 */
 	.furling {
-		animation: furl var(--flip) ease-in forwards;
+		animation:
+			furl var(--flip) ease-in forwards,
+			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
 		pointer-events: none;
 		will-change: transform;
 	}

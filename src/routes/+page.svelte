@@ -13,6 +13,8 @@
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
+	import { drag } from '$lib/dnd/drag.svelte';
+	import { angleAt, axisAt, commits, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -59,6 +61,21 @@
 	let paper = $state<HTMLElement | null>(null);
 
 	/*
+	 * The same turn, under a finger. The sheet is turned out of the way by
+	 * dragging it rightwards, exactly as the panel on the other side is — one
+	 * receipt, one gesture, whichever face happens to be up.
+	 *
+	 * `turn` is where the drag has got the paper to and `axis` where it has
+	 * pushed the point it turns about; `settling` is the swing home when a drag
+	 * stops short. See src/lib/turn.ts, which both sides read.
+	 */
+	let turn = 0;
+	let axis = 50;
+	let dragging = $state(false);
+	let settling = $state(false);
+	let dragStart: { x: number; y: number; at: number } | null = null;
+
+	/*
 	 * Face down: turned away, or on its way there.
 	 *
 	 * It has to hold for as long as the menu is up, not just for the half-turn
@@ -76,27 +93,134 @@
 	 */
 	const still = () => browser && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+	/*
+	 * Where the reader is, in the sheet's own coordinates.
+	 *
+	 * `transform: perspective(…)` projects towards the element's own
+	 * transform-origin, and the sheet is as tall as the list — on a long one its
+	 * middle is a screen or two below the fold, and the paper would turn away
+	 * towards a vanishing point nobody is standing at. The Y half of a
+	 * transform-origin makes no difference to a rotateY, so it is free to carry
+	 * the eye instead, and this puts it level with the middle of the screen.
+	 *
+	 * One rect read, as the turn starts — from the tap, or from the touch that
+	 * begins the drag, since the sheet may have been scrolled since the last one.
+	 */
+	function eye() {
+		paper?.style.setProperty('--eye', `${innerHeight / 2 - paper.getBoundingClientRect().top}px`);
+	}
+
+	/*
+	 * Written straight onto the element rather than through Svelte's `style:`
+	 * directive, which the panel on the other side can afford and this cannot.
+	 *
+	 * The sheet is prerendered, and `style:` renders as a literal `style="…"`
+	 * attribute in the HTML that ships — an inline style, which `style-src
+	 * 'self'` refuses outright. The panel gets away with it because it is never
+	 * server-rendered: nothing is open when the page is built. Setting them
+	 * through the CSSOM is the same route `--eye` already takes, and is what
+	 * e2e/csp.e2e.ts is watching for.
+	 */
+	function place() {
+		paper?.style.setProperty('--turn', `${turn}deg`);
+		paper?.style.setProperty('--axis', `${axis}%`);
+	}
+
+	/** Back to a paper nobody has touched. */
+	function flat() {
+		turn = 0;
+		axis = 50;
+		place();
+	}
+
 	function openMenu() {
 		if (still()) {
 			panel = 'menu';
 			return;
 		}
 
-		/*
-		 * Where the reader is, in the sheet's own coordinates.
-		 *
-		 * `transform: perspective(…)` projects towards the element's own
-		 * transform-origin, and the sheet is as tall as the list — on a long one
-		 * its middle is a screen or two below the fold, and the paper would turn
-		 * away towards a vanishing point nobody is standing at. The Y half of a
-		 * transform-origin makes no difference to a rotateY, so it is free to
-		 * carry the eye instead, and this puts it level with the middle of the
-		 * screen. One rect read, at the tap.
-		 */
-		paper?.style.setProperty('--eye', `${innerHeight / 2 - paper.getBoundingClientRect().top}px`);
-
+		eye();
 		flip = 'open';
 		panel = 'menu';
+	}
+
+	/*
+	 * Turning the sheet over by hand, which is the same gesture the panel
+	 * answers to on the other side.
+	 *
+	 * It only takes hold on bare paper. Everything on the sheet that can be
+	 * pressed is a button or a field, and two of those already own a press of
+	 * their own — the long press that lifts a task and the one that lifts a
+	 * group. The panel draws the line in exactly this place, and a receipt that
+	 * turned over when someone meant to carry a row would be worse than one that
+	 * only turns from the margins.
+	 */
+	function onpointerdown(event: PointerEvent) {
+		if (event.button !== 0 || panel !== null || flip !== null || still()) return;
+		// Something is already being carried, and that gesture has the floor.
+		if (drag.dragging) return;
+		if ((event.target as HTMLElement).closest('input, textarea, button, a')) return;
+
+		if (settling) {
+			settling = false;
+			flat();
+		}
+
+		eye();
+		dragStart = { x: event.clientX, y: event.clientY, at: performance.now() };
+	}
+
+	function onpointermove(event: PointerEvent) {
+		if (!dragStart || !paper) return;
+
+		const dx = event.clientX - dragStart.x;
+		const dy = event.clientY - dragStart.y;
+
+		/*
+		 * The sheet is the thing that scrolls, so a finger going down the page
+		 * has to keep meaning that. Until the movement is plainly sideways this
+		 * is not a turn yet, and the first clearly vertical move gives it up for
+		 * good rather than fighting the scroll all the way down.
+		 */
+		if (!dragging) {
+			if (Math.abs(dy) > Math.abs(dx)) {
+				dragStart = null;
+				return;
+			}
+			if (dx <= SLACK) return;
+			dragging = true;
+			// On the element the handlers are on, which is not the one that moves.
+			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		}
+
+		turn = angleAt(dx, paper.clientWidth, -1);
+		axis = axisAt(dx, paper.clientWidth);
+		place();
+	}
+
+	function onpointerup(event: PointerEvent) {
+		(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId);
+		if (!dragStart || !paper) return;
+
+		const travelled = event.clientX - dragStart.x;
+		const elapsed = performance.now() - dragStart.at;
+		const held = dragging;
+
+		dragStart = null;
+		dragging = false;
+
+		if (!held) return;
+
+		/*
+		 * Far enough and the paper carries on over from where the finger left
+		 * it — the sheet's own keyframes read `--turn` for their first frame, so
+		 * there is no jump between the hand and the animation, and the panel is
+		 * mounted now to take the second half.
+		 */
+		if (commits(travelled, elapsed, paper.clientWidth)) {
+			flip = 'open';
+			panel = 'menu';
+		} else if (turn < 0) settling = true;
 	}
 
 	/*
@@ -220,6 +344,8 @@
 	class="page"
 	class:turning={turned}
 	class:returning={flip === 'close'}
+	class:dragging
+	class:settling
 	bind:this={paper}
 	onanimationend={(event) => {
 		/*
@@ -227,7 +353,22 @@
 		 * sparkling anywhere on the sheet bubbles an animationend through here
 		 * as well, and either would stand the paper up mid-turn.
 		 */
-		if (event.target === paper && flip === 'close') flip = null;
+		if (event.target !== paper) return;
+		/*
+		 * The axis comes home on its own shorter clock, so it ends first and
+		 * separately. This is about the turn, which is the other one.
+		 */
+		if (event.animationName === 'recentre') return;
+
+		if (flip === 'close') flip = null;
+		else if (settling) settling = false;
+
+		/*
+		 * Safe even under `.turning`, which is still holding the sheet edge-on:
+		 * that animation has finished and is filling at its last frame, so the
+		 * first frame this resets is no longer being read.
+		 */
+		flat();
 	}}
 >
 	<!-- Room above the tear, so the stroke is never clipped by the viewport. -->
@@ -239,7 +380,25 @@
 		The tears close the paper top and bottom; these close it at the sides, so
 		it reads as a strip of paper rather than as text on a page.
 	-->
-	<main data-sheet>
+	<!--
+		The turn is taken here rather than on `.page`, which is the element that
+		actually moves: a landmark carries a role of its own, and a bare div with
+		a pointer handler on it does not. It is also the paper proper — the two
+		tears above and below it are the only part of the sheet a drag misses.
+	-->
+	<main
+		data-sheet
+		{onpointerdown}
+		{onpointermove}
+		{onpointerup}
+		onpointercancel={() => {
+			dragStart = null;
+			if (dragging) {
+				dragging = false;
+				if (turn < 0) settling = true;
+			}
+		}}
+	>
 		<SideEdge seed="left" side="left" />
 		<SideEdge seed="right" side="right" />
 
@@ -345,18 +504,48 @@
 		 * rotation wherever the origin sits vertically. It is the vanishing
 		 * point, which `perspective()` takes from the transform-origin too, and
 		 * on a sheet as tall as its list the middle of the element is nowhere
-		 * near the middle of the screen. This file writes it at the tap.
+		 * near the middle of the screen. This file writes it as the turn starts.
+		 *
+		 * `--axis` is the X half, and that one does move: a hand pushes the point
+		 * the paper turns about off the middle, and `recentre` in app.css brings
+		 * it back before the paper is edge-on.
 		 */
-		transform-origin: 50% var(--eye, 50%);
+		transform-origin: var(--axis, 50%) var(--eye, 50%);
+
+		/*
+		 */
+	}
+
+	/*
+	 * Under a finger. The transform is only here while it is, so a sheet as long
+	 * as its list is not held on a compositor layer for the life of the page.
+	 */
+	.dragging {
+		transform: perspective(1200px) rotateY(var(--turn, 0deg));
+		will-change: transform;
 	}
 
 	/*
 	 * The first half of the turn, and then held: `forwards` keeps the paper
 	 * edge-on for as long as the menu is up, because the panel goes on unfurling
 	 * after this animation has ended.
+	 *
+	 * It starts from `--turn`, which is nought from a tap and wherever the finger
+	 * left the paper from a drag — so the hand hands over to the animation with
+	 * no jump. `recentre` runs on its own shorter clock beside it.
 	 */
 	.turning {
-		animation: turn-away var(--flip) ease-in forwards;
+		animation:
+			turn-away var(--flip) ease-in forwards,
+			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
+		will-change: transform;
+	}
+
+	/* A drag that stopped short. The paper swings back up and the axis home. */
+	.settling {
+		animation:
+			settle var(--flip) ease-out forwards,
+			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
 		will-change: transform;
 	}
 
@@ -372,8 +561,20 @@
 	}
 
 	@keyframes turn-away {
+		from {
+			transform: perspective(1200px) rotateY(var(--turn, 0deg));
+		}
 		to {
 			transform: perspective(1200px) rotateY(-90deg);
+		}
+	}
+
+	@keyframes settle {
+		from {
+			transform: perspective(1200px) rotateY(var(--turn, 0deg));
+		}
+		to {
+			transform: perspective(1200px) rotateY(0deg);
 		}
 	}
 
@@ -399,6 +600,16 @@
 		display: block;
 		position: relative;
 		padding: 0 var(--paper-inset);
+
+		/*
+		 * A finger going down the page still scrolls it; only sideways is ours,
+		 * and that is the turn. Pinch is spelt out because `pan-y` on its own
+		 * would take zoom away with it, and this is a sheet of words.
+		 *
+		 * The rows inside set `pan-y` for their own reasons and keep it: the
+		 * used value is the narrower of the two, so nothing here loosens them.
+		 */
+		touch-action: pan-y pinch-zoom;
 	}
 
 	/*

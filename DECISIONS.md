@@ -867,6 +867,59 @@ relative` rather than a transform, which does not apply to an inline box.
     not. Sliding was also the wrong gesture for a panel that is the back of the
     sheet: there is nowhere beside the paper for it to go.
 
+83. **A drag rightwards turns the receipt over, from either face.** The sheet is
+    dragged aside to bring the menu up, and the panel is dragged aside to put it
+    back. One gesture on one object, whichever side happens to be showing —
+    having it only on the panel made the turn something the paper did to you on
+    the way in and something you did to it on the way out.
+
+    `src/lib/turn.ts` holds the arithmetic both sides read: how far a drag has
+    turned the paper, where it has pushed the axis, and whether letting go
+    finishes the turn. Only the sign differs, because the two are halves of one
+    rotation. It is a module with a test rather than a pair of near-identical
+    handlers, which is the shape the second copy of anything here has always
+    drifted into.
+
+    On the sheet it takes hold on bare paper only. Everything on the sheet that
+    can be pressed already owns a press — the long press that lifts a task, the
+    one that lifts a group — and a receipt that turned over when someone meant
+    to carry a row would be worse than one that only turns from the margins. It
+    also gives the gesture up at the first sign of vertical movement, since the
+    sheet is the thing that scrolls, and `touch-action: pan-y pinch-zoom` on
+    `main` says the same to the browser. Pinch is spelt out because `pan-y`
+    alone would take zoom away with it, and this is a sheet of words.
+
+    Both sides take `setPointerCapture`. Turning the paper takes it out from
+    under the hand — that is what turning it means — and without capture the
+    events go to whatever is underneath, so the move stops being seen and the
+    release is never heard, leaving the paper hung at the angle it reached.
+
+    **The axis moves a little, and comes home first.** A sheet spun in the hand
+    is not held in a vice: `--axis` drifts up to `DRIFT` percent off the middle
+    with the push, and `recentre` in app.css brings it back under `--inertia`,
+    which overshoots slightly and settles. It runs on a shorter clock than the
+    turn — 60% of `--flip` — because an axis still wandering at the quarter
+    would hand the other side of the receipt a turn about a line that is not its
+    own. That means two animations on one element rather than one, since a
+    single keyframe timeline can only be eased one way at a time, and it means
+    both `animationend` handlers have to ignore `recentre`: it ends first, and
+    the panel's handler is what unmounts the panel.
+
+84. **The sheet is prerendered, so it may not carry a `style:` directive.**
+    Svelte renders one as a literal `style="…"` attribute in the HTML that
+    ships, and `style-src 'self'` refuses an inline style outright — the page
+    hydrated with two console violations the moment `--turn` and `--axis` were
+    bound that way. They go on through the CSSOM instead, the route `--eye`
+    already took.
+
+    The panel is free to use `style:` and still does. Nothing is open when the
+    page is built, so it is never server-rendered and the attribute never
+    reaches the HTML. The difference is not a rule about which directive is
+    safe; it is a rule about which elements are prerendered.
+
+    `e2e/csp.e2e.ts` caught it, which is the whole reason it watches the console
+    rather than only reading the header back.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

@@ -209,6 +209,16 @@
 	--flip: 150ms;
 
 	/*
+	 * How the axis comes back to the middle after a hand has pushed it off.
+	 *
+	 * It overshoots a little and settles, which is what a spun object does — the
+	 * axis carries past the middle before it stops. Held here beside `--flip`
+	 * because both halves of the turn use it, and `recentre` below is the one
+	 * animation the sheet and the panel literally share.
+	 */
+	--inertia: cubic-bezier(0.22, 1.2, 0.36, 1);
+
+	/*
 	 * How far a ✕ reaches out past the writing, and how wide it is.
 	 *
 	 * Every way of deleting something stands in one column out here, clear of
@@ -440,6 +450,29 @@ a {
 	overflow: hidden;
 	clip-path: inset(50%);
 	white-space: nowrap;
+}
+
+/*
+ * The axis coming home.
+ *
+ * A hand turning the paper pushes the point it turns about off the middle, and
+ * it has to be back there before the paper goes edge-on — an axis still
+ * wandering at the quarter would hand the other side of the receipt a turn
+ * about a line that is not its own. So this runs shorter than `--flip` and
+ * finishes early, under `--inertia`, while the rotation carries on.
+ *
+ * Global, and the one animation both halves share by name rather than by
+ * copy: it is the same movement of the same axis, and the sheet and the panel
+ * are only two elements for reasons that have nothing to do with it. Declared
+ * outside any component so Svelte leaves the name alone in both.
+ */
+@keyframes recentre {
+	from {
+		transform-origin: var(--axis, 50%) var(--eye, 50%);
+	}
+	to {
+		transform-origin: 50% var(--eye, 50%);
+	}
 }
 
 @media (prefers-reduced-motion: reduce) {

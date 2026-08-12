@@ -170,6 +170,113 @@ test.describe('with motion as it comes', () => {
 	});
 });
 
+test.describe('turning it over by hand', () => {
+	/**
+	 * Where the axis sits, as a percentage across the paper.
+	 *
+	 * Against `offsetWidth`, which is what the paper is laid out at, and not
+	 * the bounding box, which is what is left of it once it has been turned —
+	 * edge-on that is nought, and the percentage comes back as infinity.
+	 */
+	function axis(page: Page) {
+		return page.locator('.page').evaluate((el) => {
+			const x = parseFloat(getComputedStyle(el).transformOrigin.split(' ')[0]);
+			return Math.round((x / (el as HTMLElement).offsetWidth) * 1000) / 10;
+		});
+	}
+
+	/**
+	 * Bare paper below the last row. Everything on the sheet that can be pressed
+	 * owns a press already, so the turn only takes hold where none of them is.
+	 */
+	async function blankPaper(page: Page) {
+		const box = (await page.locator('main').boundingBox())!;
+		return { x: box.x + 30, y: box.y + box.height - 12 };
+	}
+
+	test('a drag rightwards turns the receipt over, the same way the panel goes back', async ({
+		page
+	}) => {
+		await page.goto('/');
+		const from = await blankPaper(page);
+
+		expect(await angle(page)).toBe(0);
+		expect(await axis(page)).toBe(50);
+
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		// Under the flick, which is 40px however fast the hand was going.
+		await page.mouse.move(from.x + 30, from.y, { steps: 6 });
+
+		// Turned, and turned away from the reader on the right — the sheet's
+		// half of the rotation, which is the negative one.
+		expect(await angle(page)).toBeLessThan(0);
+
+		// And the axis has given a little, the way a spun sheet's does.
+		expect(await axis(page)).toBeGreaterThan(50);
+
+		await page.mouse.up();
+		await settle(page);
+
+		// Short of the threshold, so it swings back up — and the axis comes home.
+		expect(await angle(page)).toBe(0);
+		expect(await axis(page)).toBe(50);
+		await expect(page.getByRole('dialog', dialog)).toBeHidden();
+	});
+
+	test('a drag past the threshold carries on into the menu', async ({ page }) => {
+		await page.goto('/');
+		const from = await blankPaper(page);
+
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		await page.mouse.move(from.x + 260, from.y, { steps: 10 });
+		await page.mouse.up();
+
+		await expect(page.getByRole('dialog', dialog)).toBeVisible();
+		await settle(page);
+
+		// The sheet is face down behind the panel, and the axis is back in the
+		// middle rather than left wherever the hand pushed it.
+		expect(await angle(page)).toBe(-90);
+		expect(await axis(page)).toBe(50);
+	});
+
+	test('a finger going down the page still scrolls it', async ({ page }) => {
+		await page.goto('/');
+		const from = await blankPaper(page);
+
+		await page.mouse.move(from.x, from.y);
+		await page.mouse.down();
+		// Mostly downwards. The turn gives the gesture up at the first sign.
+		await page.mouse.move(from.x + 12, from.y + 90, { steps: 6 });
+
+		expect(await angle(page)).toBe(0);
+
+		await page.mouse.up();
+		await expect(page.getByRole('dialog', dialog)).toBeHidden();
+	});
+
+	test('a press that belongs to a row is left to the row', async ({ page }) => {
+		await page.goto('/');
+
+		/*
+		 * Dragging from the Add a task button must not turn the paper over: the
+		 * sheet's own long presses live on controls like this one, and a receipt
+		 * that turned over when someone meant to carry a row would be worse than
+		 * one that only turns from bare paper.
+		 */
+		const box = (await page.getByRole('button', { name: 'Add a task' }).first().boundingBox())!;
+		await page.mouse.move(box.x + 4, box.y + box.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(box.x + 4 + 200, box.y + box.height / 2, { steps: 8 });
+		await page.mouse.up();
+
+		expect(await angle(page)).toBe(0);
+		await expect(page.getByRole('dialog', dialog)).toBeHidden();
+	});
+});
+
 test.describe('turning it back by hand', () => {
 	/** Pull the panel rightwards, in pixels, and leave the button down. */
 	async function pull(page: Page, distance: number, steps: number) {
