@@ -46,8 +46,10 @@
 	.sentence {
 		margin: 0 0 2rem;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
 		text-align: center;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	/* Centred, and boxed by `.boxed`, the same as every other pair of actions. */

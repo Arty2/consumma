@@ -64,7 +64,7 @@
 		this is also where a list gets pasted by hand — a first-class path
 		rather than a fallback nobody maintains, and the same box either way.
 	-->
-	<p>
+	<p class="hint">
 		{text === ''
 			? 'Paste a list — one thing per line, or a markdown checklist.'
 			: 'From your clipboard. Edit it here if anything is off.'}
@@ -136,6 +136,14 @@
 	p {
 		margin: 0 0 1rem;
 		line-height: 1.6;
+	}
+
+	/* The two lines that tell rather than show — see --instruction-tilt. */
+	.hint,
+	.summary {
+		line-height: 1.5;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	.summary {

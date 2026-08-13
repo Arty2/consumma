@@ -459,7 +459,7 @@ test('LEAVE shows the code one last time, then wipes only this device', async ({
 
 	await fromMenu(page, 'Leave');
 
-	const confirm = page.getByRole('dialog', { name: /Remove this list/ });
+	const confirm = page.getByRole('dialog', { name: /Leave this list/ });
 	await expect(confirm).toContainText('Everyone else keeps it');
 	await expect(confirm).toContainText(code.replace(/(.{4})/g, '$1 ').trim());
 	// It says plainly that unsent work goes too.

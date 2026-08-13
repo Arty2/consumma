@@ -973,7 +973,9 @@
 	.headline {
 		margin: 0 0 0.25rem;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	/*
@@ -984,7 +986,9 @@
 	.detail {
 		margin: 0 0 0.5rem;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	/* The code is the thing on this panel. It sits in the middle of it. */
@@ -1055,9 +1059,11 @@
 	.note {
 		margin: 0.75rem 0 0;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
 		-webkit-hyphens: auto;
 		hyphens: auto;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	.action {
@@ -1073,7 +1079,9 @@
 	.ask {
 		margin: 1rem 0 0.5rem;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	.error {

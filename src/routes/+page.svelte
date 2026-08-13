@@ -360,7 +360,7 @@
 	function onDelete() {
 		panel = null;
 		lists.deleteCurrent();
-		ui.say('Removed from this device.');
+		ui.say('Left this device.');
 	}
 </script>
 
@@ -484,15 +484,15 @@
 	</ConfirmModal>
 {:else if panel === 'delete'}
 	<ConfirmModal
-		title="Remove this list from this device"
+		title="Leave this list"
 		seed="delete"
 		confirmLabel="Leave"
 		onconfirm={onDelete}
 		oncancel={() => (panel = null)}
 	>
 		{#if sync.code}
-			This removes the list from this phone. Everyone else keeps it. To come back you'll need the
-			code — {formatCode(sync.code)}. This is the last screen it exists on.
+			This leaves the list off this phone. Everyone else keeps it. To come back you'll need the code
+			— {formatCode(sync.code)}. This is the last screen it exists on.
 			{#if sync.unsent > 0}
 				You have {sync.unsent}
 				{sync.unsent === 1 ? 'change' : 'changes'} that never reached anyone else; those go too.
@@ -502,8 +502,8 @@
 				Never synced, so there is no code to write down and nobody else holding
 				a copy. Offering one last look at a code would be offering nothing.
 			-->
-			This list has never been synced, so it is nowhere but here. Removing it removes all of it, and there
-			is no code to come back with.
+			This list has never been synced, so it is nowhere but here. Leaving takes all of it with it, and
+			there is no code to come back with.
 		{/if}
 	</ConfirmModal>
 {/if}
