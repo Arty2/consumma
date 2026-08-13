@@ -1,9 +1,11 @@
 # /consumma
 
-A shared checklist that the server cannot read. Two or more people connect to
-the same list with a short code; everything is encrypted in the browser, and
-what reaches the server is ciphertext and a room id derived from the same
-code.
+A local-first, multiplayer grocery and task list, as a web app.
+
+Two or more people connect to the same list with a short code. It's private
+by design: no accounts, no tracking, no analytics, and nobody but the people
+you share the code with can read what's on the list. It works with the
+network off, and installs to a home screen like a native app.
 
 Black on white, handwritten, no chrome. The sheet is a sheet, and the only
 words on it are the ones someone wrote.
@@ -12,10 +14,9 @@ words on it are the ones someone wrote.
 - Demo: [consumma.vercel.app](https://consumma.vercel.app)
 - Source: [github.com/arty2/consumma](https://github.com/arty2/consumma)
 
-Deployed and working: the app runs, syncs between devices, installs to a home
-screen and works with the network off. The deployment runbook and the rest of
-the technical detail live in [TECHNICAL.md](./TECHNICAL.md), linked again at
-the bottom of this file.
+It's deployed and working today. The deployment runbook and the rest of the
+technical detail — including how the privacy actually works — live in
+[TECHNICAL.md](./TECHNICAL.md), linked again at the bottom of this file.
 
 ## The name
 
