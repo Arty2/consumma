@@ -170,16 +170,6 @@
 	}
 
 	/*
-	 * Thicker than an ordinary drawn line: this is the one thing that says a
-	 * task just finished, so it reads as a mark made with feeling rather than
-	 * another stroke the same weight as the box.
-	 */
-	.sparkle .drawn {
-		stroke: var(--ink);
-		stroke-width: calc(var(--stroke) * 3);
-	}
-
-	/*
 	 * No opacity here, deliberately: ink stays ink for the whole run rather
 	 * than dissolving away. Growing past its own resting size and easing
 	 * back down before it is removed (see `onanimationend` above) is what

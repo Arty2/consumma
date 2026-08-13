@@ -413,32 +413,50 @@ export function handArrow(size: number, options: HandOptions): string {
 }
 
 /**
- * An arrow pointing back the way you came, level rather than on the diagonal.
+ * An arrow pointing back the way you came, hooked rather than laid flat on
+ * the diagonal — the shape a carriage-return key draws, not a chevron.
  *
  * The panel's own corner mark. It is not `handArrow` turned: that one runs up
  * and out and means an outbox, and the same drawing laid on its side would be
- * a mark saying something it was not drawn to say. Level and leftwards is its
- * own stroke, and what it means is where the tap goes.
+ * a mark saying something it was not drawn to say. A shaft in from the right,
+ * a turn down, and a barb pointing back the way it came: the hook is what
+ * says "return" rather than "next", which a level arrow does not.
  */
 export function handBack(size: number, options: HandOptions): string {
-	const pad = size * 0.2;
-	const middle = size / 2;
-	const from = { x: size - pad, y: middle };
-	const to = { x: pad, y: middle };
-	const head = size * 0.28;
+	const pad = size * 0.18;
+	const top = size * 0.32;
+	const bottom = size * 0.68;
+	// Where the turn's vertical leg stands.
+	const stem = size * 0.34;
 
-	const shaft = handPath([from, { x: (from.x + to.x) / 2, y: middle }, to], options);
+	const corner = { x: stem, y: top };
+	const tip = { x: stem, y: bottom };
+
+	/*
+	 * A wobbled straight run into a precise bend, the same way handRect rounds
+	 * a corner: `via` bends the curve toward the vertex instead of sampling an
+	 * arc, which at this radius read as a cramped ring of kinks rather than a
+	 * hook — a dozen points meant to space a wobble out along a long sweep,
+	 * packed instead into a turn a fifth that size.
+	 */
+	const hook = handPath(
+		[
+			{ x: size - pad, y: top },
+			{ x: stem + size * 0.12, y: top },
+			{ ...tip, via: corner }
+		],
+		options
+	);
+
+	const head = size * 0.22;
 
 	// Both barbs in one polyline, so the corner at the point joins as a corner.
 	const barb = handPath(
-		[{ x: to.x + head, y: middle - head }, to, { x: to.x + head, y: middle + head }],
-		{
-			...options,
-			seed: options.seed + 421
-		}
+		[{ x: tip.x + head, y: tip.y - head }, tip, { x: tip.x + head, y: tip.y + head }],
+		{ ...options, seed: options.seed + 421 }
 	);
 
-	return `${shaft} ${barb}`;
+	return `${hook} ${barb}`;
 }
 
 /**

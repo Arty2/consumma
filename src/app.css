@@ -186,16 +186,27 @@
 	--paper-inset: 1.25rem;
 
 	/*
+	 * Room between the tear and the buttons, so the corner row stands clear of
+	 * the teeth rather than starting right where the paper does. `.corner` in
+	 * +page.svelte pads itself by this, and `--corner-y` below folds it in, so
+	 * the menu's ✕ and the toast — both placed at `--corner-y` because that is
+	 * where the burger actually ends up — move down with it rather than
+	 * landing on the teeth the buttons themselves stepped away from.
+	 */
+	--corner-lead: 0.4rem;
+
+	/*
 	 * Where the buttons in the sheet's corners sit, measured from the edges of
 	 * the paper above.
 	 *
 	 * The menu's ✕ is the burger seen from the other side, so it has to land on
 	 * the burger. Now that the panel is the same box as the sheet, that is just
 	 * the paper's own margins — across, the room beside the paper plus the room
-	 * inside it; down, the room above the tear plus the tear itself.
+	 * inside it; down, the room above the tear plus the tear itself plus the
+	 * lead the corner row itself pads by.
 	 */
 	--corner-x: calc(var(--paper-x) + var(--paper-inset));
-	--corner-y: calc(var(--paper-top) + var(--tear));
+	--corner-y: calc(var(--paper-top) + var(--tear) + var(--corner-lead));
 
 	/*
 	 * Half a turn of the paper.
@@ -333,6 +344,8 @@ html {
 	background: var(--paper);
 	color: var(--ink);
 	-webkit-text-size-adjust: 100%;
+	/* No third colour flashed in on tap — the palette is #000 and #fff. */
+	-webkit-tap-highlight-color: transparent;
 }
 
 body {

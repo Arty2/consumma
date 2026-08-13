@@ -753,6 +753,7 @@
 	.corner {
 		display: flex;
 		align-items: center;
+		padding-top: var(--corner-lead);
 		margin-bottom: 0.5rem;
 	}
 

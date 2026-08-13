@@ -91,6 +91,17 @@ function targetAt(x: number, y: number, movingId: string): DropTarget | null {
 		return { groupId: NEW_GROUP, index: 0 };
 	}
 
+	/*
+	 * The dragged row is still in the DOM, just tilted, so hovering over its
+	 * own former place would otherwise hit-test as itself — and, filtered out
+	 * of its own siblings list, report the end of the group. There is no
+	 * landing spot there: only the boundaries between other rows offer one, so
+	 * the previous target stands until the finger reaches one of those.
+	 */
+	if (elements.some((el) => el instanceof HTMLElement && el.dataset.task === movingId)) {
+		return null;
+	}
+
 	const row = elements.find((el) => el instanceof HTMLElement && el.dataset.task) as
 		HTMLElement | undefined;
 
@@ -314,8 +325,18 @@ export type GroupDragOptions = {
 /**
  * Where a group would land: its index among the others, by the same top-half /
  * bottom-half rule the rows use, read off the DOM rather than tracked.
+ *
+ * Null over the dragged group's own section — the same dead zone `targetAt`
+ * refuses for a row, and for the same reason: it is still in the DOM, just
+ * tilted, and offers no landing spot of its own.
  */
-function groupTargetAt(y: number, movingId: string): number {
+function groupTargetAt(y: number, movingId: string): number | null {
+	const own = document.querySelector<HTMLElement>(`[data-group="${movingId}"]`);
+	if (own) {
+		const box = own.getBoundingClientRect();
+		if (y >= box.top && y <= box.bottom) return null;
+	}
+
 	const sections = [...document.querySelectorAll<HTMLElement>('[data-group]')].filter(
 		(el) => el.dataset.group !== movingId
 	);
@@ -339,7 +360,8 @@ export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) 
 			drag.groupTarget = groupTargetAt(y, options.groupId);
 		},
 		move(_x, y) {
-			drag.groupTarget = groupTargetAt(y, options.groupId);
+			const next = groupTargetAt(y, options.groupId);
+			if (next !== null) drag.groupTarget = next;
 		},
 		drop() {
 			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);
