@@ -428,12 +428,12 @@ test('the code is typed into twelve places, one underline each', async ({ page }
 	await page.getByRole('textbox', { name: 'Code' }).fill('ED43 A066 78E0');
 
 	/*
-	 * Whitespace is not a place, and neither is case: the code is lower case, so
-	 * showing capitals back would put the two codes on this panel in different
-	 * cases — the one thing sharing a face and a size was meant to avoid.
+	 * Whitespace is not a place, and neither is case: shown in capitals, in CSS
+	 * only, whatever case it was typed in — the same as the code it is compared
+	 * against, which is shown the same way.
 	 */
 	const places = await field.locator('.glyph').allInnerTexts();
-	expect(places.join('')).toBe('ed43a06678e0');
+	expect(places.join('')).toBe('ED43A06678E0');
 });
 
 test('a while after a sync, the button offers one rather than counting', async ({ page }) => {
@@ -674,7 +674,7 @@ test('pasting the whole invitation into JOIN keeps the code and drops the link',
 
 	// Twelve places filled with the code, and no part of the link anywhere.
 	const places = await page.locator('.field .glyph').allInnerTexts();
-	expect(places.join('')).toBe('ed43a06678e0');
+	expect(places.join('')).toBe('ED43A06678E0');
 
 	await expect(page.getByRole('button', { name: 'Join', exact: true })).toBeEnabled();
 });
@@ -700,7 +700,7 @@ test('pasting a link on its own leaves the join field alone', async ({ page }) =
 
 	// There is no code in a bare link, so nothing replaces what was typed.
 	const places = await page.locator('.field .glyph').allInnerTexts();
-	expect(places.join('')).toBe('ed43a066');
+	expect(places.join('')).toBe('ED43A066');
 });
 
 test('the code is made by the first sync, not by arriving', async ({ page }) => {
@@ -730,6 +730,11 @@ test('the code is made by the first sync, not by arriving', async ({ page }) => 
 	// Now there is a list at the other end, so there is an address for it.
 	const code = await stored();
 	expect(code).toMatch(/^[0-9a-f]{12}$/);
+	/*
+	 * `toHaveText` reads the node's own text, not what CSS renders it as, so
+	 * this stays the bare lower-case code — see the `.code` innerText checks
+	 * elsewhere in this suite for the capitalised, on-screen form.
+	 */
 	await expect(page.locator('.code')).toHaveText(code!.replace(/(.{4})/g, '$1 ').trim());
 	await expect(page.getByRole('button', { name: 'Share', exact: true })).toBeVisible();
 

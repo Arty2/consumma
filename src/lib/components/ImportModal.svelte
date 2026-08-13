@@ -88,14 +88,14 @@
 
 		<!-- Boxed and centred, the same as every other pair of actions. -->
 		<div class="choices">
-			<!-- Add is the default, and is what pressing IMPORT implies. -->
+			<button type="button" class="caps boxed" onclick={() => onapply(parsed!, 'replace')}>
+				<HandRect seed="btnreplace" wobble={1.4} radius={3} />
+				Replace All
+			</button>
+			<!-- Add is the default, and is what pressing IMPORT implies — rightmost. -->
 			<button type="button" class="caps boxed" onclick={() => onapply(parsed!, 'add')}>
 				<HandRect seed="btnadd" wobble={1.4} radius={3} />
 				Add
-			</button>
-			<button type="button" class="caps boxed" onclick={() => onapply(parsed!, 'replace')}>
-				<HandRect seed="btnreplace" wobble={1.4} radius={3} />
-				Replace everything
 			</button>
 		</div>
 
@@ -138,24 +138,24 @@
 		line-height: 1.6;
 	}
 
-	/* The two lines that tell rather than show — see --instruction-tilt. */
+	/*
+	 * The two lines that tell rather than show — see --instruction-tilt. Set at
+	 * the size the menu sets its own instructions, not the body's smaller one.
+	 */
 	.hint,
-	.summary {
-		line-height: 1.5;
-		transform: rotate(var(--instruction-tilt));
-		transform-origin: var(--instruction-origin);
-	}
-
 	.summary {
 		font-family: var(--hand);
 		font-size: var(--size-title);
+		line-height: 1.5;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	/* Monospace: this is a paste box for raw text, not a place to write. */
 	textarea {
 		width: 100%;
 		padding: 0.5rem;
-		border: 1px dashed var(--ink);
+		border: 2px dashed var(--ink);
 		font-family: var(--mono);
 		font-size: calc(var(--size-body) * var(--mono-scale));
 		resize: vertical;
@@ -169,7 +169,7 @@
 		max-height: 40vh;
 		overflow-y: auto;
 		padding: 0.75rem;
-		border: 1px dashed var(--ink);
+		border: 2px dashed var(--ink);
 	}
 
 	.preview p {

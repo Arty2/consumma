@@ -61,7 +61,7 @@ test('no code until the list has been somewhere, and never in the URL', async ({
 	await openMenu(page);
 
 	// Twelve hex characters, shown in groups of four for reading aloud.
-	const shown = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
+	const shown = (await page.locator('.code').first().innerText()).replace(/\s/g, '').toLowerCase();
 	expect(shown).toMatch(/^[0-9a-f]{12}$/);
 
 	expect(page.url()).not.toContain(code);
@@ -168,7 +168,7 @@ test('COPY hands over the code and nothing else', async ({ page, context }) => {
 	await withCode(page);
 	await openMenu(page);
 
-	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
+	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '').toLowerCase();
 	await page.getByRole('button', { name: 'Copy', exact: true }).click();
 
 	/*
@@ -199,7 +199,7 @@ test('the invitation carries the link and the code together, with no query strin
 	await withCode(page);
 
 	await openMenu(page);
-	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
+	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '').toLowerCase();
 	await page.getByRole('button', { name: 'Share', exact: true }).click();
 
 	const shared = await page.evaluate(
@@ -454,7 +454,7 @@ test('LEAVE shows the code one last time, then wipes only this device', async ({
 	await addTask(page, 'Bread');
 
 	await openMenu(page);
-	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '');
+	const code = (await page.locator('.code').first().innerText()).replace(/\s/g, '').toLowerCase();
 	await page.getByRole('button', { name: 'Close' }).click();
 
 	await fromMenu(page, 'Leave');

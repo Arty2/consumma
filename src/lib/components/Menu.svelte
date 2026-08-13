@@ -999,6 +999,8 @@
 		font-size: var(--size-display);
 		letter-spacing: 0.08em;
 		overflow-wrap: anywhere;
+		/* Caps, in CSS only — see CodeField, which shows the same code the same way. */
+		text-transform: uppercase;
 	}
 
 	/* The same room the code above it gets, for the same reason. */
@@ -1104,7 +1106,7 @@
 	.log {
 		margin-top: 1rem;
 		padding: 0.75rem;
-		border: 1px dashed var(--ink);
+		border: 2px dashed var(--ink);
 		text-align: left;
 		max-height: 40vh;
 		overflow-y: auto;
