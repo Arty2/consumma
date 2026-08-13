@@ -448,6 +448,8 @@
 		min-height: 2.25rem;
 		text-align: left;
 		cursor: pointer;
+		user-select: none;
+		-webkit-user-select: none;
 	}
 
 	/*

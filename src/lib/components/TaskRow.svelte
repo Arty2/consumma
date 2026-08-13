@@ -610,6 +610,8 @@
 		justify-content: center;
 		opacity: 0.55;
 		font-size: var(--size-small);
+		user-select: none;
+		-webkit-user-select: none;
 	}
 
 	/*

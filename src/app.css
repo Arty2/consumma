@@ -407,6 +407,9 @@ textarea {
 
 button {
 	cursor: pointer;
+	/* A button's label is a control, not prose — never left selectable. */
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 /* A dashed hand-drawn outline, not a browser ring — there is no other colour. */

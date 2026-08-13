@@ -464,6 +464,8 @@
 		flex: 0 0 auto;
 		margin-left: auto;
 		font-size: var(--size-task);
+		user-select: none;
+		-webkit-user-select: none;
 	}
 
 	.icon {

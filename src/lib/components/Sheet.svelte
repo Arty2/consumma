@@ -467,6 +467,8 @@
 	.over {
 		margin: 0 0 1rem var(--touch);
 		opacity: 0.7;
+		user-select: none;
+		-webkit-user-select: none;
 	}
 
 	/* Flush with the real group titles: it is the same thing, one step earlier. */
