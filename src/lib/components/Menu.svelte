@@ -973,7 +973,9 @@
 	.headline {
 		margin: 0 0 0.25rem;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	/*
@@ -984,7 +986,9 @@
 	.detail {
 		margin: 0 0 0.5rem;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	/* The code is the thing on this panel. It sits in the middle of it. */
@@ -995,6 +999,8 @@
 		font-size: var(--size-display);
 		letter-spacing: 0.08em;
 		overflow-wrap: anywhere;
+		/* Caps, in CSS only — see CodeField, which shows the same code the same way. */
+		text-transform: uppercase;
 	}
 
 	/* The same room the code above it gets, for the same reason. */
@@ -1055,9 +1061,11 @@
 	.note {
 		margin: 0.75rem 0 0;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
 		-webkit-hyphens: auto;
 		hyphens: auto;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	.action {
@@ -1073,7 +1081,9 @@
 	.ask {
 		margin: 1rem 0 0.5rem;
 		font-size: var(--size-title);
-		line-height: 1.4;
+		line-height: 1.3;
+		transform: rotate(var(--instruction-tilt));
+		transform-origin: var(--instruction-origin);
 	}
 
 	.error {
@@ -1096,7 +1106,7 @@
 	.log {
 		margin-top: 1rem;
 		padding: 0.75rem;
-		border: 1px dashed var(--ink);
+		border: 2px dashed var(--ink);
 		text-align: left;
 		max-height: 40vh;
 		overflow-y: auto;

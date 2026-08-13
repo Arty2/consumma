@@ -31,9 +31,10 @@
 	);
 
 	/**
-	 * What is in each place: no spaces, and lower case because that is what the
-	 * code is. Showing capitals back would put the two codes in different cases,
-	 * which is the one thing sharing a face and a size was meant to avoid.
+	 * What is in each place: no spaces, and lower case underneath regardless of
+	 * how it was typed — `.glyph` shows it in caps the way every code on the
+	 * panel is shown now, in CSS only, so what is stored and compared never
+	 * cares which case a keyboard or a person handed it.
 	 */
 	const bare = $derived(value.replace(/\s/g, '').toLowerCase().slice(0, CODE_LENGTH));
 	const cells = $derived(Array.from({ length: CODE_LENGTH }, (_, i) => bare[i] ?? ''));
@@ -153,6 +154,8 @@
 		font-family: var(--hand);
 		font-size: var(--size-display);
 		line-height: 1.25;
+		/* Shown in caps, typed in whatever case — see the comment on `bare`. */
+		text-transform: uppercase;
 		/*
 		 * An empty place still holds its line. Without this the cell collapses to
 		 * nothing — an empty span is zero tall, the negative margin below then

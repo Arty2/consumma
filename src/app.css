@@ -186,16 +186,27 @@
 	--paper-inset: 1.25rem;
 
 	/*
+	 * Room between the tear and the buttons, so the corner row stands clear of
+	 * the teeth rather than starting right where the paper does. `.corner` in
+	 * +page.svelte pads itself by this, and `--corner-y` below folds it in, so
+	 * the menu's ✕ and the toast — both placed at `--corner-y` because that is
+	 * where the burger actually ends up — move down with it rather than
+	 * landing on the teeth the buttons themselves stepped away from.
+	 */
+	--corner-lead: 0.4rem;
+
+	/*
 	 * Where the buttons in the sheet's corners sit, measured from the edges of
 	 * the paper above.
 	 *
 	 * The menu's ✕ is the burger seen from the other side, so it has to land on
 	 * the burger. Now that the panel is the same box as the sheet, that is just
 	 * the paper's own margins — across, the room beside the paper plus the room
-	 * inside it; down, the room above the tear plus the tear itself.
+	 * inside it; down, the room above the tear plus the tear itself plus the
+	 * lead the corner row itself pads by.
 	 */
 	--corner-x: calc(var(--paper-x) + var(--paper-inset));
-	--corner-y: calc(var(--paper-top) + var(--tear));
+	--corner-y: calc(var(--paper-top) + var(--tear) + var(--corner-lead));
 
 	/*
 	 * Half a turn of the paper.
@@ -269,6 +280,16 @@
 	--faint: 0.45;
 
 	/*
+	 * How far off true the instructional prose in a modal or the menu sits —
+	 * a note, a question, an explanation of what a button is about to do.
+	 * Never the sheet itself: a task or a group title is what was written, not
+	 * a line the app is telling you. One number and one pivot, so every such
+	 * paragraph reads as the same hand rather than each choosing its own tilt.
+	 */
+	--instruction-tilt: -1deg;
+	--instruction-origin: 66% 50%;
+
+	/*
 	 * How far a line of capitals sits above the middle of its own line box.
 	 *
 	 * Graphe's capitals reach 15px on a 17px body while the face declares an
@@ -333,6 +354,8 @@ html {
 	background: var(--paper);
 	color: var(--ink);
 	-webkit-text-size-adjust: 100%;
+	/* No third colour flashed in on tap — the palette is #000 and #fff. */
+	-webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -342,6 +365,12 @@ body {
 	font-family: var(--hand);
 	font-size: var(--size-body);
 	line-height: 1.5;
+}
+
+/* Still #000 and #fff, the other way round — ink behind the words, not under them. */
+::selection {
+	background: var(--ink);
+	color: var(--paper);
 }
 
 /*
@@ -407,6 +436,9 @@ textarea {
 
 button {
 	cursor: pointer;
+	/* A button's label is a control, not prose — never left selectable. */
+	user-select: none;
+	-webkit-user-select: none;
 }
 
 /* A dashed hand-drawn outline, not a browser ring — there is no other colour. */
