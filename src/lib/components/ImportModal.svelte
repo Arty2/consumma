@@ -147,6 +147,7 @@
 		font-family: var(--hand);
 		font-size: var(--size-title);
 		line-height: 1.5;
+		text-align: center;
 		transform: rotate(var(--instruction-tilt));
 		transform-origin: var(--instruction-origin);
 	}
