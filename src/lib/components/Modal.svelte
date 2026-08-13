@@ -105,6 +105,13 @@
 		outline: none;
 		touch-action: pan-y;
 		translate: 0 var(--offset, 0);
+		/*
+		 * Scrolling past the top or bottom of this panel must not chain to the
+		 * page underneath — a rubber-band bounce past either end would open a
+		 * gap and show the sheet's own paper through it, which is the outer
+		 * page's colour showing at the edge of what is meant to cover it whole.
+		 */
+		overscroll-behavior: contain;
 	}
 
 	/* The border is inset from the edges rather than drawn along them. */
