@@ -7,8 +7,10 @@ by design: no accounts, no tracking, no analytics, and nobody but the people
 you share the code with can read what's on the list. It works with the
 network off, and installs to a home screen like a native app.
 
-Black on white, handwritten, no chrome. The sheet is a sheet, and the only
-words on it are the ones someone wrote.
+Design-first and back to basics: black on white, handwritten, no chrome —
+built with the kind of attention to detail and small delights of something
+drawn by hand rather than assembled from a component library. The sheet is a
+sheet, and the only words on it are the ones someone wrote.
 
 - Project page: [heracl.es/consumma](https://heracl.es/consumma)
 - Demo: [consumma.vercel.app](https://consumma.vercel.app)
@@ -20,9 +22,8 @@ technical detail — including how the privacy actually works — live in
 
 ## The name
 
-"Consumma" comes from the Latin _consummare_, to complete. When the last open
-task on a list is ticked, the app says so once, quietly: the toast reads
-_Consummatum_ — "it is finished."
+"Consumma" comes from the Latin _consummare_, to complete — as in
+_consummatum est_, "it is finished."
 
 ## Running it
 
