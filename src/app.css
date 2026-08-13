@@ -357,6 +357,12 @@ body {
 	line-height: 1.5;
 }
 
+/* Still #000 and #fff, the other way round — ink behind the words, not under them. */
+::selection {
+	background: var(--ink);
+	color: var(--paper);
+}
+
 /*
  * Every control and title is set in caps, as in the sketch — in CSS only.
  * A group the person typed as "Weekend jobs" must still export as
