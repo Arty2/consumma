@@ -343,22 +343,20 @@ describe('handArrow', () => {
 describe('handBack', () => {
 	const SIZE = 22;
 
-	it('hooks down rather than staying level, and still points left', () => {
+	it('points left, and level rather than on the diagonal', () => {
 		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
-		const start = points[0];
-		// The point the barb meets — see the next test.
-		const tip = points.at(-2)!;
+		const [start] = points;
+		const tip = points[2];
 
 		expect(tip.x).toBeLessThan(start.x);
-		// Hooked: the turn ends below where the shaft started, not level with it.
-		expect(tip.y).toBeGreaterThan(start.y);
+		// Level: the shaft ends at the height it started at.
+		expect(tip.y).toBeCloseTo(start.y, 6);
 	});
 
-	it('has a head that meets the point of the hook', () => {
+	it('has a head that meets the point of the shaft', () => {
 		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
-		// The hook's own last point, and the barb's middle point, are the same
-		// coordinate reached by two different subpaths.
-		expect(points.at(-2)).toEqual(points.at(-4));
+		const tip = points[2];
+		expect(points.some((p, i) => i > 2 && p.x === tip.x && p.y === tip.y)).toBe(true);
 	});
 
 	it('stays inside its box, so the button never clips it', () => {
