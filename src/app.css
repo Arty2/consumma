@@ -142,8 +142,8 @@
 	--edge-face: calc(var(--edge) / 2 + var(--stroke) * 0.5px + 1.1px);
 
 	/*
-	 * How far the ✕ steps in from the paper's edge, over and above sitting in
-	 * the middle of the margin.
+	 * How far the delete mark steps in from the paper's edge, over and above
+	 * sitting in the middle of the margin.
 	 *
 	 * Centred, it is centred — measured, two and a half pixels of air on each
 	 * side — and it still reads as pinned to the edge, because the margin is
@@ -161,7 +161,7 @@
 	 * It moves the mark only. The hit area stays out in the margin, so tapping
 	 * the end of a price still opens the row rather than deleting it.
 	 */
-	--cross-step: 5px;
+	--mark-step: 5px;
 
 	/*
 	 * Where the paper is, and how wide.
@@ -250,10 +250,10 @@
 	--persp: 1200;
 
 	/*
-	 * How far a ✕ reaches out past the writing, and how wide it is.
+	 * How far the delete mark reaches out past the writing, and how wide it is.
 	 *
 	 * Every way of deleting something stands in one column out here, clear of
-	 * everything in flow, so that a ✕ appearing moves nothing and the prices
+	 * everything in flow, so that a mark appearing moves nothing and the prices
 	 * stay a column on the rows that are done.
 	 *
 	 * Exactly the margin the sheet holds its writing off its own edge by, so

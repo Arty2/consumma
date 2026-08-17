@@ -9,7 +9,7 @@
 	import { hasLink, pieces } from '$lib/doc/links';
 	import { nearLimit, spill } from '$lib/doc/spill';
 	import type { State, Task } from '$lib/doc/types';
-	import { handCross } from '$lib/draw/hand';
+	import { handScribble } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
 	import { taken } from '$lib/feel';
@@ -102,22 +102,29 @@
 	const remaining = $derived(LIMITS.taskText - length(draft));
 	const showCounter = $derived(editing && nearLimit(draft, LIMITS.taskText, COUNTER_WITHIN));
 	/*
-	 * The ✕ stands in the middle of the paper's own right margin, and its size
-	 * is what decides how much air is left either side of it.
+	 * The mark stands in the middle of the paper's own right margin, and its
+	 * size is what decides how much air is left either side of it.
 	 *
-	 * handCheck draws its ink across the middle 56% of whatever size it is
-	 * given, jittering each end by 6% of it, so eleven paints about seven and a
-	 * half. Thirteen left the arm within a pixel and a half of the drawn edge —
-	 * and the edge is drawn by a hand that wanders about as far again, so the
-	 * two met. Two marks touching read as one smudge, and one of them says
-	 * where the paper stops.
+	 * It draws its ink across the middle two thirds of whatever size it is
+	 * given, so eleven paints about seven and a half. Thirteen left the stroke
+	 * within a pixel and a half of the drawn edge — and the edge is drawn by a
+	 * hand that wanders about as far again, so the two met. Two marks touching
+	 * read as one smudge, and one of them says where the paper stops.
 	 *
-	 * The same size as the group's ✕ above it, because they stand in one column
-	 * and are one thing.
+	 * The same size as the group's mark above it, because they stand in one
+	 * column and are one thing.
 	 */
-	const CROSS = 11;
+	const MARK = 11;
 
-	const cross = $derived(handCross(CROSS, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
+	/*
+	 * Something scribbled out, not a ✕.
+	 *
+	 * The ✕ here was the checkbox's own two strokes at half the size, a few
+	 * millimetres from them — one gesture meaning finished and the same gesture
+	 * meaning gone. Crossing a thing out is what a hand does to a line it wants
+	 * rid of, and it is the only mark on the sheet drawn that way.
+	 */
+	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
 
 	/**
 	 * Long enough to be a second tap, short enough not to catch two decisions.
@@ -347,7 +354,8 @@
 
 	{#if showCounter}
 		<!--
-			Out in the left gutter, opposite the ✕ and out of the row's flow, so
+			Out in the left gutter, opposite the delete mark and out of the row's
+			flow, so
 			how much room is left never costs the words any. It was in the row,
 			between the text and the edge, which shortened the line it was
 			counting the moment it appeared.
@@ -427,8 +435,8 @@
 	-->
 	{#if task.state === 'done' && !editing && !drag.dragging}
 		<button class="remove" type="button" onclick={pop} aria-label={t.task.delete}>
-			<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
-				<path d={cross} class="drawn" />
+			<svg viewBox="0 0 {MARK} {MARK}" width={MARK} height={MARK} aria-hidden="true">
+				<path d={scribble} class="drawn" />
 			</svg>
 		</button>
 	{/if}
@@ -458,7 +466,7 @@
 		/*
 		 * The price column ends level with the ink of the buttons in the corner
 		 * above it, not with their boxes — see --corner-ink. It is out of the
-		 * ✕'s way for free: the ✕ is positioned against this row's border box,
+		 * mark's way for free: it is positioned against this row's border box,
 		 * which padding does not move, so the margin beyond the figures widens
 		 * by exactly this much.
 		 */
@@ -621,7 +629,7 @@
 	 * At the end of the row it took its width from the line, which shortened the
 	 * price column on exactly the rows that were done — the column stopped being
 	 * a column the moment anything was ticked. Here nothing moves when it
-	 * appears, and it stands in the same place as the group's ✕ above it.
+	 * appears, and it stands in the same place as the group's mark above it.
 	 *
 	 * It ends short of the page's own padding, so it never pushes the sheet
 	 * sideways, and it starts at the row's edge, so it never covers the price
@@ -631,7 +639,7 @@
 		position: absolute;
 		right: calc(-1 * var(--gutter));
 		/*
-		 * On the first line, beside the box — a task that wraps keeps its ✕
+		 * On the first line, beside the box — a task that wraps keeps its mark
 		 * where the row starts rather than letting it slide down beside the
 		 * middle of a sentence. The same reason the box is top-aligned.
 		 */
@@ -652,7 +660,7 @@
 	/*
 	 * The mark alone steps in; the button does not. Translated rather than laid
 	 * out, so the tap area stays out in the margin and the end of a price still
-	 * belongs to the row — see --cross-step.
+	 * belongs to the row — see --mark-step.
 	 *
 	 * It lifts by --cap-lift for the same reason the checkbox at the other end
 	 * of the row does: both are centred in a --touch box that starts at the top
@@ -661,6 +669,6 @@
 	 * Two marks at either end of one line have to agree on where that line is.
 	 */
 	.remove svg {
-		translate: calc(-1 * var(--cross-step)) calc(-1 * var(--cap-lift));
+		translate: calc(-1 * var(--mark-step)) calc(-1 * var(--cap-lift));
 	}
 </style>

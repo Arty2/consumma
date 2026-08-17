@@ -3,7 +3,7 @@
 	import Perforation from './Perforation.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handCross } from '$lib/draw/hand';
+	import { handScribble } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
 	import { taken, tapped } from '$lib/feel';
@@ -54,10 +54,10 @@
 
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
-	/* The same mark, the same size, as the ✕ on every done task below it. */
-	const CROSS = 11;
+	/* The same mark, the same size, as the one on every done task below it. */
+	const MARK = 11;
 
-	const cross = $derived(handCross(CROSS, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
+	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
 
 	/**
 	 * Long enough to be a second tap, short enough not to catch two decisions.
@@ -282,7 +282,7 @@
 		{#if editing}
 			<!--
 				The way to get rid of the group, offered only while its name is being
-				edited — and out in the gutter, in the same column as the ✕ on every
+				edited — and out in the gutter, in the same column as the mark on every
 				done task below it. Deleting is one thing and it happens in one place.
 			-->
 			<button
@@ -295,8 +295,8 @@
 				aria-label={finished ? t.group.delete : t.group.deleteBlocked}
 				title={finished ? t.group.delete : t.group.deleteBlockedHint}
 			>
-				<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
-					<path d={cross} class="drawn" />
+				<svg viewBox="0 0 {MARK} {MARK}" width={MARK} height={MARK} aria-hidden="true">
+					<path d={scribble} class="drawn" />
 				</svg>
 			</button>
 		{/if}
@@ -490,7 +490,7 @@
 	}
 
 	/*
-	 * The same column every ✕ on the sheet stands in — see `--gutter` in
+	 * The same column every delete mark on the sheet stands in — see `--gutter` in
 	 * app.css. Out of the row's flow, so the total keeps its place whether the
 	 * name is being edited or not.
 	 */
@@ -511,10 +511,10 @@
 
 	/*
 	 * The mark alone steps in; the button does not, so the tap area stays out
-	 * in the margin — see --cross-step.
+	 * in the margin — see --mark-step.
 	 */
 	.remove svg {
-		translate: calc(-1 * var(--cross-step)) 0;
+		translate: calc(-1 * var(--mark-step)) 0;
 	}
 
 	/* Drawn, but not offered: the group still has something in it to do. */

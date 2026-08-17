@@ -5,11 +5,13 @@ import {
 	handBack,
 	handBurger,
 	handCheck,
+	handCross,
 	handLine,
 	handMoon,
 	handPath,
 	handRect,
 	handRefresh,
+	handScribble,
 	handSlashedCircle,
 	handSun,
 	handSunMoon,
@@ -704,5 +706,97 @@ describe('handLine', () => {
 	it('is stable for a seed, and differs between them', () => {
 		expect(handLine(200, { seed: 4 })).toBe(handLine(200, { seed: 4 }));
 		expect(handLine(200, { seed: 4 })).not.toBe(handLine(200, { seed: 5 }));
+	});
+});
+
+describe('handScribble', () => {
+	/** The size both the task's mark and the group's are drawn at. */
+	const SIZE = 11;
+
+	/*
+	 * It replaced a ✕ that was the checkbox's own two strokes at half the size.
+	 * Two marks made of one gesture, one meaning finished and one meaning gone,
+	 * is a distinction the eye has to be told about rather than one it can see.
+	 */
+	it('is one stroke the pen never leaves the paper for', () => {
+		const d = handScribble(SIZE, { seed: 3 });
+
+		// One `M` and nothing but curves after it: a scribble is a pen going back
+		// and forth, and separate passes would be hatching, which is shading.
+		expect(d.split('M')).toHaveLength(2);
+		expect(endpoints(d).length).toBeGreaterThan(4);
+	});
+
+	it('goes back and forth rather than down one way', () => {
+		const points = endpoints(handScribble(SIZE, { seed: 3 }));
+
+		/*
+		 * Every turn is on the opposite side from the one before it. A run of
+		 * two on the same side is a zigzag that has lost its way, and reads as a
+		 * `Z` rather than as something crossed out.
+		 */
+		const sides = points.map((p) => p.x > SIZE / 2);
+		for (let i = 1; i < sides.length; i++) {
+			expect(sides[i], `turn ${i}`).toBe(!sides[i - 1]);
+		}
+
+		// And it travels down the box as it goes, rather than retracing one line.
+		for (let i = 1; i < points.length; i++) {
+			expect(points[i].y).toBeGreaterThan(points[i - 1].y);
+		}
+	});
+
+	it('crosses the middle of the box every time it turns', () => {
+		const points = endpoints(handScribble(SIZE, { seed: 9 }));
+
+		// Four legs, so four crossings: fewer would be a tick, more a smudge.
+		expect(points).toHaveLength(5);
+	});
+
+	it('stays inside its box at any seed', () => {
+		for (let seed = 0; seed < 40; seed++) {
+			for (const { x, y } of endpoints(handScribble(SIZE, { seed, wobble: 1 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+			}
+		}
+	});
+
+	it('is stable for a seed, and differs across them', () => {
+		expect(handScribble(SIZE, { seed: 4 })).toBe(handScribble(SIZE, { seed: 4 }));
+		expect(handScribble(SIZE, { seed: 4 })).not.toBe(handScribble(SIZE, { seed: 5 }));
+	});
+
+	it('is not the ✕ it replaced, which the modal still closes with', () => {
+		expect(handScribble(SIZE, { seed: 4 })).not.toBe(handCross(SIZE, { seed: 4 }));
+	});
+});
+
+describe('handCross', () => {
+	const SIZE = 20;
+
+	/* Still drawn: closing a modal is putting something away, not deleting it. */
+	it('is the checkbox’s two diagonals, and both of them', () => {
+		const d = handCross(SIZE, { seed: 3 });
+
+		expect(d.split('M')).toHaveLength(3);
+		expect(d).toContain(handCheck(SIZE, { seed: 3 }));
+	});
+
+	it('stays inside its box at any seed', () => {
+		for (let seed = 0; seed < 40; seed++) {
+			for (const { x, y } of endpoints(handCross(SIZE, { seed, wobble: 1 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+			}
+		}
+	});
+
+	it('is stable for a seed', () => {
+		expect(handCross(SIZE, { seed: 4 })).toBe(handCross(SIZE, { seed: 4 }));
 	});
 });

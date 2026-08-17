@@ -207,7 +207,7 @@
 		padding-right: var(--corner-ink);
 	}
 
-	/* The mirror of the ✕ column, as on a task row. */
+	/* The mirror of the delete column, as on a task row. */
 	.counter {
 		position: absolute;
 		left: calc(-1 * var(--gutter));
