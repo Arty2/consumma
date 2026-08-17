@@ -887,6 +887,57 @@ test('the landing rule is drawn in the gap, and never moves the list', async ({ 
 	await page.mouse.up();
 });
 
+test('a lifted row is offered nowhere that would put it back', async ({ page }) => {
+	/*
+	 * The rule immediately above the row being carried and the rule immediately
+	 * below it are the same rule: both put it back between the same two
+	 * neighbours. A short drag used to spend the whole of itself showing one or
+	 * other of them, which is an offer to do nothing dressed as a target.
+	 */
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	for (const text of ['One', 'Two', 'Three', 'Four']) {
+		await input.fill(text);
+		await input.press('End');
+		await input.press('Enter');
+	}
+	await page.keyboard.press('Escape');
+
+	const order = () =>
+		page
+			.getByRole('checkbox')
+			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+
+	const before = await order();
+	const row = (await page.getByRole('button', { name: 'Two', exact: true }).boundingBox())!;
+
+	// Lift the second row and hold it over its own place.
+	await page.mouse.move(row.x + 30, row.y + row.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await page.mouse.move(row.x + 30, row.y + row.height / 2 + 4, { steps: 3 });
+
+	// Nothing offered on its own row.
+	await expect(page.locator('.landing')).toHaveCount(0);
+
+	// Nor just above it, which is where it already begins.
+	await page.mouse.move(row.x + 30, row.y - 4, { steps: 3 });
+	await expect(page.locator('.landing')).toHaveCount(0);
+
+	// Nor just below it, which is the same place said the other way round.
+	await page.mouse.move(row.x + 30, row.y + row.height + 4, { steps: 3 });
+	await expect(page.locator('.landing')).toHaveCount(0);
+
+	// A real boundary two rows down does offer one.
+	await page.mouse.move(row.x + 30, row.y + row.height * 2 + 4, { steps: 3 });
+	await expect(page.locator('.landing')).toHaveCount(1);
+
+	// And letting go back over its own place changes nothing at all.
+	await page.mouse.move(row.x + 30, row.y + row.height / 2, { steps: 6 });
+	await page.mouse.up();
+	expect(await order()).toStrictEqual(before);
+});
+
 /*
  * One tap does the common thing and two open it for editing — on a task row
  * and on a group title alike, because it is one finger and one sheet.
