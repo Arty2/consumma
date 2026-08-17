@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { length } from '../src/lib/doc/clean';
-import { nearLimit, spill, spillAll } from '../src/lib/doc/spill';
+import { nearLimit, spill, spillAll, splitAt } from '../src/lib/doc/spill';
 
 describe('spill', () => {
 	it('leaves text within the limit alone', () => {
@@ -87,5 +87,62 @@ describe('nearLimit', () => {
 	it('is quiet until the last stretch', () => {
 		expect(nearLimit('A'.repeat(179), 200, 20)).toBe(false);
 		expect(nearLimit('A'.repeat(180), 200, 20)).toBe(true);
+	});
+});
+
+describe('splitAt', () => {
+	/*
+	 * The cut a person asks for, rather than the one the limit forces. Enter in
+	 * the middle of a task leaves what is behind the caret and carries what is
+	 * in front of it down to the row beneath.
+	 */
+	it('leaves what is behind the caret and carries what is in front', () => {
+		expect(splitAt('MILK AND BREAD', 9, 9)).toStrictEqual({
+			head: 'MILK AND ',
+			tail: 'BREAD'
+		});
+	});
+
+	it('cuts inside a word, because that is where the caret was', () => {
+		expect(splitAt('BREAD', 2, 2)).toStrictEqual({ head: 'BR', tail: 'EAD' });
+	});
+
+	it('replaces a selection rather than leaving it on both rows', () => {
+		// Highlighting AND and pressing Enter breaks there once.
+		expect(splitAt('MILK AND BREAD', 5, 8)).toStrictEqual({
+			head: 'MILK ',
+			tail: ' BREAD'
+		});
+	});
+
+	it('gives everything to the tail at the very start', () => {
+		expect(splitAt('BREAD', 0, 0)).toStrictEqual({ head: '', tail: 'BREAD' });
+	});
+
+	it('gives everything to the head at the very end', () => {
+		expect(splitAt('BREAD', 5, 5)).toStrictEqual({ head: 'BREAD', tail: '' });
+	});
+
+	it('clamps a caret the field could not really have reported', () => {
+		expect(splitAt('BREAD', -3, 99)).toStrictEqual({ head: '', tail: '' });
+		expect(splitAt('BREAD', 99, 99)).toStrictEqual({ head: 'BREAD', tail: '' });
+	});
+
+	it('takes a backwards selection the way the field means it', () => {
+		// `end` before `start` never comes out of a textarea, but clamping to the
+		// later of the two is the only reading that cannot lose characters twice.
+		expect(splitAt('MILK AND BREAD', 8, 5)).toStrictEqual({
+			head: 'MILK AND',
+			tail: ' BREAD'
+		});
+	});
+
+	it('never loses or invents a character', () => {
+		fc.assert(
+			fc.property(fc.string(), fc.nat(), (text, at) => {
+				const { head, tail } = splitAt(text, at, at);
+				expect(head + tail).toBe(text);
+			})
+		);
 	});
 });

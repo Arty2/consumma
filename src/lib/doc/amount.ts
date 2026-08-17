@@ -34,6 +34,16 @@ export type Reading = {
 	count: number | null;
 	/** What is left in the middle. Never empty: it is the task. */
 	name: string;
+	/**
+	 * Where the name begins in the text it was read out of.
+	 *
+	 * The row draws the name and not the string, so a point on the words is an
+	 * offset into the name — and putting a caret where a finger landed means
+	 * turning that back into a place in the task. Counted rather than searched
+	 * for: `indexOf` would find the wrong one whenever the name repeats what the
+	 * count or the price already said.
+	 */
+	nameAt: number;
 	/** The trailing price, exactly as typed — `5,08`, `€1.20` — or nothing. */
 	cost: string | null;
 	/** The same price as a number, or null when there is no price. */
@@ -112,7 +122,15 @@ export function amountsIn(text: string): Reading {
 	const count = counted === null ? null : counted.cents / 100;
 
 	const tail = COST.exec(rest);
-	const name = tail ? rest.slice(0, tail.index).trim() : rest.trim();
+	const middle = tail ? rest.slice(0, tail.index) : rest;
+	const name = middle.trim();
+
+	/*
+	 * Where the name starts in the original: past the count, and past whatever
+	 * whitespace `trim` took off the front of what was left. Added rather than
+	 * looked up, so `2x tea 2` puts the caret in the word and not in the count.
+	 */
+	const nameAt = (lead ? lead[0].length : 0) + (middle.length - middle.trimStart().length);
 
 	// A task that is only a price is a name, not a price. So is one carrying a
 	// currency mark on both sides of the number.
@@ -124,13 +142,26 @@ export function amountsIn(text: string): Reading {
 				amount,
 				count,
 				name,
+				nameAt,
 				cost: tail[0].trim(),
 				money: { ...figure, currency: mark === '' ? null : (mark as Currency) }
 			};
 		}
 	}
 
-	return { amount, count, name: rest.trim(), cost: null, money: null };
+	/*
+	 * No price after all — so the name is everything past the count, and the
+	 * offset has to be recomputed against the whole of it rather than against
+	 * the part before a price that turned out not to be one.
+	 */
+	return {
+		amount,
+		count,
+		name: rest.trim(),
+		nameAt: (lead ? lead[0].length : 0) + (rest.length - rest.trimStart().length),
+		cost: null,
+		money: null
+	};
 }
 
 /**

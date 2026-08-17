@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import Counter from './Counter.svelte';
 	import HandRect from './HandRect.svelte';
 	import TriCheckbox from './TriCheckbox.svelte';
 	import { amountsIn, countLabel, format, type Style } from '$lib/doc/amount';
-	import { length } from '$lib/doc/clean';
+	import { fromEnd, offsetIn, spotAt } from '$lib/doc/caret';
 	import { langOf } from '$lib/doc/lang';
-	import { COUNTER_WITHIN, LIMITS } from '$lib/doc/limits';
+	import { LIMITS } from '$lib/doc/limits';
 	import { hasLink, pieces } from '$lib/doc/links';
-	import { nearLimit, spill } from '$lib/doc/spill';
+	import { spill, splitAt } from '$lib/doc/spill';
 	import type { State, Task } from '$lib/doc/types';
 	import { handScribble } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
+	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { taken } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
@@ -91,6 +93,14 @@
 	const linked = $derived(hasLink(task.text));
 
 	/*
+	 * The words as they are drawn, split from the words as they are stored.
+	 * Read once here rather than in the markup and again for the caret, so the
+	 * two are certainly the same list in the same order — which is what lets a
+	 * point on the screen be found by walking the rendered children in step.
+	 */
+	const parts = $derived(pieces(shaped ? reading.name : task.text));
+
+	/*
 	 * Written out the way the group writes numbers rather than the way this line
 	 * happened to be typed, so one column does not read `5,08`, `20.00` and `10`
 	 * down its length. The stored text keeps every character of what was typed.
@@ -99,8 +109,6 @@
 	const cost = $derived(
 		reading.money === null || style === null ? null : format(reading.money.cents, style)
 	);
-	const remaining = $derived(LIMITS.taskText - length(draft));
-	const showCounter = $derived(editing && nearLimit(draft, LIMITS.taskText, COUNTER_WITHIN));
 	/*
 	 * The mark stands in the middle of the paper's own right margin, and its
 	 * size is what decides how much air is left either side of it.
@@ -126,50 +134,152 @@
 	 */
 	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
 
-	/**
-	 * Long enough to be a second tap, short enough not to catch two decisions.
-	 * The same window the checkbox uses, because it is the same finger.
-	 */
-	const DOUBLE_TAP_MS = 320;
-
 	/*
 	 * Negative infinity, not zero: `performance.now()` counts from the page
 	 * loading, so a zero would make every tap in the first third of a second
 	 * after load read as the second half of a double tap.
 	 */
 	let lastTap = -Infinity;
-	/** What to put back if the tap that just happened turns out to be the first
-	 * half of a double one. Seeded once; every tap writes it before changing
-	 * anything. */
+	/**
+	 * How far up the ladder the finger has got, within the window.
+	 *
+	 * Nought means this run cannot climb at all — it began somewhere that
+	 * plainly meant edit, and every tap of it is an edit.
+	 */
+	let taps = 0;
+	/** The state to come back to when a tap turns out to be part of a run. */
 	let beforeTap: State = untrack(() => task.state);
 
 	/**
-	 * A tap ticks the task off. A second tap inside the window opens it for
-	 * editing instead, and puts back the state the first tap changed.
+	 * How near the end of the words a tap can land and still plainly mean edit.
 	 *
-	 * Optimistic rather than delayed, exactly as the checkbox beside it is:
-	 * holding every tap back to see whether another is coming would put a third
-	 * of a second between a finger and every tick on the sheet, which is the
-	 * one thing this app is for. So the tick happens, and the rare second tap
-	 * takes it back — a flicker on the uncommon path rather than a lag on the
-	 * common one.
+	 * Somebody reaching into the last few characters of a task is reaching for
+	 * the end of it — to add to it, or to press Enter and start the next thing
+	 * there. A run of taps that begins in that stretch never climbs the ladder,
+	 * so tapping there twice by accident cannot tick the task off.
+	 *
+	 * Small: it is the end of the writing, not the last word.
+	 */
+	const EDIT_ZONE = 3;
+
+	/**
+	 * One tap opens the task, two mark it done, three mark it half.
+	 *
+	 * The tap that opens it is the common one — a list is read far more often
+	 * than it is ticked in one go, and the row already has a checkbox beside it
+	 * whose whole job is the tick. So the words answer the thing the words are
+	 * for, and the ladder climbs from there.
+	 *
+	 * Taps two and three land on the textarea that tap one opened, not on the
+	 * button they started on. The count therefore has to live out here in the
+	 * component rather than on either element, and the handler is bound to both
+	 * — the finger has not moved and does not know the element under it has.
+	 *
+	 * Optimistic, as the checkbox beside it is: each tap acts and the next takes
+	 * it back. Holding every tap for a third of a second to see whether another
+	 * is coming would put that lag on every single one of them.
 	 */
 	function ontap(event: MouseEvent) {
 		// A link is its own business; tapping one goes where it says.
 		if ((event.target as HTMLElement).closest('a')) return;
 
 		const now = performance.now();
-		const quick = now - lastTap < DOUBLE_TAP_MS;
+		const within = now - lastTap < DOUBLE_TAP_MS;
 		lastTap = now;
 
-		if (quick) {
-			onstate(beforeTap);
-			startEditing();
+		if (within) {
+			climb();
 			return;
 		}
 
+		// A fresh run, and where it begins decides what it is allowed to become.
 		beforeTap = task.state;
-		onstate(task.state === 'done' ? 'todo' : 'done');
+
+		/*
+		 * Begun inside the open field rather than on the words: this is somebody
+		 * placing a caret, or double-tapping to select a word, and neither is a
+		 * tick. The run is disarmed and the browser is left to do what a tap in
+		 * a text field does — which also means the caret is not dragged to the
+		 * end by the `startEditing` below.
+		 */
+		if (editing) {
+			taps = 0;
+			return;
+		}
+
+		const at = placeFrom(event);
+		startEditing(at);
+	}
+
+	/** The second and third taps of a run that is allowed to have them. */
+	function climb() {
+		// Disarmed: this run began where a tap plainly meant edit.
+		if (taps === 0) return;
+
+		taps += 1;
+
+		if (taps === 2) {
+			closeWithoutCommitting();
+			onstate('done');
+		} else if (taps === 3) {
+			onstate('half');
+		} else {
+			/*
+			 * Past three a run has stopped meaning anything, so it goes back to
+			 * where it started and becomes an edit again — which is the rung the
+			 * ladder begins on.
+			 */
+			onstate(beforeTap);
+			taps = 0;
+			startEditing();
+		}
+	}
+
+	/**
+	 * Where in the task a tap landed, arming the run or disarming it.
+	 *
+	 * Null for a tap the row cannot place — a browser with neither caret API, or
+	 * a point in nothing the row drew — and the caret then goes to the end,
+	 * which is where it always used to go.
+	 */
+	function placeFrom(event: MouseEvent): number | null {
+		taps = 1;
+
+		const target = event.currentTarget;
+		if (!(target instanceof HTMLElement)) return null;
+
+		const spot = spotAt(event.clientX, event.clientY);
+		if (!spot) return null;
+
+		/*
+		 * The words are drawn inside `.name` on a row that has a count or a
+		 * price and directly in the row's own element otherwise, and only the
+		 * words go through `pieces` — so the offset is read against the element
+		 * the pieces were rendered into, and then carried past whatever the
+		 * count took off the front.
+		 */
+		const drawn = target.querySelector<HTMLElement>('.name') ?? target;
+		const into = offsetIn(drawn, spot, parts);
+		if (into === null) return null;
+
+		// In the last few characters: this run is an edit and stays one.
+		if (fromEnd(parts, into) <= EDIT_ZONE) taps = 0;
+
+		return into + (shaped ? reading.nameAt : 0);
+	}
+
+	/**
+	 * Out of the editor without writing anything.
+	 *
+	 * The second tap of a run marks the task done, and the field it lands on was
+	 * opened by the first tap a moment earlier with nothing typed into it. Its
+	 * blur would commit — harmlessly, since the draft is still the task's own
+	 * text — but only by luck, and the field has to be gone before the state
+	 * changes either way.
+	 */
+	function closeWithoutCommitting() {
+		draft = task.text;
+		editing = false;
 	}
 
 	/*
@@ -178,17 +288,22 @@
 	 * leaves edit mode — it simply sits there showing the raw string, which
 	 * looks for all the world like the count and the price being lost.
 	 *
-	 * At the end rather than wherever the browser leaves it: tapping a task is
-	 * to add to what it says more often than to replace it, and it is what a
+	 * Where the finger landed, rather than at the end: a person reaching into
+	 * the middle of a sentence is reaching for the middle of it, and this is the
+	 * row that Enter now splits at the caret. `at` is null when the point cannot
+	 * be placed — no caret API, or a tap on nothing the row drew — and the end
+	 * is then both the old behaviour and the right one, since it is also what a
 	 * backspace out of the row beneath expects to find.
 	 */
-	function startEditing() {
+	function startEditing(at: number | null = null) {
 		draft = task.text;
 		editing = true;
 
+		const caret = at === null ? draft.length : Math.min(at, draft.length);
+
 		queueMicrotask(() => {
 			input?.focus();
-			input?.setSelectionRange(draft.length, draft.length);
+			input?.setSelectionRange(caret, caret);
 		});
 	}
 
@@ -227,13 +342,42 @@
 		onsplit(over.tail);
 	}
 
+	/**
+	 * Enter means "and the next one", and it now means it from where the caret
+	 * is rather than only from the end.
+	 *
+	 * What is in front of the caret goes down to the row that opens beneath, the
+	 * way Enter behaves in the middle of a line of writing anywhere else. It
+	 * used to open an empty row wherever the caret stood, so splitting a task in
+	 * two meant retyping the second half — and the row already knew how to carry
+	 * text down, because running past the limit does exactly this (see
+	 * `oninput`, and doc/spill.ts, which both cuts are named in).
+	 *
+	 * A caret at the very start is the one place this does nothing: the head
+	 * would be empty, a task may not be, and pushing the whole text down would
+	 * leave a blank row above it. The task stays whole and an empty row opens
+	 * beneath, which is what Enter has always done here.
+	 */
+	function onsplitHere(field: HTMLTextAreaElement) {
+		const { head, tail } = splitAt(draft, field.selectionStart, field.selectionEnd);
+
+		if (head.trim() === '') {
+			commit();
+			onsplit();
+			return;
+		}
+
+		draft = head;
+		// Commit first: the blur handler would otherwise fire after the new row
+		// is asked for and close it again.
+		commit();
+		onsplit(tail === '' ? undefined : tail);
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			// Commit first: the blur handler would otherwise fire after the new row
-			// is asked for and close it again.
-			commit();
-			onsplit();
+			onsplitHere(event.currentTarget as HTMLTextAreaElement);
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			/*
@@ -298,23 +442,23 @@
 		{#if count !== null}
 			<span class="num amount">{count}</span>
 		{/if}
-		<span class="name">{@render written(reading.name)}</span>
+		<span class="name">{@render written()}</span>
 		{#if cost !== null}
 			<span class="num cost">{cost}</span>
 		{/if}
 	{:else}
-		{@render written(task.text)}
+		{@render written()}
 	{/if}
 {/snippet}
 
-{#snippet written(text: string)}
+{#snippet written()}
 	<!--
 		The words, with any address in them shown as what it points at rather
 		than as every character of how to get there. The text itself is
 		untouched: this is a reading on the way to the screen, like the count
 		and the price, and the export and what merge sees keep the whole URL.
 	-->
-	{#each pieces(text) as piece, at (at)}
+	{#each parts as piece, at (at)}
 		{#if piece.kind === 'link'}
 			<!--
 				Never an app route: `links.ts` allows three schemes and every one of
@@ -331,6 +475,7 @@
 			-->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<a
+				data-piece={at}
 				href={piece.href}
 				target="_blank"
 				rel="noopener noreferrer nofollow"
@@ -340,7 +485,17 @@
 			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{:else}
-			{piece.text}
+			<!--
+				A span around plain words, which they did not use to need.
+
+				It carries which piece this is, so a tap can be traced from the
+				node the browser reports back to a place in the task's own text.
+				Counting the children instead would work only until a row had two
+				pieces: an `{#each}` puts anchor comments among its output, so the
+				nth child is not the nth piece. Inline, so nothing about how the
+				words wrap or where they break changes.
+			-->
+			<span data-piece={at}>{piece.text}</span>
 		{/if}
 	{/each}
 {/snippet}
@@ -352,16 +507,7 @@
 		<HandRect seed={`lift${task.id}`} dashed wobble={1.2} />
 	{/if}
 
-	{#if showCounter}
-		<!--
-			Out in the left gutter, opposite the delete mark and out of the row's
-			flow, so
-			how much room is left never costs the words any. It was in the row,
-			between the text and the edge, which shortened the line it was
-			counting the moment it appeared.
-		-->
-		<span class="counter num" aria-live="polite">{remaining}</span>
-	{/if}
+	<Counter {draft} open={editing} />
 
 	<TriCheckbox state={task.state} label={task.text} seed={task.id} onchange={onstate} />
 
@@ -371,6 +517,14 @@
 			lines. Tasks are still one string: `clean` turns any newline into a
 			space at the boundary, and Enter never reaches the field as one.
 		-->
+		<!--
+			The tap handler is on the field too, and that is the whole of what
+			makes the ladder work. The second tap of a run lands here rather than
+			on the button it started on — the first tap swapped one for the other
+			under a finger that has not moved — so the field has to answer a tap
+			the same way the words did. It never calls preventDefault, or the
+			field would stop taking a caret from the tap that opened it.
+		-->
 		<textarea
 			class="text caps"
 			rows="1"
@@ -378,6 +532,7 @@
 			bind:this={input}
 			bind:value={draft}
 			onblur={commit}
+			onclick={ontap}
 			{oninput}
 			{onkeydown}
 			use:grow={draft}></textarea>
@@ -463,6 +618,13 @@
 		gap: 0.25rem;
 		min-height: var(--touch);
 		list-style: none;
+		/*
+		 * The room the checkbox used to take as a flex item, now that it is
+		 * positioned against this row instead — see `.box` in TriCheckbox, which
+		 * reaches wider than its own mark. Exactly the target plus the gap that
+		 * followed it, so the words start where they have always started.
+		 */
+		padding-left: calc(var(--touch) + 0.25rem);
 		/*
 		 * The price column ends level with the ink of the buttons in the corner
 		 * above it, not with their boxes — see --corner-ink. It is out of the
@@ -597,30 +759,6 @@
 	/* Last in the row, so the prices end level down the right-hand edge. */
 	.cost {
 		flex: 0 0 auto;
-	}
-
-	/*
-	 * The mirror of `.remove`: out in the gutter on the other side, out of the
-	 * row's flow, and on the first line beside the box.
-	 *
-	 * In the row it was a third cell that appeared at eighty characters and
-	 * took its width from the line — so the words lost room at exactly the
-	 * moment there was least of it, and the count of what was left was itself
-	 * the reason there was less.
-	 */
-	.counter {
-		position: absolute;
-		left: calc(-1 * var(--gutter));
-		top: 0;
-		width: var(--gutter);
-		height: var(--touch);
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		opacity: 0.55;
-		font-size: var(--size-small);
-		user-select: none;
-		-webkit-user-select: none;
 	}
 
 	/*

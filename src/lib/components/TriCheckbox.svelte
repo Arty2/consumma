@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { State } from '$lib/doc/types';
-	import { longPress } from '$lib/dnd/longpress';
+	import { DOUBLE_TAP_MS, longPress } from '$lib/dnd/longpress';
 	import { finished, tapped } from '$lib/feel';
 	import { handCheck, handCheckBack, handRect, handSparkle } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
@@ -29,9 +29,6 @@
 
 	const checked = $derived(current === 'done' ? 'true' : current === 'half' ? 'mixed' : 'false');
 	const sparkle = $derived(handSparkle(SIZE * 2, { seed: seedFrom(`spark${seed}`), wobble: 0.6 }));
-
-	/** Long enough to be a second tap, short enough not to catch two decisions. */
-	const DOUBLE_TAP_MS = 320;
 
 	/*
 	 * Negative infinity, not zero. `performance.now()` counts from the page
@@ -128,16 +125,47 @@
 </span>
 
 <style>
+	/*
+	 * The mark is 22px in a 44px target, and the target now reaches further than
+	 * the mark does — a third again across, and the whole height of the row.
+	 *
+	 * A checkbox is a small square in a line of words, and the words either side
+	 * of it are a much bigger thing to hit. So the area it answers to takes in
+	 * the start of the writing beside it: a finger going for the box and landing
+	 * on the first word still ticks the task, which is what it meant. What that
+	 * costs is that the first word or two cannot be tapped to open the row — the
+	 * words go on for a while and the end of them is always reachable, so it is
+	 * the cheaper of the two mistakes.
+	 *
+	 * Taken out of the flow to do it. Widening a flex item would push the words
+	 * thirteen pixels right and take that much off every line on the sheet, so
+	 * the box is positioned against the row instead and the row pads itself by
+	 * exactly what the box used to occupy — the writing does not move by a pixel
+	 * and neither does the mark.
+	 *
+	 * Full height rather than 44px: a task over three lines has three lines of
+	 * checkbox beside it, which is what a column of anything means.
+	 */
 	.box {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: calc(var(--touch) * 1.3);
+
 		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: var(--touch);
-		height: var(--touch);
-		flex: 0 0 var(--touch);
-		/* Level with the capitals beside it, not with their line box. */
-		position: relative;
-		top: calc(-1 * var(--cap-lift));
+		align-items: flex-start;
+		justify-content: flex-start;
+		/*
+		 * Where the mark lands, and it has to land exactly where it landed when
+		 * this was a centred 44px square: half of the difference between the
+		 * target and the glyph across (which is --corner-ink), and the same down
+		 * less the lift that puts it level with the capitals. Centring cannot do
+		 * it any more, because the box is no longer the size the centring was
+		 * measured against.
+		 */
+		padding-left: var(--corner-ink);
+		padding-top: calc(var(--corner-ink) - var(--cap-lift));
 		cursor: pointer;
 		/* Otherwise Android raises the text-selection menu mid-press. */
 		touch-action: manipulation;

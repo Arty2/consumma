@@ -11,8 +11,24 @@
  * of running something, and this app hands a string to an href.
  */
 
-/** What a task comes to once its addresses are picked out of it. */
-export type Piece = { kind: 'text'; text: string } | { kind: 'link'; href: string; label: string };
+/**
+ * What a task comes to once its addresses are picked out of it.
+ *
+ * `at` is where the piece begins in the task's own text, and a link carries the
+ * `raw` characters it was written as alongside the `href` it parsed to — the
+ * two differ, because `URL` normalises and because trailing punctuation is
+ * given back to the sentence. Both are here so that a point on the screen can
+ * be turned back into a place in the string: what is drawn is shorter than what
+ * was typed, and only the piece knows by how much.
+ */
+export type Piece =
+	| { kind: 'text'; text: string; at: number }
+	| { kind: 'link'; href: string; label: string; raw: string; at: number };
+
+/** How many characters of the task's own text a piece stands for. */
+export function sourceLength(piece: Piece): number {
+	return piece.kind === 'text' ? piece.text.length : piece.raw.length;
+}
 
 /**
  * Runs of non-space opening with a scheme we allow, and only where an address
@@ -123,13 +139,13 @@ export function pieces(text: string): Piece[] {
 		if (label === '') continue;
 
 		const start = match.index;
-		if (start > at) out.push({ kind: 'text', text: text.slice(at, start) });
+		if (start > at) out.push({ kind: 'text', text: text.slice(at, start), at });
 
-		out.push({ kind: 'link', href: url.href, label });
+		out.push({ kind: 'link', href: url.href, label, raw, at: start });
 		at = start + raw.length;
 	}
 
-	if (at < text.length) out.push({ kind: 'text', text: text.slice(at) });
+	if (at < text.length) out.push({ kind: 'text', text: text.slice(at), at });
 
 	return out;
 }

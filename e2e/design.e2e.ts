@@ -232,6 +232,14 @@ test('Greek loses its tonos in caps, and keeps it everywhere else', async ({ pag
 	// A word that goes visibly wrong without the language: ΜΑΪ́ΣΤΡΟΣ, with a
 	// stranded combining acute, rather than ΜΑΪΣΤΡΟΣ.
 	await input.fill('μαΐστρος');
+	/*
+	 * Enter cuts the row at the caret, so the caret has to be where a person
+	 * typing would have left it. `fill` does not always leave it at the end —
+	 * on this word Chrome reports it two characters short — which is an
+	 * artefact of setting the value rather than typing it, and would otherwise
+	 * make this test about the wrong thing entirely.
+	 */
+	await input.press('End');
 	await input.press('Enter');
 	await page.keyboard.press('Escape');
 

@@ -476,7 +476,7 @@ test('Enter on a task opens a fresh one directly beneath it', async ({ page }) =
 	await expect.poll(order).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
 });
 
-test('tapping a task takes the caret with it, to the end of what it says', async ({ page }) => {
+test('tapping a task takes the caret with it', async ({ page }) => {
 	/*
 	 * The field used to be swapped in unfocused, which meant it never blurred,
 	 * so the row never committed and never came out of edit mode — it simply sat
@@ -484,21 +484,57 @@ test('tapping a task takes the caret with it, to the end of what it says', async
 	 * that reads exactly like the two being lost.
 	 */
 	await addTask(page, '2x Tomatos 5,08');
-	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).dblclick();
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
 
 	const field = page.getByRole('textbox').first();
 	await expect(field).toBeFocused();
-	// At the end, so typing adds to what is there rather than landing mid-word.
-	expect(await field.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(15);
+
+	/*
+	 * Somewhere in the task, and inside the name rather than at either end of
+	 * the string: the row draws `Tomatos` alone in the middle cell, and the
+	 * offset has to be carried back past the count to reach the text itself.
+	 * Tapped at the end of a word, so the exact character is not at the mercy
+	 * of where in a glyph the click landed.
+	 */
+	const caret = await field.evaluate((el: HTMLTextAreaElement) => el.selectionStart);
+	expect(caret).toBeGreaterThan(2);
+	expect(caret).toBeLessThanOrEqual(10);
 
 	// And because it can blur, it commits, and the row goes back to being read.
 	await page.keyboard.press('Escape');
 	await expect(page.locator('.tasks li .cost').first()).toHaveText('5,08');
 
-	// The same on a task that is done — where this was first noticed.
+	/*
+	 * The same on a task that is done — where this was first noticed.
+	 *
+	 * Clear of the tap window first. Two taps on one row inside 320ms are one
+	 * run whatever happened between them, and the assertions above run in
+	 * rather less than that — so without the wait this second tap climbs the
+	 * first one's ladder instead of starting a run of its own.
+	 */
+	await page.waitForTimeout(450);
 	await task(page, '2x Tomatos 5,08').click();
-	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).dblclick();
+	await page.waitForTimeout(450);
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
 	await expect(page.getByRole('textbox').first()).toBeFocused();
+});
+
+test('the caret lands where the finger did, not at the end', async ({ page }) => {
+	const long = 'Bread and butter and jam and cheese and everything else besides';
+	await addTask(page, long);
+
+	const words = page.getByRole('button', { name: long, exact: true });
+	const box = (await words.boundingBox())!;
+
+	// A quarter of the way along the first line, which is nowhere near either end.
+	await page.mouse.click(box.x + box.width * 0.25, box.y + 12);
+
+	const field = page.getByRole('textbox').first();
+	await expect(field).toBeFocused();
+
+	const caret = await field.evaluate((el: HTMLTextAreaElement) => el.selectionStart);
+	expect(caret).toBeGreaterThan(2);
+	expect(caret).toBeLessThan(long.length - 4);
 });
 
 test('Backspace on an empty row takes the caret back to the one above', async ({ page }) => {
@@ -860,36 +896,69 @@ test('the landing rule is drawn in the gap, and never moves the list', async ({ 
  * take it back, a group title waits. See the note in GroupHeader.
  */
 
-test('one tap ticks a task off, and two open it for editing', async ({ page }) => {
+test('one tap opens a task, two mark it done, three mark it half', async ({ page }) => {
+	await addTask(page, 'Bread and butter');
+
+	const words = page.getByRole('button', { name: 'Bread and butter', exact: true });
+	const box = (await words.boundingBox())!;
+	/*
+	 * Clear of two things at once: the last few characters, where a run is an
+	 * edit and stays one, and the checkbox at the other end, whose target now
+	 * reaches a third again past its own mark and over the start of the words.
+	 */
+	const start = { x: box.x + 20, y: box.y + box.height / 2 };
+
+	/*
+	 * One tap opens it. A list is read far more often than it is ticked in one
+	 * go, and the checkbox beside the words is the control whose whole job is
+	 * the tick — so the words answer the thing the words are for.
+	 */
+	await page.mouse.click(start.x, start.y);
+	await expect(page.getByRole('textbox').first()).toBeFocused();
+	await expect(task(page, 'Bread and butter')).toHaveAttribute('aria-checked', 'false');
+
+	/*
+	 * Clear of the window before starting again, or the next tap climbs this
+	 * run rather than beginning one. The window is 320ms; the wait is generous
+	 * so a slow machine cannot make two deliberate taps read as one gesture.
+	 */
+	await page.keyboard.press('Escape');
+	await page.waitForTimeout(450);
+
+	// Two taps mark it done — the second lands on the field the first opened.
+	await page.mouse.click(start.x, start.y);
+	await page.mouse.click(start.x, start.y);
+	await expect(task(page, 'Bread and butter')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.getByRole('textbox')).toHaveCount(0);
+
+	await page.waitForTimeout(450);
+
+	// And three mark it half, which is the rung above done.
+	await page.mouse.click(start.x, start.y);
+	await page.mouse.click(start.x, start.y);
+	await page.mouse.click(start.x, start.y);
+	await expect(task(page, 'Bread and butter')).toHaveAttribute('aria-checked', 'mixed');
+});
+
+test('a run of taps at the end of the words never ticks the task', async ({ page }) => {
+	/*
+	 * A finger in the last few characters is reaching for the end of the task —
+	 * to add to it, or to press Enter and start the next thing there. Two taps
+	 * there are two attempts at the same thing, not a tick.
+	 */
 	await addTask(page, 'Bread');
 
 	const words = page.getByRole('button', { name: 'Bread', exact: true });
+	const box = (await words.boundingBox())!;
+	// Just past the last letter, which is where somebody adding to it would aim.
+	const end = { x: box.x + box.width - 4, y: box.y + box.height / 2 };
 
-	await words.click();
-	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+	await page.mouse.click(end.x, end.y);
+	await page.mouse.click(end.x, end.y);
+	await page.mouse.click(end.x, end.y);
 
-	/*
-	 * Clear of the double-tap window before tapping again, or this is a double
-	 * tap and opens the row — which is the behaviour under test, not a flake.
-	 * The window is 320ms; the wait is generous so a slow machine cannot make
-	 * two deliberate taps read as one gesture.
-	 */
-	await page.waitForTimeout(450);
-
-	// And back, so a mistaken tick costs one tap.
-	await words.click();
 	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
-
-	await page.waitForTimeout(450);
-
-	/*
-	 * Two taps open the words instead, and put back the tick the first tap
-	 * made. The row is optimistic — the tick happens and is taken back — so
-	 * what matters is where it lands, not what it did on the way.
-	 */
-	await words.dblclick();
 	await expect(page.getByRole('textbox').first()).toBeFocused();
-	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
 });
 
 test('one tap folds a group, and two open its name', async ({ page }) => {
@@ -937,6 +1006,110 @@ test('a row that runs out of room fills up, and the rest starts the next one', a
 	await page.keyboard.press('Escape');
 });
 
+test('Enter carries what is in front of the caret down to a new task', async ({ page }) => {
+	/*
+	 * Enter means "and the next one", and it now means it from wherever the
+	 * caret is. It used to open an empty row wherever the caret stood, so
+	 * splitting a task in two meant retyping the second half.
+	 */
+	await addTask(page, 'Bread and butter');
+
+	await page.getByRole('button', { name: 'Bread and butter', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await expect(field).toBeFocused();
+
+	// Between the two things, which is where a person would break the line.
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(6, 6));
+	await field.press('Enter');
+
+	// The row above kept what was behind the caret; the rest came down with it,
+	// already in the row below and ready to be added to.
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('and butter');
+
+	await page.getByRole('textbox', { name: 'New task' }).press('Enter');
+	await expect(task(page, 'and butter')).toBeVisible();
+});
+
+test('Enter at the very start leaves the task whole', async ({ page }) => {
+	// The head would be empty, and a task may not be — so nothing is pushed
+	// down and an empty row opens beneath, which is what Enter always did.
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
+	await field.press('Enter');
+
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('');
+});
+
+test('the count of what is left appears late, and under the checkbox', async ({ page }) => {
+	// A phone, where a row long enough to be running out of room is several
+	// lines tall — which is the shape the count is placed for.
+	await page.setViewportSize({ width: 390, height: 760 });
+
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	const counter = page.locator('.counter');
+
+	// Quiet through the whole of a long task: there is nothing to do about it
+	// until the very end, since the row goes on taking characters either way.
+	await field.fill('A'.repeat(189));
+	await expect(counter).toHaveCount(0);
+
+	// Ten left, and counting down from there.
+	await field.fill('A'.repeat(190));
+	await expect(counter).toHaveText('10');
+	await field.fill('A'.repeat(196));
+	await expect(counter).toHaveText('4');
+
+	/*
+	 * Under the mark rather than out in the gutter beside the first line. The
+	 * writing is being done at the foot of a long row, so the count belongs
+	 * there — and it is in the checkbox's column, not the words'.
+	 */
+	const where = await page.evaluate(() => {
+		const row = document.querySelector('.tasks li:has(.counter)')!.getBoundingClientRect();
+		const mark = document.querySelector('.tasks li:has(.counter) svg')!.getBoundingClientRect();
+		const count = document.querySelector('.counter')!.getBoundingClientRect();
+		return { rowBottom: row.bottom, rowLeft: row.left, markBottom: mark.bottom, count };
+	});
+
+	// Below the mark, at the foot of the row, and never right of the words.
+	expect(where.count.top).toBeGreaterThan(where.markBottom);
+	expect(Math.abs(where.count.bottom - where.rowBottom)).toBeLessThan(2);
+	expect(where.count.left).toBeGreaterThanOrEqual(where.rowLeft - 1);
+
+	await page.keyboard.press('Escape');
+});
+
+test('the checkbox answers to more than the square it draws', async ({ page }) => {
+	/*
+	 * A checkbox is a small square in a line of words, and the words are a much
+	 * bigger thing to hit. So its target reaches a third again past its own
+	 * mark and the whole height of the row — a finger going for the box and
+	 * landing on the first word still ticks the task, which is what it meant.
+	 */
+	await addTask(page, 'Bread and butter and jam and cheese and everything else besides');
+
+	const reach = await page.evaluate(() => {
+		const box = document.querySelector('.tasks li [role="checkbox"]')!.getBoundingClientRect();
+		const mark = document.querySelector('.tasks li [role="checkbox"] svg')!.getBoundingClientRect();
+		const row = document.querySelector('.tasks li')!.getBoundingClientRect();
+		return { box, markRight: mark.right, rowHeight: row.height, rowTop: row.top };
+	});
+
+	// Wider than the mark by a good margin, and the full height of the row.
+	expect(reach.box.width).toBeGreaterThan(reach.markRight - reach.box.left + 20);
+	expect(Math.abs(reach.box.height - reach.rowHeight)).toBeLessThan(2);
+
+	// And a tap inside that reach, past where the mark stops, still ticks it.
+	await page.mouse.click(reach.box.right - 4, reach.rowTop + reach.rowHeight / 2);
+	await expect(page.getByRole('checkbox').first()).toHaveAttribute('aria-checked', 'true');
+});
+
 test('a task drawn over two lines is edited over two lines', async ({ page }) => {
 	const long =
 		'A rather long task that certainly runs onto a second line however wide the sheet is';
@@ -945,7 +1118,7 @@ test('a task drawn over two lines is edited over two lines', async ({ page }) =>
 	const words = page.getByRole('button', { name: long, exact: true });
 	const read = (await words.boundingBox())!.height;
 
-	await words.dblclick();
+	await words.click();
 	const field = page.getByRole('textbox').first();
 	await expect(field).toBeFocused();
 

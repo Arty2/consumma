@@ -6,6 +6,7 @@
 	import { handScribble } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
+	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { taken, tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
@@ -58,12 +59,6 @@
 	const MARK = 11;
 
 	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
-
-	/**
-	 * Long enough to be a second tap, short enough not to catch two decisions.
-	 * The same window a task row and the checkbox use — it is the same finger.
-	 */
-	const DOUBLE_TAP_MS = 320;
 
 	let folding: ReturnType<typeof setTimeout> | null = null;
 

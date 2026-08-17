@@ -5,6 +5,7 @@
 	import { langOf } from '$lib/doc/lang';
 	import { handChevron, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { sheet } from '$lib/state/doc.svelte';
@@ -52,13 +53,6 @@
 	const label = $derived(activeCode ? `${activeName} ${activeCode}` : activeName);
 
 	const sorted = $derived([...lists.entries].sort((a, b) => b.lastUsedAt - a.lastUsedAt));
-
-	/**
-	 * Long enough to be a second tap, short enough not to catch two decisions.
-	 * The same window every other double-tap in the app uses — it is the same
-	 * finger.
-	 */
-	const DOUBLE_TAP_MS = 320;
 
 	let pending: ReturnType<typeof setTimeout> | null = null;
 
