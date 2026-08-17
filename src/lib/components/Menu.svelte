@@ -26,6 +26,7 @@
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
 	import { handBack } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
@@ -171,6 +172,7 @@
 	 * asked for.
 	 */
 	async function syncNow() {
+		tapped();
 		error = null;
 		const outcome = await sync.sync();
 
@@ -179,6 +181,7 @@
 	}
 
 	function onShare() {
+		tapped();
 		share(invitation).then((result) => {
 			if (result === 'copied') copied = true;
 		});
@@ -193,6 +196,7 @@
 	 * field, is the whole of what it is for.
 	 */
 	async function onCopy() {
+		tapped();
 		copied = sync.code ? await copy(formatCode(sync.code)) : false;
 	}
 
@@ -203,11 +207,13 @@
 	 * it.
 	 */
 	async function onCopyLog() {
+		tapped();
 		const text = diagnostics.entries.join('\n');
 		logCopied = text !== '' && (await copy(text));
 	}
 
 	async function join(keep: boolean) {
+		tapped();
 		error = null;
 		joining = false;
 
@@ -322,8 +328,12 @@
 		 * there is no jump between the hand and the animation. Short of that it
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
-		if (commits(travelled, elapsed, panel.clientWidth, lead)) close();
-		else if (turn > 0 || slide > 0) springing = true;
+		if (commits(travelled, elapsed, panel.clientWidth, lead)) {
+			// The paper going over is a thing done, and the hand that did it is
+			// still on the glass to feel it.
+			tapped();
+			close();
+		} else if (turn > 0 || slide > 0) springing = true;
 	}
 </script>
 
@@ -403,7 +413,15 @@
 		<div class="tear-edge bottom"><TornEdge seed="bottom" flip mirror /></div>
 	</div>
 
-	<button class="close" type="button" onclick={close} aria-label={t.menu.close}>
+	<button
+		class="close"
+		type="button"
+		onclick={() => {
+			tapped();
+			close();
+		}}
+		aria-label={t.menu.close}
+	>
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
 			<!--
 				The same two strokes drawn twice: once in the paper, wide, and then
@@ -509,11 +527,25 @@
 			{/if}
 
 			<div class="pair apart">
-				<button type="button" class="caps boxed" onclick={onimport}>
+				<button
+					type="button"
+					class="caps boxed"
+					onclick={() => {
+						tapped();
+						onimport();
+					}}
+				>
 					<HandRect seed="btnimport" wobble={1.4} radius={3} />
 					{t.menu.import}
 				</button>
-				<button type="button" class="caps boxed" onclick={onexport}>
+				<button
+					type="button"
+					class="caps boxed"
+					onclick={() => {
+						tapped();
+						onexport();
+					}}
+				>
 					<HandRect seed="btnexport" wobble={1.4} radius={3} />
 					{t.menu.export}
 				</button>
@@ -526,12 +558,22 @@
 					class="caps boxed"
 					class:nothing={sheet.doneCount === 0}
 					disabled={sheet.doneCount === 0}
-					onclick={onclear}
+					onclick={() => {
+						tapped();
+						onclear();
+					}}
 				>
 					<HandRect seed="btnclear" wobble={1.4} radius={3} />
 					{t.menu.clear}
 				</button>
-				<button type="button" class="caps boxed" onclick={ondelete}>
+				<button
+					type="button"
+					class="caps boxed"
+					onclick={() => {
+						tapped();
+						ondelete();
+					}}
+				>
 					<HandRect seed="btndelete" wobble={1.4} radius={3} />
 					{t.menu.leave}
 				</button>
@@ -556,7 +598,14 @@
 						<HandRect seed="btnleave" wobble={1.4} radius={3} />
 						{t.menu.leaveThem}
 					</button>
-					<button type="button" class="caps boxed" onclick={() => (joining = false)}>
+					<button
+						type="button"
+						class="caps boxed"
+						onclick={() => {
+							tapped();
+							joining = false;
+						}}
+					>
 						<HandRect seed="btncancel" wobble={1.4} radius={3} />
 						{t.menu.cancel}
 					</button>
@@ -566,7 +615,14 @@
 					type="button"
 					class="caps boxed action"
 					disabled={!valid || sync.busy}
-					onclick={() => (hasLocal ? (joining = true) : join(false))}
+					onclick={() => {
+						if (!hasLocal) {
+							join(false);
+							return;
+						}
+						tapped();
+						joining = true;
+					}}
 				>
 					<HandRect seed="btnjoin" wobble={1.4} radius={3} />
 					{t.menu.join}
@@ -582,7 +638,14 @@
 			<div class="tear"><Perforation seed="menu-debug" /></div>
 
 			<div class="pair debug">
-				<button type="button" class="caps boxed" onclick={() => diagnostics.toggle()}>
+				<button
+					type="button"
+					class="caps boxed"
+					onclick={() => {
+						tapped();
+						diagnostics.toggle();
+					}}
+				>
 					<HandRect seed="btndebug" wobble={1.4} radius={3} />
 					{t.menu.debug({ on: diagnostics.enabled })}
 				</button>

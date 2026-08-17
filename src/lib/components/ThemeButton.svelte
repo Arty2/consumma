@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { handMoon, handSun, handSunMoon } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { theme } from '$lib/state/theme.svelte';
 	import { ui } from '$lib/state/ui.svelte';
@@ -43,6 +44,7 @@
 	 * something already said.
 	 */
 	function cycle() {
+		tapped();
 		const choice = theme.cycle();
 
 		/*

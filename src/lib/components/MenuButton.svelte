@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { handBurger } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 
 	/*
@@ -22,7 +23,10 @@
 <button
 	class="menu-button"
 	type="button"
-	onclick={onopen}
+	onclick={() => {
+		tapped();
+		onopen();
+	}}
 	aria-label={t.menu.label}
 	title={t.menu.label}
 >

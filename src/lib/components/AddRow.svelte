@@ -81,6 +81,7 @@
 
 	function start() {
 		if (disabled) return;
+		tapped();
 		byTap = true;
 		queueMicrotask(() => input?.focus());
 	}

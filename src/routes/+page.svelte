@@ -15,6 +15,7 @@
 	import { copy, paste } from '$lib/clipboard';
 	import { LIMITS } from '$lib/doc/limits';
 	import { drag } from '$lib/dnd/drag.svelte';
+	import { tapped } from '$lib/feel';
 	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
@@ -244,6 +245,9 @@
 		 * mounted now to take the second half.
 		 */
 		if (commits(travelled, elapsed, paper.clientWidth, lead)) {
+			// The paper going over is a thing done, and the hand that did it is
+			// still on the glass to feel it.
+			tapped();
 			flip = 'open';
 			panel = 'menu';
 		} else if (turn > 0 || slide > 0) settling = true;

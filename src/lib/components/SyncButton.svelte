@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { handArrow, handRefresh, handSlashedCircle, type HandOptions } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
@@ -177,6 +178,7 @@
 	 * how a broken deployment came to look like an idle one.
 	 */
 	async function syncNow() {
+		tapped();
 		const outcome = await sync.sync();
 
 		// `null` means the cooldown or an in-flight sync swallowed it; the button

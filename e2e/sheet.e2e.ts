@@ -887,6 +887,48 @@ test('the landing rule is drawn in the gap, and never moves the list', async ({ 
 	await page.mouse.up();
 });
 
+test('the phone answers back, and says different things for different acts', async ({ page }) => {
+	/*
+	 * `navigator.vibrate` is absent on desktop and refused outright by iOS
+	 * Safari, so nothing about this can be seen by looking at the app. Stubbed
+	 * and counted, because a confirmation nobody ever checks is a confirmation
+	 * that quietly stopped working.
+	 */
+	await page.addInitScript(() => {
+		(window as unknown as { buzzes: (number | number[])[] }).buzzes = [];
+		Object.defineProperty(navigator, 'vibrate', {
+			value: (pattern: number | number[]) => {
+				(window as unknown as { buzzes: (number | number[])[] }).buzzes.push(pattern);
+				return true;
+			},
+			configurable: true
+		});
+	});
+	await page.reload();
+
+	const buzzes = () =>
+		page.evaluate(() => (window as unknown as { buzzes: (number | number[])[] }).buzzes);
+	const clear = () =>
+		page.evaluate(() => ((window as unknown as { buzzes: (number | number[])[] }).buzzes = []));
+
+	await addTask(page, 'Bread');
+
+	// A tick is something finished: dot dot dash.
+	await clear();
+	await task(page, 'Bread').click();
+	expect(await buzzes()).toStrictEqual([[10, 50, 10, 50, 45]]);
+
+	// A delete is something taken away: dot dot.
+	await clear();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	expect(await buzzes()).toStrictEqual([[10, 60, 10]]);
+
+	// And a button is a thing done: one tap.
+	await clear();
+	await page.getByRole('button', { name: 'Menu' }).click();
+	expect(await buzzes()).toStrictEqual([10]);
+});
+
 test('a message comes down from above and can be thrown back out', async ({ page }) => {
 	/*
 	 * It used to appear and disappear outright, which is the one thing on the

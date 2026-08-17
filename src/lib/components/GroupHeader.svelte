@@ -190,7 +190,10 @@
 		<button
 			class="icon"
 			type="button"
-			onclick={ontoggle}
+			onclick={() => {
+				tapped();
+				ontoggle();
+			}}
 			onmousedown={(event) => event.preventDefault()}
 			aria-expanded={!collapsed}
 			aria-label={collapsed ? t.group.expand : t.group.collapse}

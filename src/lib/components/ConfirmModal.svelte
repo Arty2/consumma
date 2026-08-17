@@ -1,6 +1,7 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
 	import Modal from './Modal.svelte';
+	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 
@@ -27,11 +28,25 @@
 	<p class="sentence">{@render children()}</p>
 
 	<div class="choices">
-		<button type="button" class="caps boxed" onclick={onconfirm}>
+		<button
+			type="button"
+			class="caps boxed"
+			onclick={() => {
+				tapped();
+				onconfirm();
+			}}
+		>
 			<HandRect seed="{seed}confirm" wobble={1.4} radius={3} />
 			{confirmLabel}
 		</button>
-		<button type="button" class="caps boxed" onclick={oncancel}>
+		<button
+			type="button"
+			class="caps boxed"
+			onclick={() => {
+				tapped();
+				oncancel();
+			}}
+		>
 			<HandRect seed="{seed}cancel" wobble={1.4} radius={3} />
 			{t.confirm.cancel}
 		</button>
