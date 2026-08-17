@@ -138,6 +138,37 @@ test('the palette is black on white and nothing else', async ({ page }) => {
 	}
 });
 
+test('debug draws every box, and only when it is asked to', async ({ page }) => {
+	/*
+	 * The one deliberate breach of the two colours. It is a tool for whoever is
+	 * building the app rather than a state the app has, so what matters is that
+	 * it cannot appear without being asked for.
+	 */
+	const outlined = () =>
+		page.evaluate(
+			() =>
+				[...document.querySelectorAll('*')].filter((el) => {
+					const style = getComputedStyle(el);
+					// Focus rings are dashed ink and are not this.
+					return style.outlineStyle === 'dotted';
+				}).length
+		);
+
+	expect(await outlined()).toBe(0);
+	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBeUndefined();
+
+	await openMenu(page);
+	await page.getByRole('button', { name: 'Debug: Off' }).click();
+
+	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBe('on');
+	expect(await outlined()).toBeGreaterThan(10);
+
+	// And off again takes the attribute away rather than writing a second state.
+	await page.getByRole('button', { name: 'Debug: On' }).click();
+	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBeUndefined();
+	expect(await outlined()).toBe(0);
+});
+
 test('one handwritten face, served from our origin, and only one', async ({ page }) => {
 	const families = await page.evaluate(() => [...document.fonts].map((f) => f.family));
 
@@ -448,7 +479,19 @@ test('a checkbox sits level with the capitals it is beside', async ({ page }) =>
 	const offset = await page.evaluate(() => {
 		const row = document.querySelector('.tasks li')!;
 		const text = row.querySelector('.text')!;
-		const box = row.querySelector('svg path')!.getBoundingClientRect();
+		/*
+		 * The `<svg>` and not the `<path>` inside it.
+		 *
+		 * This is about where the mark is placed, and the path is drawn by a hand
+		 * that wanders: `handRect` overshoots each corner by up to `overshoot`,
+		 * seeded by the task's id, so the ink's own top edge lands somewhere new
+		 * on every run. Measured off the path the answer swung across two thirds
+		 * of a pixel from seed to seed against a bar of one, and crossed it often
+		 * enough to fail a full parallel run and never a single test. The svg's
+		 * box is exactly the 22px square the glyph is laid out in, and is the
+		 * thing the lift actually moves.
+		 */
+		const box = row.querySelector('[role="checkbox"] svg')!.getBoundingClientRect();
 
 		const style = getComputedStyle(text);
 		const range = document.createRange();
