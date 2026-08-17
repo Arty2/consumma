@@ -99,8 +99,8 @@
 	/** Swinging home after a drag that did not go far enough to close. */
 	let springing = $state(false);
 	/** Whether this gesture turned the paper, and so was not a press. */
-	let moved = false;
-	let dragStart: { x: number; at: number } | null = null;
+	let moved = $state(false);
+	let dragStart: { x: number; y: number; at: number } | null = null;
 
 	/*
 	 * Unfurling, once, on arrival — cleared by its own animationend so the drag
@@ -278,7 +278,49 @@
 		// has no way of asking for it.
 		panel?.style.setProperty('--half', `${panel.clientWidth / 2}`);
 
-		dragStart = { x: event.clientX, at: performance.now() };
+		dragStart = { x: event.clientX, y: event.clientY, at: performance.now() };
+	}
+
+	/**
+	 * Claiming the gesture from the browser, on the first move that is plainly
+	 * sideways.
+	 *
+	 * The panel's scroller takes vertical panning, so a phone has to decide
+	 * whose the movement is — and it decides once, at the start, from the first
+	 * millimetre. Given no reason to think the gesture belongs to the page it
+	 * hands it to the scroller and cancels the pointer, which is why the paper
+	 * slid its lead-in and then stopped dead: the slide is over by twenty-six
+	 * pixels and the turn does not begin until forty, so the gesture died in
+	 * the gap between them.
+	 *
+	 * Non-passive, and decided here rather than from `moved`: `touch-action` is
+	 * latched at the start of a gesture, so loosening it afterwards does
+	 * nothing, and by the time the pointer handler has seen four pixels the
+	 * browser has already chosen. A movement that is more across than down is
+	 * ours; anything else is left to the scroller, which is the same line the
+	 * pointer handler draws a moment later.
+	 *
+	 * The same thing the drag layer does for a lifted row, and for the same
+	 * reason — see the note beside `ontouchmove` in dnd/drag.svelte.ts.
+	 */
+	function claim(node: HTMLElement) {
+		function ontouchmove(event: TouchEvent) {
+			if (!dragStart || closing) return;
+
+			const touch = event.touches[0];
+			if (!touch) return;
+
+			const dx = Math.abs(touch.clientX - dragStart.x);
+			const dy = Math.abs(touch.clientY - dragStart.y);
+			if (dx > dy) event.preventDefault();
+		}
+
+		node.addEventListener('touchmove', ontouchmove, { passive: false });
+		return {
+			destroy() {
+				node.removeEventListener('touchmove', ontouchmove);
+			}
+		};
 	}
 
 	function onpointermove(event: PointerEvent) {
@@ -286,6 +328,17 @@
 		const travelled = event.clientX - dragStart.x;
 
 		if (!moved) {
+			/*
+			 * The panel is what scrolls, so a finger going down it has to keep
+			 * meaning that — and the first plainly vertical move gives the
+			 * gesture up for good rather than fighting the scroll all the way
+			 * down. The sheet has always done this; the panel did not, and read
+			 * only the sideways half of a movement that had both.
+			 */
+			if (Math.abs(event.clientY - dragStart.y) > Math.abs(travelled)) {
+				dragStart = null;
+				return;
+			}
 			if (travelled <= SLACK) return;
 			moved = true;
 
@@ -346,11 +399,13 @@
 	class:unfurling={entering}
 	class:furling={closing}
 	class:springing
+	class:turning={moved}
 	style:--turn="{turn}deg"
 	style:--axis="{axis}%"
 	style:--slide="{slide}px"
 	bind:this={panel}
 	use:trap={close}
+	use:claim
 	{onpointerdown}
 	{onpointermove}
 	{onpointerup}
@@ -731,7 +786,11 @@
 		display: flex;
 		flex-direction: column;
 		outline: none;
-		touch-action: pan-y;
+		/*
+		 * The same as the sheet's, pinch spelled out and all: `pan-y` alone
+		 * takes zoom away, and this is a panel of words on a phone.
+		 */
+		touch-action: pan-y pinch-zoom;
 		translate: calc(-50% + var(--slide, 0px)) 0;
 
 		/*
@@ -810,6 +869,21 @@
 	 * cascade, and closing has to be the one that does however the panel was
 	 * caught — mid-arrival, or mid-spring under a finger that let go.
 	 */
+	/*
+	 * While the paper is turning, nothing on it answers a finger.
+	 *
+	 * The gesture takes hold over the buttons here, so a drag that begins on
+	 * SYNC NOW and travels is turning the paper — and the button it began on
+	 * must not light up, take a hover, or answer the release. The click that
+	 * follows is already swallowed in the capture phase; this is the same rule
+	 * applied for the length of the movement rather than at the end of it.
+	 */
+	.turning :global(button),
+	.turning :global(a),
+	.turning :global(input) {
+		pointer-events: none;
+	}
+
 	.furling {
 		animation:
 			furl var(--flip) ease-in forwards,
@@ -947,6 +1021,11 @@
 		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
+		/*
+		 * A bounce at either end of the panel must not chain out to the page
+		 * behind it — the modal already contains its own for the same reason.
+		 */
+		overscroll-behavior: contain;
 		/*
 		 * In by the same margin the sheet keeps its writing off its own edges
 		 * by, so a line in the panel starts exactly where a task on the sheet

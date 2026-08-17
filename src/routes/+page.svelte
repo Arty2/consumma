@@ -427,6 +427,19 @@
 		{onpointerdown}
 		{onpointermove}
 		{onpointerup}
+		onclickcapture={(event) => {
+			/*
+			 * A drag that crossed a control is not a press of it. The gesture can
+			 * only begin on bare paper, but it can very easily end over a button —
+			 * the corner row is where a rightward drag arrives — and the release
+			 * fires a click on whatever is under the finger at the time. Swallowed
+			 * in the capture phase, before that button's own handler runs, which
+			 * is what the panel and the drag layer both already do.
+			 */
+			if (!dragging) return;
+			event.preventDefault();
+			event.stopPropagation();
+		}}
 		onpointercancel={() => {
 			dragStart = null;
 			if (dragging) {
@@ -580,6 +593,18 @@
 
 	.dragging {
 		translate: var(--slide, 0px) 0;
+	}
+
+	/*
+	 * While the paper is turning, nothing written on it answers a finger.
+	 *
+	 * The handlers are on `main`, which holds the pointer capture for the length
+	 * of the gesture, so taking the contents out of the way costs the drag
+	 * nothing and stops a row lighting up or a corner button taking a hover as
+	 * the paper goes past under the thumb. The panel does the same on its side.
+	 */
+	.dragging main > :global(*) {
+		pointer-events: none;
 	}
 
 	/*
