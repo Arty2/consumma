@@ -7,9 +7,12 @@
  * paper, where the axis has wandered to, and whether letting go finishes the
  * turn or lets it swing back.
  *
- * Which way each side turns is not decided here. The sheet goes one way and the
- * panel the other, because together they are one rotation carrying on in one
- * direction, and only the caller knows which half it is.
+ * Which way it turns is decided by the push, and only by the push. A hand
+ * moving rightwards sends the paper round one way and a hand moving leftwards
+ * sends it round the other, the way a receipt spun between two fingers does —
+ * so everything here takes the distance travelled with its sign on and hands
+ * back an answer with the same sign on it. Neither face has a direction of its
+ * own; both are carried by whichever hand is on them.
  */
 
 /**
@@ -75,9 +78,26 @@ export function leadFor(room: number): number {
  */
 export const OVER = 14;
 
-/** How far the paper has slid, in pixels: the lead-in, before any turn. */
+/**
+ * Which way a push is going: 1 rightwards, -1 leftwards.
+ *
+ * A push of nothing has no direction to report, and rightwards is the answer
+ * it gives — which is the way a tap turns the paper, so a gesture that never
+ * moved agrees with one that never happened.
+ */
+export function pushOf(travelled: number): 1 | -1 {
+	return travelled < 0 ? -1 : 1;
+}
+
+/**
+ * How far the paper has slid, in pixels: the lead-in, before any turn.
+ *
+ * Signed, because the paper slides the way it is pushed. Everything below
+ * measures the reach of a push and leaves its direction to `pushOf`.
+ */
 export function slideAt(travelled: number, lead: number): number {
-	return Math.min(Math.max(0, lead), Math.max(0, travelled - SLACK));
+	const reach = Math.min(Math.max(0, lead), Math.max(0, Math.abs(travelled) - SLACK));
+	return reach * pushOf(travelled);
 }
 
 /**
@@ -96,16 +116,27 @@ export function progress(travelled: number, width: number, lead: number): number
 /**
  * The angle a drag has turned the paper to, in degrees.
  *
- * `sign` is which way this side of the paper goes: the sheet turns one way to
- * show the panel, the panel the other to show the sheet back.
+ * The sign is the push's own. It used to be a parameter, on the reasoning that
+ * the sheet turned one way and the panel the other — but both were always
+ * given the same one, because the two are halves of a single rotation and a
+ * receipt does not know which of its faces is up. What decides the direction
+ * is the hand.
  */
-export function angleAt(travelled: number, width: number, sign: 1 | -1, lead: number): number {
-	return progress(travelled, width, lead) * QUARTER * sign;
+export function angleAt(travelled: number, width: number, lead: number): number {
+	const turned = progress(travelled, width, lead) * QUARTER;
+	// Flat is flat: without this a leftward push that has not begun to turn yet
+	// reports -0, which is a different number from 0 to everything that asks.
+	return turned === 0 ? 0 : turned * pushOf(travelled);
 }
 
-/** Where the axis has wandered to, as a percentage across the paper. */
+/**
+ * Where the axis has wandered to, as a percentage across the paper.
+ *
+ * It gives the way the push does: a hand shoving the paper leftwards carries
+ * the point it turns about leftwards with it.
+ */
 export function axisAt(travelled: number, width: number, lead: number): number {
-	return 50 + progress(travelled, width, lead) * DRIFT;
+	return 50 + progress(travelled, width, lead) * DRIFT * pushOf(travelled);
 }
 
 /**
@@ -115,7 +146,7 @@ export function axisAt(travelled: number, width: number, lead: number): number {
  * neither of which turns anything.
  */
 function turning(travelled: number, lead: number): number {
-	return Math.max(0, travelled - SLACK - Math.max(0, lead) - OVER);
+	return Math.max(0, Math.abs(travelled) - SLACK - Math.max(0, lead) - OVER);
 }
 
 /**

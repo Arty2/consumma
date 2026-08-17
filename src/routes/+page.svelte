@@ -16,7 +16,7 @@
 	import { LIMITS } from '$lib/doc/limits';
 	import { drag } from '$lib/dnd/drag.svelte';
 	import { tapped } from '$lib/feel';
-	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, leadFor, pushOf, slideAt, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -81,6 +81,16 @@
 	let dragging = $state(false);
 	let settling = $state(false);
 	let dragStart: { x: number; y: number; at: number } | null = null;
+	/*
+	 * Which way round the paper is going, carried from the hand into the
+	 * animation and on into the panel's half of the turn.
+	 *
+	 * The two halves have to agree: the sheet folds edge-on one way and the
+	 * panel has to come back out of the same edge, or the receipt changes
+	 * direction halfway through a movement nobody let go of. A tap leaves it at
+	 * 1, which is the way the paper has always gone.
+	 */
+	let spin = $state<1 | -1>(1);
 
 	/*
 	 * Face down: turned away, or on its way there.
@@ -139,6 +149,7 @@
 		paper?.style.setProperty('--turn', `${turn}deg`);
 		paper?.style.setProperty('--axis', `${axis}%`);
 		paper?.style.setProperty('--slide', `${slide}px`);
+		paper?.style.setProperty('--spin', `${spin}`);
 	}
 
 	/** Back to a paper nobody has touched. */
@@ -154,6 +165,10 @@
 			panel = 'menu';
 			return;
 		}
+
+		// Nobody pushed it, so it goes the way it goes when nobody does.
+		spin = 1;
+		place();
 
 		eye();
 		flip = 'open';
@@ -213,14 +228,16 @@
 				dragStart = null;
 				return;
 			}
-			if (dx <= SLACK) return;
+			// Either way now: the paper follows the push rather than only one of them.
+			if (Math.abs(dx) <= SLACK) return;
 			dragging = true;
 			// On the element the handlers are on, which is not the one that moves.
 			(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 		}
 
+		spin = pushOf(dx);
 		slide = slideAt(dx, lead);
-		turn = angleAt(dx, paper.clientWidth, 1, lead);
+		turn = angleAt(dx, paper.clientWidth, lead);
 		axis = axisAt(dx, paper.clientWidth, lead);
 		place();
 	}
@@ -250,7 +267,7 @@
 			tapped();
 			flip = 'open';
 			panel = 'menu';
-		} else if (turn > 0 || slide > 0) settling = true;
+		} else if (turn !== 0 || slide !== 0) settling = true;
 	}
 
 	/*
@@ -258,11 +275,20 @@
 	 * over it. The menu stays mounted through its own half of the turn and says
 	 * when it is done; only then is it taken away.
 	 */
-	function closeMenu() {
+	function closeMenu(pushed: 1 | -1 = 1) {
 		if (still()) {
 			panel = null;
 			return;
 		}
+
+		/*
+		 * The panel says which way it was pushed, and the sheet comes back round
+		 * the same way — one rotation carrying on, rather than two halves each
+		 * choosing for themselves. From the back arrow or from Escape there was
+		 * no push, and 1 is what a tap has always meant.
+		 */
+		spin = pushed;
+		place();
 
 		flip = 'close';
 	}
@@ -444,7 +470,7 @@
 			dragStart = null;
 			if (dragging) {
 				dragging = false;
-				if (turn > 0 || slide > 0) settling = true;
+				if (turn !== 0 || slide !== 0) settling = true;
 			}
 		}}
 	>
@@ -486,6 +512,7 @@
 
 {#if panel === 'menu'}
 	<Menu
+		{spin}
 		closing={flip === 'close'}
 		onclose={closeMenu}
 		onclosed={() => (panel = null)}
@@ -644,7 +671,7 @@
 			translate: var(--slide, 0px) 0;
 		}
 		to {
-			--turn: 90deg;
+			--turn: calc(90deg * var(--spin));
 			translate: 0 0;
 		}
 	}
@@ -671,7 +698,7 @@
 	 */
 	@keyframes turn-back {
 		from {
-			--turn: -90deg;
+			--turn: calc(-90deg * var(--spin));
 		}
 		to {
 			--turn: 0deg;

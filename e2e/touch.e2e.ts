@@ -109,6 +109,24 @@ test('a drag with a little drift in it is still a drag', async ({ page }) => {
 	await expect(page.getByRole('dialog', dialog)).toBeHidden();
 });
 
+test('and a finger drags it back the other way just as well', async ({ page }) => {
+	/*
+	 * The paper follows the hand. Swiping left to put the panel away is the same
+	 * gesture mirrored, and it turns the receipt the other way round rather than
+	 * refusing — which is what a receipt spun between two fingers does.
+	 */
+	await page.getByRole('button', { name: 'Menu' }).tap();
+	await expect(page.getByRole('dialog', dialog)).toBeVisible();
+	await settle(page);
+
+	const panel = (await page.getByRole('dialog', dialog).boundingBox())!;
+	await swipe(page, { x: panel.x + panel.width - 24, y: panel.y + panel.height / 2 }, { dx: -260 });
+	await settle(page);
+
+	await expect(page.getByRole('dialog', dialog)).toBeHidden();
+	expect(await page.locator('.page').evaluate(turned)).toBe(0);
+});
+
 test('a finger going down the panel scrolls it rather than turning it', async ({ page }) => {
 	await page.getByRole('button', { name: 'Menu' }).tap();
 	await expect(page.getByRole('dialog', dialog)).toBeVisible();

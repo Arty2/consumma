@@ -13,6 +13,7 @@
 </script>
 
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import CodeField from './CodeField.svelte';
 	import HandRect from './HandRect.svelte';
@@ -32,7 +33,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, leadFor, pushOf, slideAt, SLACK } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -46,7 +47,13 @@
 	type Props = {
 		/** Set by the page once the paper has begun turning back over. */
 		closing?: boolean;
-		onclose: () => void;
+		/**
+		 * Which way the sheet was pushed on its way out, so this face comes back
+		 * out of the edge the sheet folded into rather than out of the other one.
+		 */
+		spin?: 1 | -1;
+		/** Says which way this face was pushed, so the sheet's half agrees. */
+		onclose: (pushed: 1 | -1) => void;
 		/** The panel's half of the turn is done and it can be taken away. */
 		onclosed?: () => void;
 		onimport: () => void;
@@ -57,6 +64,7 @@
 
 	let {
 		closing = false,
+		spin: arriving = 1,
 		onclose,
 		onclosed,
 		onimport,
@@ -65,13 +73,19 @@
 		ondelete
 	}: Props = $props();
 
-	/*
+	/**
 	 * Asking twice to close is asking once. Escape during the furl, or a second
 	 * tap on the arrow, would otherwise restart the turn from the top.
+	 *
+	 * `pushed` is which way a hand sent this face round, so the sheet's half of
+	 * the turn carries on the same way. From the back arrow, from Escape or from
+	 * a finished join there was no push, and the paper goes the way it goes when
+	 * nobody pushes it.
 	 */
-	function close() {
+	function close(pushed: 1 | -1 = 1) {
 		if (closing) return;
-		onclose();
+		spin = pushed;
+		onclose(pushed);
 	}
 
 	let entered = $state('');
@@ -90,6 +104,15 @@
 	 * side as though there were somewhere beside the paper for it to go.
 	 */
 	let turn = $state(0);
+	/**
+	 * Which way round the paper is going.
+	 *
+	 * It arrives from the sheet, so the panel comes back out of the same edge
+	 * the sheet folded into — one rotation carrying on rather than two halves
+	 * each choosing for themselves. A hand on this face then takes it over, and
+	 * hands it back through `onclose` so the sheet's own half agrees in turn.
+	 */
+	let spin = $state<1 | -1>(untrack(() => arriving));
 	/** Where the axis has been pushed to, as a percentage across the paper. */
 	let axis = $state(50);
 	/** The lead-in: how far the panel has slid before it begins to turn. */
@@ -339,7 +362,8 @@
 				dragStart = null;
 				return;
 			}
-			if (travelled <= SLACK) return;
+			// Either way: the paper follows the push rather than only one of them.
+			if (Math.abs(travelled) <= SLACK) return;
 			moved = true;
 
 			/*
@@ -361,8 +385,9 @@
 			panel.setPointerCapture(event.pointerId);
 		}
 
+		spin = pushOf(travelled);
 		slide = slideAt(travelled, lead);
-		turn = angleAt(travelled, panel.clientWidth, 1, lead);
+		turn = angleAt(travelled, panel.clientWidth, lead);
 		axis = axisAt(travelled, panel.clientWidth, lead);
 	}
 
@@ -385,8 +410,8 @@
 			// The paper going over is a thing done, and the hand that did it is
 			// still on the glass to feel it.
 			tapped();
-			close();
-		} else if (turn > 0 || slide > 0) springing = true;
+			close(pushOf(travelled));
+		} else if (turn !== 0 || slide !== 0) springing = true;
 	}
 </script>
 
@@ -403,8 +428,9 @@
 	style:--turn="{turn}deg"
 	style:--axis="{axis}%"
 	style:--slide="{slide}px"
+	style:--spin={spin}
 	bind:this={panel}
-	use:trap={close}
+	use:trap={() => close()}
 	use:claim
 	{onpointerdown}
 	{onpointermove}
@@ -422,7 +448,7 @@
 	}}
 	onpointercancel={() => {
 		dragStart = null;
-		if ((turn > 0 || slide > 0) && !closing) springing = true;
+		if ((turn !== 0 || slide !== 0) && !closing) springing = true;
 	}}
 	onanimationend={(event) => {
 		/*
@@ -909,7 +935,7 @@
 	 */
 	@keyframes unfurl {
 		from {
-			--turn: -90deg;
+			--turn: calc(-90deg * var(--spin));
 		}
 		to {
 			--turn: 0deg;
@@ -921,7 +947,7 @@
 			translate: calc(-50% + var(--slide, 0px)) 0;
 		}
 		to {
-			--turn: 90deg;
+			--turn: calc(90deg * var(--spin));
 			translate: -50% 0;
 		}
 	}

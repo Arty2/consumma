@@ -595,6 +595,32 @@ a {
 }
 
 /*
+ * Which way round the paper is going: 1 for a push rightwards, -1 leftwards.
+ *
+ * The paper follows the hand, so every keyframe that names a quarter turn
+ * multiplies it by this rather than stating a direction — one set of frames on
+ * each face, and the sign arriving from the drag that started them. A tap
+ * leaves it at 1, so the paper spins the way it always did when nobody pushed
+ * it.
+ *
+ * Registered, and this one has to be: `--turn` is an `<angle>`, so
+ * `calc(90deg * var(--spin))` has to resolve to an angle at computed-value
+ * time or the whole declaration is invalid and the turn falls back to nought.
+ * An unregistered `--spin` would be a token substituted too late to help.
+ *
+ * It replaced a second set of keyframes chosen by a class. Two classes and two
+ * specificities meant `.unfurling.leftwards` outranked `.furling`, so a panel
+ * caught mid-arrival and then closed went on arriving — and the rule that
+ * closing must win however the panel was caught is worth more than the
+ * symmetry of writing the frames out twice.
+ */
+@property --spin {
+	syntax: '<number>';
+	inherits: true;
+	initial-value: 1;
+}
+
+/*
  * The near edge of a turning sheet, drawn heavier — and drawn heavier by
  * exactly as much as the rotation is about to take away.
  *

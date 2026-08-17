@@ -343,6 +343,34 @@ test.describe('the edge that comes forward', () => {
 		expect(await weight(page, '.page', 'left')).toBe(base);
 	});
 
+	test('the near edge is the one the push brings round, whichever way it went', async ({
+		page
+	}) => {
+		/*
+		 * Which edge is nearer is a reading of the rotation and nothing else, so
+		 * it swaps sides with the direction without being told: `--near` is the
+		 * sign of the sine, and a leftward push makes that negative. Pushed right
+		 * the left edge comes forward; pushed left it is the right one.
+		 */
+		await page.goto('/');
+		await inked(page);
+		const base = (await weight(page, '.page', 'left'))!;
+
+		const box = (await page.locator('main').boundingBox())!;
+		const y = box.y + box.height - 12;
+		const from = box.x + box.width - 30;
+
+		await page.mouse.move(from, y);
+		await page.mouse.down();
+		await page.mouse.move(from - 70, y, { steps: 6 });
+
+		expect(await weight(page, '.page', 'right')).toBeGreaterThan(base);
+		expect(await weight(page, '.page', 'left')).toBe(base);
+
+		await page.mouse.up();
+		await settle(page);
+	});
+
 	test('a finger turning the paper takes the edge with it', async ({ page }) => {
 		await page.goto('/');
 		await inked(page);
@@ -456,6 +484,51 @@ test.describe('turning it over by hand', () => {
 
 		await page.mouse.up();
 		await expect(page.getByRole('dialog', dialog)).toBeHidden();
+	});
+
+	test('a push leftwards turns the paper the other way', async ({ page }) => {
+		/*
+		 * The paper follows the hand. A receipt spun between two fingers goes
+		 * whichever way it is pushed, and so does this — the sheet used to answer
+		 * a rightward drag and ignore everything else, which made half of the one
+		 * gesture it has do nothing at all.
+		 */
+		await page.goto('/');
+
+		const box = (await page.locator('main').boundingBox())!;
+		const y = box.y + box.height - 12;
+		const from = box.x + box.width - 30;
+
+		// Seventy, as the rightward case uses: past the dead travel and under the
+		// forty pixels of turn that a quick flick commits on.
+		await page.mouse.move(from, y);
+		await page.mouse.down();
+		await page.mouse.move(from - 70, y, { steps: 6 });
+
+		// The other way round from a rightward push.
+		expect(await angle(page)).toBeLessThan(0);
+
+		// And short of the threshold, so it swings back rather than going over.
+		await page.mouse.up();
+		await settle(page);
+		expect(await angle(page)).toBe(0);
+		await expect(page.getByRole('dialog', dialog)).toBeHidden();
+	});
+
+	test('a push leftwards that goes far enough opens the menu too', async ({ page }) => {
+		await page.goto('/');
+
+		const box = (await page.locator('main').boundingBox())!;
+		const y = box.y + box.height - 12;
+		const from = box.x + box.width - 30;
+
+		await page.mouse.move(from, y);
+		await page.mouse.down();
+		await page.mouse.move(from - 260, y, { steps: 10 });
+		await page.mouse.up();
+
+		await expect(page.getByRole('dialog', dialog)).toBeVisible();
+		await settle(page);
 	});
 
 	test('a press that belongs to a row is left to the row', async ({ page }) => {
@@ -582,6 +655,30 @@ test.describe('turning it back by hand', () => {
 
 		await expect(page.getByRole('dialog', dialog)).toBeHidden();
 		await settle(page);
+		expect(await angle(page)).toBe(0);
+	});
+
+	test('the panel goes back on a push leftwards as readily as rightwards', async ({ page }) => {
+		await page.goto('/');
+		await menuButton(page).click();
+		await settle(page);
+		expect(await panelAngle(page)).toBe(0);
+
+		const box = (await page.getByRole('dialog', dialog).boundingBox())!;
+		const from = box.x + box.width - 24;
+		await page.mouse.move(from, box.y + box.height / 2);
+		await page.mouse.down();
+		await page.mouse.move(from - 70, box.y + box.height / 2, { steps: 6 });
+
+		// The way the hand went, which is the other way from a rightward push.
+		expect(await panelAngle(page)).toBeLessThan(0);
+
+		// Far enough and it goes, exactly as it does the other way.
+		await page.mouse.move(from - 260, box.y + box.height / 2, { steps: 10 });
+		await page.mouse.up();
+		await settle(page);
+
+		await expect(page.getByRole('dialog', dialog)).toBeHidden();
 		expect(await angle(page)).toBe(0);
 	});
 
