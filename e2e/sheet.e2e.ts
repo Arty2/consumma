@@ -887,6 +887,83 @@ test('the landing rule is drawn in the gap, and never moves the list', async ({ 
 	await page.mouse.up();
 });
 
+test('a message comes down from above and can be thrown back out', async ({ page }) => {
+	/*
+	 * It used to appear and disappear outright, which is the one thing on the
+	 * sheet that happened rather than moved — and a message that blinks out is
+	 * one you are never sure you saw.
+	 */
+	await addTask(page, 'Bread');
+	await task(page, 'Bread').click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+
+	const toast = page.locator('.toast');
+	await toast.waitFor();
+
+	/*
+	 * It arrives with a movement of its own, from off the top of the paper.
+	 * Svelte scopes the keyframes a component declares, so the name on the page
+	 * carries a hash in front of the one written in the file.
+	 */
+	const names = await toast.evaluate((el) =>
+		el.getAnimations().map((a) => (a as CSSAnimation).animationName)
+	);
+	expect(names.some((name) => name.endsWith('toast-arrive'))).toBe(true);
+
+	await toast.evaluate((el) =>
+		Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined)
+	);
+	const landed = (await toast.boundingBox())!;
+	expect(landed.y).toBeGreaterThan(0);
+
+	// Carried upwards far enough, it goes — and takes the offer of undo with it.
+	await page.mouse.move(landed.x + landed.width / 2, landed.y + landed.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(landed.x + landed.width / 2, landed.y + landed.height / 2 - 60, {
+		steps: 6
+	});
+	await page.mouse.up();
+
+	await expect(toast).toHaveCount(0);
+});
+
+test('a message can be thrown out sideways too, and UNDO still works', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await task(page, 'Bread').click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+
+	const toast = page.locator('.toast');
+	await toast.waitFor();
+	await toast.evaluate((el) =>
+		Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined)
+	);
+
+	// A press that never travels is still a press: UNDO brings the task back.
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(toast).toHaveCount(0);
+
+	/*
+	 * And a carry rightwards takes the next one away. The undo put the task
+	 * back exactly as it was, which is done — so it already offers its own way
+	 * out and must not be ticked again.
+	 */
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	await toast.waitFor();
+	await toast.evaluate((el) =>
+		Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined)
+	);
+
+	const box = (await toast.boundingBox())!;
+	await page.mouse.move(box.x + 30, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + 30 + 70, box.y + box.height / 2, { steps: 6 });
+	await page.mouse.up();
+
+	await expect(toast).toHaveCount(0);
+});
+
 test('a lifted row is offered nowhere that would put it back', async ({ page }) => {
 	/*
 	 * The rule immediately above the row being carried and the rule immediately

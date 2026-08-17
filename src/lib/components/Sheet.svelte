@@ -76,7 +76,8 @@
 		// group — so the undo is what covers a change of mind.
 		ui.say(t.toast.removed({ what }), () => {
 			sheet.restoreGroup(gone);
-			ui.dismiss();
+			// The change is undone, so the message describing it goes at once.
+			ui.dismiss(true);
 		});
 	}
 
@@ -98,7 +99,8 @@
 
 		ui.say(t.toast.deleted, () => {
 			sheet.restore([entry]);
-			ui.dismiss();
+			// The change is undone, so the message describing it goes at once.
+			ui.dismiss(true);
 		});
 	}
 

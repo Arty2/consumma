@@ -17,6 +17,16 @@ export type Toast = {
 export class Ui {
 	collapsed = $state<Record<string, boolean>>({});
 	toast = $state<Toast | null>(null);
+	/**
+	 * On its way out, and still on screen for as long as it takes.
+	 *
+	 * A message that blinks out is one you are never sure you saw, so it leaves
+	 * the way it arrived — up past the top of the paper. That needs the node to
+	 * stay in the document while the animation runs, which means the toast
+	 * cannot simply be set to null; `gone()` is what actually removes it, and
+	 * the component calls it when the movement ends.
+	 */
+	leaving = $state(false);
 	/** Announced to screen readers after a keyboard move. */
 	announcement = $state('');
 	loaded = $state(false);
@@ -59,13 +69,33 @@ export class Ui {
 	say(text: string, undo?: () => void): void {
 		if (this.#timer) clearTimeout(this.#timer);
 
+		this.leaving = false;
 		this.toast = { text, undo };
 		this.#timer = setTimeout(() => this.dismiss(), undo ? 10_000 : 4_000);
 	}
 
-	dismiss(): void {
+	/**
+	 * Start it leaving. The component takes it from here and says when it has.
+	 *
+	 * `now` is for the callers that cannot wait for a movement: an undo replaces
+	 * what the message was about, so the message goes with it rather than
+	 * sliding out over the change it just described.
+	 */
+	dismiss(now = false): void {
 		if (this.#timer) clearTimeout(this.#timer);
 		this.#timer = null;
+
+		if (now || this.toast === null) {
+			this.gone();
+			return;
+		}
+
+		this.leaving = true;
+	}
+
+	/** Actually off the screen: the movement ended, or there was never one. */
+	gone(): void {
+		this.leaving = false;
 		this.toast = null;
 	}
 

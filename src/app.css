@@ -209,6 +209,26 @@
 	--corner-y: calc(var(--paper-top) + var(--tear) + var(--corner-lead));
 
 	/*
+	 * The few pixels the toast stands below the row it covers.
+	 *
+	 * It lands on the corner buttons rather than near them, which is the whole
+	 * reason it takes their width and their height — but landing exactly on them
+	 * left its drawn box sitting on the burger's own ink at the top edge, and two
+	 * marks touching read as one. Small: any more and it stops covering the row
+	 * and starts being a second one.
+	 */
+	--toast-lead: 3px;
+
+	/*
+	 * How long the toast takes to come down and to go back up.
+	 *
+	 * Its own clock, not the paper's: `--flip` is half of a sheet turning over,
+	 * and a message arriving is not half of anything. Slower than the turn,
+	 * because it comes from off the screen rather than from the middle of it.
+	 */
+	--toast-slide: 200ms;
+
+	/*
 	 * Half a turn of the paper.
 	 *
 	 * Opening the menu turns the sheet over, and the two sides of it are two

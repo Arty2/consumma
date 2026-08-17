@@ -178,6 +178,11 @@ test('the toast still lands on the corner row with the switcher sharing it', asy
 	// The row pops before it actually goes, so the undo toast lands a beat
 	// after the click rather than in the same tick.
 	await page.locator('.toast').waitFor();
+	// It comes down from above the paper now, so it has to have landed before
+	// anything measures where it landed.
+	await page
+		.locator('.toast')
+		.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined));
 
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
@@ -185,9 +190,13 @@ test('the toast still lands on the corner row with the switcher sharing it', asy
 		return { top: toast.top, cornerTop: burger.top };
 	});
 
-	// The switcher rides this row too, and none of the three moves the line
-	// the toast stands on.
-	expect(where.top).toBeCloseTo(where.cornerTop, 0);
+	/*
+	 * The switcher rides this row too, and none of the three moves the line the
+	 * toast stands on — bar the few pixels of `--toast-lead` that keep its drawn
+	 * box off the burger's own ink.
+	 */
+	expect(where.top - where.cornerTop).toBeGreaterThanOrEqual(0);
+	expect(where.top - where.cornerTop).toBeLessThan(6);
 });
 
 test('a dropdown row switches with the keyboard, not just a tap', async ({ page }) => {

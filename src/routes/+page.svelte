@@ -360,7 +360,8 @@
 		// The confirm stops the accident; the undo covers the change of mind.
 		ui.say(t.toast.cleared({ count: cleared.length }), () => {
 			sheet.restore(cleared);
-			ui.dismiss();
+			// The change is undone, so the message describing it goes at once.
+			ui.dismiss(true);
 		});
 	}
 

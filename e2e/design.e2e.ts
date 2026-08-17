@@ -822,6 +822,11 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 	// The row pops before it actually goes, so the undo toast lands a beat
 	// after the click rather than in the same tick.
 	await page.locator('.toast').waitFor();
+	// It comes down from above the paper now, so it has to have landed before
+	// anything measures where it landed.
+	await page
+		.locator('.toast')
+		.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined));
 
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
@@ -838,10 +843,17 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 		};
 	});
 
-	// On the buttons' own line, standing where they stand rather than a row
-	// below them — and covering them outright while it shows, which is why it
-	// has to reach at least as far as the burger does at either end.
-	expect(where.top).toBeCloseTo(where.cornerTop, 0);
+	/*
+	 * On the buttons' own line, standing where they stand rather than a row
+	 * below them — and covering them outright while it shows, which is why it
+	 * has to reach at least as far as the burger does at either end.
+	 *
+	 * `--toast-lead` holds it a few pixels lower than dead level, so its own
+	 * drawn box does not sit on the burger's ink. Below the row rather than
+	 * above it, and never far enough to open a second line.
+	 */
+	expect(where.top - where.cornerTop).toBeGreaterThanOrEqual(0);
+	expect(where.top - where.cornerTop).toBeLessThan(6);
 	expect(where.bottom).toBeGreaterThanOrEqual(where.cornerBottom);
 	expect(where.right).toBeGreaterThanOrEqual(where.cornerRight);
 
