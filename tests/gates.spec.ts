@@ -200,4 +200,19 @@ describe('gates', () => {
 		expect(status).toBe(1);
 		expect(output).toContain('not the drawn link underline');
 	});
+
+	it('rejects an accessible name written into a component', () => {
+		file('src/lib/components/Thing.svelte', '<button aria-label="Delete task"></button>\n');
+
+		const { status, output } = runGates();
+
+		expect(status).toBe(1);
+		expect(output).toContain('rather than src/lib/i18n');
+	});
+
+	it('leaves a name bound from the catalogue alone', () => {
+		file('src/lib/components/Thing.svelte', '<button aria-label={t.task.delete}></button>\n');
+
+		expect(runGates().status).toBe(0);
+	});
 });

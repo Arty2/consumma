@@ -26,6 +26,7 @@
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
 	import { handBack } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { t } from '$lib/i18n';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
@@ -212,7 +213,7 @@
 
 		const outcome = await sync.join(entered, keep);
 		if (!outcome) {
-			error = 'That doesn’t look like a code.';
+			error = t.menu.badCode;
 			return;
 		}
 		if (outcome.status !== 'synced') {
@@ -330,7 +331,7 @@
 	class="menu"
 	role="dialog"
 	aria-modal="true"
-	aria-label="Menu"
+	aria-label={t.menu.label}
 	tabindex="-1"
 	class:unfurling={entering}
 	class:furling={closing}
@@ -402,7 +403,7 @@
 		<div class="tear-edge bottom"><TornEdge seed="bottom" flip mirror /></div>
 	</div>
 
-	<button class="close" type="button" onclick={close} aria-label="Close">
+	<button class="close" type="button" onclick={close} aria-label={t.menu.close}>
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
 			<!--
 				The same two strokes drawn twice: once in the paper, wide, and then
@@ -460,11 +461,11 @@
 			>
 				<HandRect seed="btnsync" wobble={1.4} radius={3} />
 				{#if sync.busy}
-					Syncing…
+					{t.menu.syncing}
 				{:else if sync.cooling}
-					Sync now ({sync.coolingFor})
+					{t.menu.syncCooling({ seconds: sync.coolingFor })}
 				{:else}
-					Sync now
+					{t.menu.syncNow}
 				{/if}
 			</button>
 
@@ -479,8 +480,8 @@
 			-->
 			<div class="tear"><Perforation seed="menu-list" /></div>
 
-			<h2 class="caps">This list</h2>
-			<TextRule text="This list" seed="thislist" centred />
+			<h2 class="caps">{t.menu.thisList}</h2>
+			<TextRule text={t.menu.thisList} seed="thislist" centred />
 
 			{#if sync.code}
 				<p class="code">{formatCode(sync.code)}</p>
@@ -488,15 +489,15 @@
 				<div class="pair">
 					<button type="button" class="caps boxed" onclick={onShare}>
 						<HandRect seed="btnshare" wobble={1.4} radius={3} />
-						Share
+						{t.menu.share}
 					</button>
 					<button type="button" class="caps boxed" onclick={onCopy}>
 						<HandRect seed="btncopy" wobble={1.4} radius={3} />
-						{copied ? 'Copied' : 'Copy'}
+						{copied ? t.menu.copied : t.menu.copy}
 					</button>
 				</div>
 
-				<p class="note">Anyone with this code can read and change the list.</p>
+				<p class="note">{t.menu.codeIsShared}</p>
 			{:else}
 				<!--
 					A code is the address of something on the server, and until a sync
@@ -504,17 +505,17 @@
 					an empty sheet and leave both of them wondering which of the two had
 					got it wrong.
 				-->
-				<p class="note">Only on this device. Sync it to get a code you can share.</p>
+				<p class="note">{t.menu.neverSynced}</p>
 			{/if}
 
 			<div class="pair apart">
 				<button type="button" class="caps boxed" onclick={onimport}>
 					<HandRect seed="btnimport" wobble={1.4} radius={3} />
-					Import
+					{t.menu.import}
 				</button>
 				<button type="button" class="caps boxed" onclick={onexport}>
 					<HandRect seed="btnexport" wobble={1.4} radius={3} />
-					Export
+					{t.menu.export}
 				</button>
 			</div>
 
@@ -528,40 +529,36 @@
 					onclick={onclear}
 				>
 					<HandRect seed="btnclear" wobble={1.4} radius={3} />
-					Clear
+					{t.menu.clear}
 				</button>
 				<button type="button" class="caps boxed" onclick={ondelete}>
 					<HandRect seed="btndelete" wobble={1.4} radius={3} />
-					Leave
+					{t.menu.leave}
 				</button>
 			</div>
 
 			<div class="tear"><Perforation seed="menu-join" /></div>
 
-			<h2 class="caps">Join list</h2>
-			<TextRule text="Join list" seed="joinlist" centred />
+			<h2 class="caps">{t.menu.joinList}</h2>
+			<TextRule text={t.menu.joinList} seed="joinlist" centred />
 
-			<CodeField bind:value={entered} label="Code" />
+			<CodeField bind:value={entered} label={t.menu.code} />
 
 			{#if joining}
 				<!-- Ask whether to merge or discard. Never decide silently. -->
-				<p class="ask">
-					You have {sheet.taskCount}
-					{sheet.taskCount === 1 ? 'task' : 'tasks'} here. Take them to the other list, or leave them
-					behind?
-				</p>
+				<p class="ask">{t.menu.joinAsk({ count: sheet.taskCount })}</p>
 				<div class="pair wrap">
 					<button type="button" class="caps boxed" onclick={() => join(true)}>
 						<HandRect seed="btntake" wobble={1.4} radius={3} />
-						Take them
+						{t.menu.takeThem}
 					</button>
 					<button type="button" class="caps boxed" onclick={() => join(false)}>
 						<HandRect seed="btnleave" wobble={1.4} radius={3} />
-						Leave them
+						{t.menu.leaveThem}
 					</button>
 					<button type="button" class="caps boxed" onclick={() => (joining = false)}>
 						<HandRect seed="btncancel" wobble={1.4} radius={3} />
-						Cancel
+						{t.menu.cancel}
 					</button>
 				</div>
 			{:else}
@@ -572,7 +569,7 @@
 					onclick={() => (hasLocal ? (joining = true) : join(false))}
 				>
 					<HandRect seed="btnjoin" wobble={1.4} radius={3} />
-					Join
+					{t.menu.join}
 				</button>
 			{/if}
 
@@ -587,18 +584,18 @@
 			<div class="pair debug">
 				<button type="button" class="caps boxed" onclick={() => diagnostics.toggle()}>
 					<HandRect seed="btndebug" wobble={1.4} radius={3} />
-					Debug log: {diagnostics.enabled ? 'On' : 'Off'}
+					{t.menu.debug({ on: diagnostics.enabled })}
 				</button>
 				{#if diagnostics.enabled && diagnostics.entries.length > 0}
 					<button type="button" class="caps boxed" onclick={onCopyLog}>
 						<HandRect seed="btncopylog" wobble={1.4} radius={3} />
-						{logCopied ? 'Copied' : 'Copy'}
+						{logCopied ? t.menu.copied : t.menu.copy}
 					</button>
 				{/if}
 			</div>
 
 			{#if diagnostics.enabled && diagnostics.entries.length > 0}
-				<div class="log" role="log" aria-label="Debug log">
+				<div class="log" role="log" aria-label={t.menu.debugLog}>
 					{#each diagnostics.entries as entry, i (i)}
 						<p class="entry">{entry}</p>
 					{/each}
@@ -618,11 +615,11 @@
 					v{__VERSION__} •
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 					<a href="https://heracl.es/consumma" target="_blank" rel="noopener noreferrer nofollow"
-						>heracl.es/consumma</a
+						>{t.menu.creditHome}</a
 					>
 				</p>
 				<p class="dedication">
-					Dialectic Acheropoieton<br />of Heracles Papatheodorou and Claude
+					{t.menu.credit}<br />{t.menu.creditOf}
 				</p>
 			</footer>
 		</div>

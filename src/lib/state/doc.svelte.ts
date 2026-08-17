@@ -5,10 +5,18 @@ import { createClock, type Ctx } from '$lib/doc/stamp';
 import { emptyDoc, type Doc, type State } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
 import { openCount, view, type ViewGroup } from '$lib/doc/view';
+import { t } from '$lib/i18n';
 import { KEYS, keysFor, persist, read, write, type ListKeySet } from './storage';
 
-/** What the first group is called until someone renames it. */
-export const FIRST_GROUP = 'My list';
+/**
+ * What the first group is called until someone renames it.
+ *
+ * This one is written into the document, unlike every other string in the app:
+ * it becomes a real group title the moment anything is put on a fresh sheet,
+ * and from then on it syncs, exports and merges like a title anybody typed. See
+ * the note beside `doc.firstGroup` in src/lib/i18n/en.ts.
+ */
+export const FIRST_GROUP: string = t.doc.firstGroup;
 
 /**
  * The document, in runes, backed by localStorage.

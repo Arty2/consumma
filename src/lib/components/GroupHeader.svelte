@@ -7,6 +7,7 @@
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
 	import { taken, tapped } from '$lib/feel';
+	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
 
 	type Props = {
@@ -197,7 +198,7 @@
 			onclick={ontoggle}
 			onmousedown={(event) => event.preventDefault()}
 			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+			aria-label={collapsed ? t.group.expand : t.group.collapse}
 		>
 			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
 		</button>
@@ -218,7 +219,7 @@
 				bind:value={draft}
 				use:grow={draft}
 				maxlength={LIMITS.groupTitle}
-				aria-label="Group title"
+				aria-label={t.group.title}
 				autofocus
 				onblur={commit}
 				{onkeydown}></textarea>
@@ -253,7 +254,7 @@
 					role="button"
 					tabindex="0"
 					lang={langOf(title)}
-					aria-label={title === '' ? 'Untitled group' : title}
+					aria-label={title === '' ? t.group.untitled : title}
 					onclick={ontap}
 					ondblclick={onsecondtap}
 					onkeydown={(event) => {
@@ -291,8 +292,8 @@
 				disabled={!finished}
 				onclick={remove}
 				onmousedown={(event) => event.preventDefault()}
-				aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
-				title={finished ? 'Delete group' : 'Finish its tasks first'}
+				aria-label={finished ? t.group.delete : t.group.deleteBlocked}
+				title={finished ? t.group.delete : t.group.deleteBlockedHint}
 			>
 				<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
 					<path d={cross} class="drawn" />

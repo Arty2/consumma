@@ -1,6 +1,7 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
 	import Modal from './Modal.svelte';
+	import { t } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 
 	type Props = {
@@ -32,7 +33,7 @@
 		</button>
 		<button type="button" class="caps boxed" onclick={oncancel}>
 			<HandRect seed="{seed}cancel" wobble={1.4} radius={3} />
-			Cancel
+			{t.confirm.cancel}
 		</button>
 	</div>
 </Modal>

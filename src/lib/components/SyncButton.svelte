@@ -2,6 +2,7 @@
 	import { browser } from '$app/environment';
 	import { handArrow, handRefresh, handSlashedCircle, type HandOptions } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { t } from '$lib/i18n';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -161,12 +162,10 @@
 
 	const label = $derived(
 		offline
-			? 'Sync — no connection last time'
+			? t.sync.buttonOffline
 			: waiting
-				? sync.unsent === 1
-					? 'Sync — 1 change waiting to go'
-					: `Sync — ${sync.unsent} changes waiting to go`
-				: 'Sync — not synced for a while'
+				? t.sync.buttonWaiting({ count: sync.unsent })
+				: t.sync.buttonStale
 	);
 
 	/*
@@ -185,7 +184,7 @@
 		if (!outcome) return;
 
 		// Both halves, or the quiet one is indistinguishable from a dead button.
-		if (outcome.status === 'synced') ui.say('Synced.');
+		if (outcome.status === 'synced') ui.say(t.toast.synced);
 		else if (sync.message) ui.say(sync.message);
 	}
 

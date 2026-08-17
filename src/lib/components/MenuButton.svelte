@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { handBurger } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { t } from '$lib/i18n';
 
 	/*
 	 * Three strokes, and nothing else. What is waiting to be synced is said by
@@ -18,7 +19,13 @@
 	const burger = handBurger(SIZE, { seed: seedFrom('burger'), wobble: 0.7 });
 </script>
 
-<button class="menu-button" type="button" onclick={onopen} aria-label="Menu" title="Menu">
+<button
+	class="menu-button"
+	type="button"
+	onclick={onopen}
+	aria-label={t.menu.label}
+	title={t.menu.label}
+>
 	<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE} aria-hidden="true">
 		<path d={burger} class="drawn" />
 	</svg>

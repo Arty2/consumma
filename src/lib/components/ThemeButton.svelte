@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { handMoon, handSun, handSunMoon } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { t } from '$lib/i18n';
 	import { theme } from '$lib/state/theme.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -29,10 +30,10 @@
 
 	const label = $derived(
 		theme.choice === 'dark'
-			? 'Theme — dark'
+			? t.theme.dark
 			: theme.choice === 'light'
-				? 'Theme — light'
-				: 'Theme — following the phone'
+				? t.theme.light
+				: t.theme.system
 	);
 
 	/*
@@ -44,7 +45,19 @@
 	function cycle() {
 		const choice = theme.cycle();
 
-		ui.announce(choice === 'system' ? 'Theme now follows the phone.' : `Theme now ${choice}.`);
+		/*
+		 * Three sentences rather than one with the choice dropped into it. The
+		 * old form interpolated a raw enum value — `Theme now dark.` — which
+		 * reads only because the two vocabularies happen to coincide, and would
+		 * not survive a second language at all.
+		 */
+		ui.announce(
+			choice === 'system'
+				? t.theme.nowSystem
+				: choice === 'dark'
+					? t.theme.nowDark
+					: t.theme.nowLight
+		);
 	}
 </script>
 

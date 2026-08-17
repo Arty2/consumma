@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import type { SyncStatus } from '$lib/state/sync.svelte';
 
 /*
@@ -28,43 +29,28 @@ export type StatusText = {
  * Nothing here is the error itself; `sync.message` carries that.
  */
 export function statusText(status: SyncStatus, unsent: number, refused = false): StatusText {
-	const waiting =
-		unsent === 0
-			? null
-			: unsent === 1
-				? '1 change is waiting to go.'
-				: `${unsent} changes are waiting to go.`;
+	const waiting = unsent === 0 ? null : t.sync.waiting({ count: unsent });
 
 	if (refused) {
 		return {
-			headline: waiting ?? 'Nothing is waiting to go.',
+			headline: waiting ?? t.sync.nothingWaiting,
 			// Not "sync and they will see it": syncing is what just failed.
-			detail: 'The list’s own server turned the last attempt away.'
+			detail: t.sync.refused
 		};
 	}
 
 	if (status === 'offline') {
-		return {
-			headline: waiting ?? 'Nothing is waiting to go.',
-			detail: 'The list could not be reached last time. Everything is safe on this device.'
-		};
+		return { headline: waiting ?? t.sync.nothingWaiting, detail: t.sync.unreachable };
 	}
 
 	if (waiting) {
-		return {
-			headline: waiting,
-			// Agrees with the count above it. One change is an "it".
-			detail:
-				unsent === 1
-					? 'Nobody else can see it until you sync.'
-					: 'Nobody else can see them until you sync.'
-		};
+		return { headline: waiting, detail: t.sync.unseen({ count: unsent }) };
 	}
 
 	// Never synced and nothing to send: an empty list on a fresh device.
 	if (status === 'pending') {
-		return { headline: 'Nothing is waiting to go.', detail: null };
+		return { headline: t.sync.nothingWaiting, detail: null };
 	}
 
-	return { headline: 'Everything is synced.', detail: null };
+	return { headline: t.sync.everythingSynced, detail: null };
 }

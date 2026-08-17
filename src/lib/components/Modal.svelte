@@ -3,6 +3,7 @@
 	import { trap } from '$lib/a11y/trap';
 	import { handCross, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { t } from '$lib/i18n';
 	import type { Snippet } from 'svelte';
 
 	type Props = {
@@ -83,7 +84,7 @@
 		</svg>
 	</div>
 
-	<button class="close" type="button" onclick={onclose} aria-label="Close">
+	<button class="close" type="button" onclick={onclose} aria-label={t.menu.close}>
 		<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
 			<path d={cross} class="drawn" />
 		</svg>

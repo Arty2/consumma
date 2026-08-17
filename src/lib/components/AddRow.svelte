@@ -8,6 +8,7 @@
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
 	import { grow } from '$lib/grow';
+	import { t } from '$lib/i18n';
 
 	type Props = {
 		/** Returns true if the task was created, so the row can stay open. */
@@ -180,13 +181,13 @@
 			lang={langOf(draft)}
 			bind:this={input}
 			bind:value={draft}
-			aria-label="New task"
+			aria-label={t.task.new}
 			onblur={() => commit(false)}
 			{oninput}
 			{onkeydown}
 			use:grow={draft}></textarea>
 	{:else}
-		<button class="text caps" type="button" onclick={start} {disabled} aria-label="Add a task">
+		<button class="text caps" type="button" onclick={start} {disabled} aria-label={t.task.add}>
 			…
 		</button>
 	{/if}

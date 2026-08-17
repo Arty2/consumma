@@ -6,6 +6,7 @@
 	import { handChevron, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
+	import { t } from '$lib/i18n';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { nameFor, type ListEntry } from '$lib/state/lists';
 	import { lists } from '$lib/state/lists.svelte';
@@ -193,7 +194,7 @@
 				unfinished rather than as a list that has simply never left this
 				device.
 			-->
-			<span class="code" aria-label={rowCode === null ? 'Local only, never synced' : rowCode}
+			<span class="code" aria-label={rowCode === null ? t.lists.localOnly : rowCode}
 				>{rowCode ?? '¢'}</span
 			>
 		</div>
@@ -203,7 +204,7 @@
 
 	<button type="button" class="row new caps boxed" onclick={onnew}>
 		<HandRect seed={`listrownew-${context}`} wobble={1.4} radius={3} />
-		New list
+		{t.lists.new}
 	</button>
 {/snippet}
 
@@ -258,13 +259,23 @@
 			is the keyboard trap CLAUDE.md rules out.
 		-->
 		{#if open && context === 'sheet'}
-			<Modal title="Switch list" seed={`listswitch-${context}`} onclose={() => (open = false)}>
-				<div class="listbox" role="listbox" aria-label="Lists" bind:clientWidth={dropdownWidth}>
+			<Modal title={t.lists.switch} seed={`listswitch-${context}`} onclose={() => (open = false)}>
+				<div
+					class="listbox"
+					role="listbox"
+					aria-label={t.lists.label}
+					bind:clientWidth={dropdownWidth}
+				>
 					{@render rows()}
 				</div>
 			</Modal>
 		{:else if open}
-			<div class="dropdown menu" role="listbox" aria-label="Lists" bind:clientWidth={dropdownWidth}>
+			<div
+				class="dropdown menu"
+				role="listbox"
+				aria-label={t.lists.label}
+				bind:clientWidth={dropdownWidth}
+			>
 				{@render rows()}
 			</div>
 		{/if}

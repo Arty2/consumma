@@ -339,8 +339,8 @@ test('the debug log is off by default, and shows what a sync attempt did once tu
 	await expect(page.locator('[role="log"][aria-label="Debug log"]')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(0);
 
-	await page.getByRole('button', { name: 'Debug log: Off' }).click();
-	await expect(page.getByRole('button', { name: 'Debug log: On' })).toBeVisible();
+	await page.getByRole('button', { name: 'Debug: Off' }).click();
+	await expect(page.getByRole('button', { name: 'Debug: On' })).toBeVisible();
 
 	// Nothing has happened yet, so there is nothing to show or copy.
 	await expect(page.locator('[role="log"][aria-label="Debug log"]')).toHaveCount(0);
@@ -358,16 +358,16 @@ test('the debug log is off by default, and shows what a sync attempt did once tu
 
 	// Turning it off clears what was kept, the same as every other thing here
 	// that takes something away.
-	await page.getByRole('button', { name: 'Debug log: On' }).click();
-	await expect(page.getByRole('button', { name: 'Debug log: Off' })).toBeVisible();
+	await page.getByRole('button', { name: 'Debug: On' }).click();
+	await expect(page.getByRole('button', { name: 'Debug: Off' })).toBeVisible();
 	await expect(log).toHaveCount(0);
 
 	// And the choice itself — on or off — survives a reload.
-	await page.getByRole('button', { name: 'Debug log: Off' }).click();
+	await page.getByRole('button', { name: 'Debug: Off' }).click();
 	await page.keyboard.press('Escape');
 	await page.reload();
 	await openMenu(page);
-	await expect(page.getByRole('button', { name: 'Debug log: On' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Debug: On' })).toBeVisible();
 });
 
 test('the debug log shows what a push actually sent, and its result', async ({ page }) => {
@@ -377,7 +377,7 @@ test('the debug log shows what a push actually sent, and its result', async ({ p
 	await page.reload();
 
 	await openMenu(page);
-	await page.getByRole('button', { name: 'Debug log: Off' }).click();
+	await page.getByRole('button', { name: 'Debug: Off' }).click();
 	await page.keyboard.press('Escape');
 
 	await addTask(page, 'Bread');

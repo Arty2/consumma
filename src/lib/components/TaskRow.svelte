@@ -13,6 +13,7 @@
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
 	import { taken } from '$lib/feel';
+	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
 
 	type Props = {
@@ -425,7 +426,7 @@
 		Removing something is for things that are finished with.
 	-->
 	{#if task.state === 'done' && !editing && !drag.dragging}
-		<button class="remove" type="button" onclick={pop} aria-label="Delete task">
+		<button class="remove" type="button" onclick={pop} aria-label={t.task.delete}>
 			<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
 				<path d={cross} class="drawn" />
 			</svg>

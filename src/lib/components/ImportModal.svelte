@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import HandRect from './HandRect.svelte';
 	import Modal from './Modal.svelte';
+	import { t } from '$lib/i18n';
 	import { fromMarkdown, looksStructured, type Parsed } from '$lib/markdown/from';
 
 	type Props = {
@@ -37,10 +38,10 @@
 	const structured = $derived(looksStructured(text));
 	const refusal = $derived(
 		structured === 'json'
-			? 'That looks like a data file, not a list.'
+			? t.import.refusedJson
 			: structured === 'html'
-				? 'That looks like a web page, not a list.'
-				: 'That doesn’t look like a task list.'
+				? t.import.refusedHtml
+				: t.import.refusedOther
 	);
 
 	/** What each line will become, in the notation it will be exported in. */
@@ -49,7 +50,7 @@
 	}
 </script>
 
-<Modal title="Import" seed="import" {onclose}>
+<Modal title={t.import.title} seed="import" {onclose}>
 	<!--
 		What was read, always shown and always editable.
 
@@ -65,13 +66,11 @@
 		rather than a fallback nobody maintains, and the same box either way.
 	-->
 	<p class="hint">
-		{text === ''
-			? 'Paste a list — one thing per line, or a markdown checklist.'
-			: 'From your clipboard. Edit it here if anything is off.'}
+		{text === '' ? t.import.empty : t.import.fromClipboard}
 	</p>
 
 	<label>
-		<span class="sr-only">Markdown to import</span>
+		<span class="sr-only">{t.import.field}</span>
 		<textarea rows="5" bind:value={text} oninput={look}></textarea>
 	</label>
 
@@ -80,22 +79,18 @@
 			<p role="alert">{refusal}</p>
 		{/if}
 	{:else}
-		<p class="summary">
-			Add {parsed.tasks}
-			{parsed.tasks === 1 ? 'task' : 'tasks'} in {groups}
-			{groups === 1 ? 'group' : 'groups'}?
-		</p>
+		<p class="summary">{t.import.summary({ tasks: parsed.tasks, groups })}</p>
 
 		<!-- Boxed and centred, the same as every other pair of actions. -->
 		<div class="choices">
 			<button type="button" class="caps boxed" onclick={() => onapply(parsed!, 'replace')}>
 				<HandRect seed="btnreplace" wobble={1.4} radius={3} />
-				Replace All
+				{t.import.replaceAll}
 			</button>
 			<!-- Add is the default, and is what pressing IMPORT implies — rightmost. -->
 			<button type="button" class="caps boxed" onclick={() => onapply(parsed!, 'add')}>
 				<HandRect seed="btnadd" wobble={1.4} radius={3} />
-				Add
+				{t.import.add}
 			</button>
 		</div>
 
@@ -119,7 +114,7 @@
 			once: nothing reorders, nothing is identified across renders, and the
 			whole block is replaced whenever the text changes.
 		-->
-		<div class="preview" aria-label="What will be added">
+		<div class="preview" aria-label={t.import.preview}>
 			{#each parsed.groups as group, at (at)}
 				{#if group.title !== ''}
 					<p class="heading">## {group.title}</p>

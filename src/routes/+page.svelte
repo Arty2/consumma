@@ -13,12 +13,14 @@
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
+	import { LIMITS } from '$lib/doc/limits';
 	import { drag } from '$lib/dnd/drag.svelte';
 	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
 	import { toMarkdown } from '$lib/markdown/to';
+	import { t } from '$lib/i18n';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { lists } from '$lib/state/lists.svelte';
@@ -301,13 +303,13 @@
 	async function onExport() {
 		const markdown = toMarkdown(sheet.doc);
 		if (markdown === '') {
-			ui.say('Nothing to copy yet.');
+			ui.say(t.toast.nothingToCopy);
 			return;
 		}
 
 		const count = sheet.taskCount;
 		const ok = await copy(markdown);
-		ui.say(ok ? `Copied ${count} ${count === 1 ? 'task' : 'tasks'}.` : 'Couldn’t copy.');
+		ui.say(ok ? t.toast.copied({ count }) : t.toast.couldNotCopy);
 	}
 
 	async function onImport() {
@@ -328,20 +330,25 @@
 		const result = applyImport(sheet.doc, ctx, parsed, mode);
 		panel = null;
 
+		/*
+		 * Written from LIMITS rather than spelled out. These two were the only
+		 * messages in the app that typed the number a second time, so raising a
+		 * limit moved the sheet's copy and left these two saying the old one.
+		 */
 		if (result.refused === 'tasks') {
-			ui.say('That would go over 100 tasks — clear some first.');
+			ui.say(t.toast.overTasks({ max: LIMITS.tasks }));
 			return;
 		}
 		if (result.refused === 'groups') {
-			ui.say('That would go over 20 groups.');
+			ui.say(t.toast.overGroups({ max: LIMITS.groups }));
 			return;
 		}
 
 		sheet.replace(result.doc);
 		ui.say(
 			result.skipped > 0
-				? `Added ${result.added}, skipped ${result.skipped} already there.`
-				: `Added ${result.added}.`
+				? t.toast.addedSkipped({ count: result.added, skipped: result.skipped })
+				: t.toast.added({ count: result.added })
 		);
 	}
 
@@ -351,7 +358,7 @@
 		if (cleared.length === 0) return;
 
 		// The confirm stops the accident; the undo covers the change of mind.
-		ui.say(`Cleared ${cleared.length}.`, () => {
+		ui.say(t.toast.cleared({ count: cleared.length }), () => {
 			sheet.restore(cleared);
 			ui.dismiss();
 		});
@@ -360,7 +367,7 @@
 	function onDelete() {
 		panel = null;
 		lists.deleteCurrent();
-		ui.say('Left this device.');
+		ui.say(t.toast.left);
 	}
 </script>
 
@@ -473,37 +480,33 @@
 	<ImportModal initial={pasted} onapply={applyMarkdown} onclose={() => (panel = null)} />
 {:else if panel === 'clear'}
 	<ConfirmModal
-		title="Clear completed tasks"
+		title={t.confirm.clearTitle}
 		seed="clear"
-		confirmLabel="Clear"
+		confirmLabel={t.confirm.clearConfirm}
 		onconfirm={onClear}
 		oncancel={() => (panel = null)}
 	>
-		Remove {sheet.doneCount} completed {sheet.doneCount === 1 ? 'task' : 'tasks'}? They go for
-		everyone on this list, the next time you sync.
+		{t.confirm.clearBody({ count: sheet.doneCount })}
 	</ConfirmModal>
 {:else if panel === 'delete'}
 	<ConfirmModal
-		title="Leave this list"
+		title={t.confirm.leaveTitle}
 		seed="delete"
-		confirmLabel="Leave"
+		confirmLabel={t.confirm.leaveConfirm}
 		onconfirm={onDelete}
 		oncancel={() => (panel = null)}
 	>
 		{#if sync.code}
-			This leaves the list off this phone. Everyone else keeps it. To come back you'll need the code
-			— {formatCode(sync.code)}. This is the last screen it exists on.
+			{t.confirm.leaveBody({ code: formatCode(sync.code) })}
 			{#if sync.unsent > 0}
-				You have {sync.unsent}
-				{sync.unsent === 1 ? 'change' : 'changes'} that never reached anyone else; those go too.
+				{t.confirm.leaveUnsent({ count: sync.unsent })}
 			{/if}
 		{:else}
 			<!--
 				Never synced, so there is no code to write down and nobody else holding
 				a copy. Offering one last look at a code would be offering nothing.
 			-->
-			This list has never been synced, so it is nowhere but here. Leaving takes all of it with it, and
-			there is no code to come back with.
+			{t.confirm.leaveBodyNoCode}
 		{/if}
 	</ConfirmModal>
 {/if}
