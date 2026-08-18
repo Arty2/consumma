@@ -24,6 +24,23 @@
 export const QUARTER = 90;
 
 /**
+ * The whole movement, which is what a drag covers.
+ *
+ * A receipt turned over goes through a half-turn, and a hand doing it by
+ * feel expects to see the back come round as it pushes — not to let go and be
+ * shown it. The drag therefore drives the whole hundred and eighty degrees and
+ * the two faces divide it between them: the one that is showing turns to
+ * edge-on over the first quarter, and the one behind comes round out of
+ * edge-on over the second. Whichever is past ninety degrees of its own is
+ * turned away and not drawn, so exactly one of them is ever on screen.
+ *
+ * It used to be that a drag only turned the face it started on and the other
+ * was animated in afterwards, which left the paper turning away into an empty
+ * white field for the whole of the gesture.
+ */
+export const HALF = 180;
+
+/**
  * How far the axis wanders from the middle at the end of a full drag, as a
  * percentage of the paper's width.
  *
@@ -133,6 +150,45 @@ export function progress(travelled: number, width: number, lead: number): number
 }
 
 /**
+ * How far round the whole receipt a drag has carried it, in degrees.
+ *
+ * Nought is the face it started on, square to the reader; ninety is edge-on;
+ * a hundred and eighty is the other face square to the reader. The sign is the
+ * push's own.
+ */
+export function spanAt(travelled: number, width: number, lead: number): number {
+	const span = progress(travelled, width, lead) * HALF;
+	// Flat is flat: -0 is a different number from 0 to everything that asks.
+	return span === 0 ? 0 : span * pushOf(travelled);
+}
+
+/**
+ * Where the face the drag started on is, given the whole rotation.
+ *
+ * It turns to edge-on and stays there. Past the quarter it is showing the
+ * reader its back, and the other face has taken over.
+ */
+export function leavingAt(span: number): number {
+	const reached = Math.min(Math.abs(span), QUARTER);
+	return reached === 0 ? 0 : reached * pushOf(span);
+}
+
+/**
+ * Where the face coming round behind it is, given the whole rotation.
+ *
+ * Held edge-on until the paper is halfway over, then it comes round to square.
+ * Clamped rather than left to run from a hundred and eighty, because past a
+ * quarter turn an element is simply shown mirrored — the two faces are two
+ * elements and neither has a back of its own to hide behind.
+ */
+export function arrivingAt(span: number): number {
+	const reached = Math.max(Math.min(Math.abs(span), HALF), QUARTER);
+	const from = reached - HALF;
+	// Square is square: -0 is a different number from 0 to everything that asks.
+	return from === 0 ? 0 : from * pushOf(span);
+}
+
+/**
  * The angle a drag has turned the paper to, in degrees.
  *
  * The sign is the push's own. It used to be a parameter, on the reasoning that
@@ -189,15 +245,19 @@ export function commits(travelled: number, elapsed: number, width: number, lead:
 }
 
 /**
- * How much of a half-turn is left to play, from 0 to 1.
+ * How much of the leaving face's quarter is left to play, from 0 to 1.
  *
- * The face on its way out has already been carried part of the way by the hand,
- * and only the rest of it has to be animated. Given to the animation as a
- * fraction of `--flip`, the paper carries on at one rate however far round the
- * finger left it — rather than always taking the full duration, which flung it
- * through eighty degrees after a small push and crawled through the last five
- * after a large one.
+ * The hand has already carried the paper part of the way, and only the rest of
+ * it has to be animated. Given to the animation as a fraction of `--flip`, the
+ * paper carries on at one rate however far round the finger left it — rather
+ * than always taking the full duration, which flung it through eighty degrees
+ * after a small push and crawled through the last five after a large one.
  */
-export function fallOf(angle: number): number {
-	return Math.min(1, Math.max(0, (QUARTER - Math.abs(angle)) / QUARTER));
+export function fallOf(span: number): number {
+	return Math.min(1, Math.max(0, (QUARTER - Math.abs(leavingAt(span))) / QUARTER));
+}
+
+/** The same for the face coming round: how much of its own quarter is left. */
+export function riseOf(span: number): number {
+	return Math.min(1, Math.max(0, Math.abs(arrivingAt(span)) / QUARTER));
 }

@@ -559,10 +559,15 @@ test.describe('turning it over by hand', () => {
 		await expect(page.getByRole('dialog', dialog)).toBeVisible();
 	});
 
-	test('it falls over once it is past halfway, and not before', async ({ page }) => {
+	test('it falls over once it is past edge-on, and not before', async ({ page }) => {
+		/*
+		 * The drag carries the whole half-turn, so the middle of it is the moment
+		 * the paper stands edge-on — which is exactly the point a thing being
+		 * turned over stops coming back and starts falling.
+		 */
 		await page.setViewportSize({ width: 390, height: 760 });
 
-		/** Drag slowly to `distance`, let go, and say whether it went over. */
+		/** Drag slowly to `distance`, let go, and say what was showing and where. */
 		async function pushTo(distance: number) {
 			await page.goto('/');
 			const box = (await page.locator('main').boundingBox())!;
@@ -572,23 +577,28 @@ test.describe('turning it over by hand', () => {
 			await page.mouse.move(x, y);
 			await page.mouse.down();
 			await page.mouse.move(x + distance, y, { steps: 20 });
-			const deg = await angle(page);
+
+			const sheet = await angle(page);
+			// The panel only exists once the paper has gone past edge-on.
+			const crossed = (await page.getByRole('dialog', dialog).count()) > 0;
 			await page.mouse.up();
 			await settle(page);
 
 			const open = (await page.getByRole('dialog', dialog).count()) > 0;
-			return { deg, open };
+			return { sheet, crossed, open };
 		}
 
-		// Short of the middle it comes back, which is what a receipt held on its
-		// edge does.
-		const shy = await pushTo(120);
-		expect(shy.deg).toBeLessThan(45);
+		// Short of edge-on the sheet is still the face on show, and it comes back.
+		const shy = await pushTo(110);
+		expect(shy.sheet).toBeLessThan(90);
+		expect(shy.crossed).toBe(false);
 		expect(shy.open).toBe(false);
 
-		// Past it, it falls the rest of the way on its own.
-		const over = await pushTo(200);
-		expect(over.deg).toBeGreaterThan(45);
+		// Past it the sheet is edge-on, the panel is up, and it falls the rest of
+		// the way on its own.
+		const over = await pushTo(170);
+		expect(over.sheet).toBe(90);
+		expect(over.crossed).toBe(true);
 		expect(over.open).toBe(true);
 	});
 
@@ -598,11 +608,15 @@ test.describe('turning it over by hand', () => {
 		 * already carried it, so a small push was flung through eighty degrees at
 		 * a speed the hand had never been going — which is what read as a jump
 		 * rather than as the paper carrying on.
+		 *
+		 * Measured on the panel, because that is the face still to arrive once
+		 * the paper is past edge-on: the sheet's own half is already spent by
+		 * then, and its share of the duration is correspondingly nothing.
 		 */
 		await page.setViewportSize({ width: 390, height: 760 });
 
-		/** The length of the sheet's own half, in milliseconds, at release. */
-		async function playing(distance: number) {
+		/** How long the arriving face still has to play, at the moment of release. */
+		async function arriving(distance: number) {
 			await page.goto('/');
 			const box = (await page.locator('main').boundingBox())!;
 			const y = box.y + box.height - 20;
@@ -614,23 +628,99 @@ test.describe('turning it over by hand', () => {
 			await page.mouse.up();
 
 			const ms = await page
-				.locator('.page')
+				.getByRole('dialog', dialog)
 				.evaluate((el) => parseFloat(getComputedStyle(el).animationDuration) * 1000);
 			await settle(page);
-			if (await page.getByRole('dialog', dialog).count()) {
-				await page.keyboard.press('Escape');
-				await settle(page);
-			}
+			await page.keyboard.press('Escape');
+			await settle(page);
 			return ms;
 		}
 
-		// Let go just past the middle and about half of it is left to play; let
-		// go with the paper all but edge-on and there is next to nothing.
-		const fromHalfway = await playing(140);
-		const fromNearlyThere = await playing(300);
+		// Let go just past edge-on and the panel has nearly the whole of its own
+		// quarter to come round; let go with it all but square and there is next
+		// to nothing left.
+		const justOver = await arriving(150);
+		const nearlyThere = await arriving(300);
 
-		expect(fromHalfway).toBeGreaterThan(fromNearlyThere * 2);
-		expect(fromNearlyThere).toBeLessThan(30);
+		expect(justOver).toBeGreaterThan(nearlyThere * 2);
+		expect(nearlyThere).toBeLessThan(30);
+	});
+
+	test('the back comes round under the finger, before it is let go', async ({ page }) => {
+		/*
+		 * The drag carries the whole half-turn, not just the face it started on.
+		 * It used to turn the sheet away into an empty white field and only show
+		 * the menu once the finger was off — so for the whole of the gesture the
+		 * receipt had a blank back.
+		 */
+		await page.setViewportSize({ width: 390, height: 760 });
+		await page.goto('/');
+
+		const box = (await page.locator('main').boundingBox())!;
+		const y = box.y + box.height - 20;
+		const x = box.x + 4;
+
+		await page.mouse.move(x, y);
+		await page.mouse.down();
+
+		// Short of edge-on there is only the sheet, and it is what is turning.
+		await page.mouse.move(x + 110, y, { steps: 12 });
+		await expect(page.getByRole('dialog', dialog)).toHaveCount(0);
+		expect(await angle(page)).toBeGreaterThan(0);
+
+		// Past it the sheet is edge-on and the back is there, partway round and
+		// still under the finger.
+		await page.mouse.move(x + 180, y, { steps: 8 });
+		expect(await angle(page)).toBe(90);
+
+		const panel = page.getByRole('dialog', dialog);
+		await expect(panel).toBeVisible();
+		const partway = await panelAngle(page);
+		expect(partway).toBeLessThan(0);
+		expect(partway).toBeGreaterThan(-90);
+
+		// And it keeps coming as the finger keeps going, rather than waiting.
+		await page.mouse.move(x + 240, y, { steps: 8 });
+		expect(await panelAngle(page)).toBeGreaterThan(partway);
+
+		await page.mouse.up();
+		await settle(page);
+		await expect(panel).toBeVisible();
+		expect(await panelAngle(page)).toBe(0);
+	});
+
+	test('and the list comes back round under a finger on the panel', async ({ page }) => {
+		// The same thing mirrored: a drag on the panel turns the sheet up behind
+		// it, so neither face is ever turned away into nothing.
+		await page.setViewportSize({ width: 390, height: 760 });
+		await page.goto('/');
+		await menuButton(page).click();
+		await settle(page);
+
+		const box = (await page.getByRole('dialog', dialog).boundingBox())!;
+		const y = box.y + box.height / 2;
+		const x = box.x + 6;
+
+		await page.mouse.move(x, y);
+		await page.mouse.down();
+		await page.mouse.move(x + 110, y, { steps: 12 });
+
+		// Still the panel's own half: the sheet behind it is edge-on.
+		expect(await panelAngle(page)).toBeGreaterThan(0);
+		expect(await angle(page)).toBe(-90);
+
+		// Past edge-on the panel has gone and the list is coming back round.
+		await page.mouse.move(x + 190, y, { steps: 8 });
+		expect(await panelAngle(page)).toBe(90);
+
+		const partway = await angle(page);
+		expect(partway).toBeLessThan(0);
+		expect(partway).toBeGreaterThan(-90);
+
+		await page.mouse.up();
+		await settle(page);
+		await expect(page.getByRole('dialog', dialog)).toBeHidden();
+		expect(await angle(page)).toBe(0);
 	});
 
 	test('a press that belongs to a row is left to the row', async ({ page }) => {

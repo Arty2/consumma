@@ -10,7 +10,12 @@ import {
 	progress,
 	pushOf,
 	REACH,
+	HALF,
+	arrivingAt,
 	fallOf,
+	leavingAt,
+	riseOf,
+	spanAt,
 	QUARTER,
 	slideAt,
 	SLACK
@@ -153,6 +158,68 @@ describe('REACH', () => {
 		expect(angleAt(halfway + 1, WIDE, lead)).toBeGreaterThan(QUARTER / 2);
 		expect(commits(halfway + 1, 4000, WIDE, lead)).toBe(true);
 		expect(commits(halfway - 1, 4000, WIDE, lead)).toBe(false);
+	});
+});
+
+describe('the two faces of one rotation', () => {
+	const lead = 8;
+	/** The drag that carries the receipt exactly `deg` of the way round. */
+	const to = (deg: number) => SLACK + lead + OVER + (WIDE * REACH * deg) / HALF;
+
+	it('carries the whole half-turn, not just the near face of it', () => {
+		// A hand turning a receipt over expects to see the back come round as it
+		// pushes, not to let go and be shown it.
+		expect(spanAt(to(HALF), WIDE, lead)).toBeCloseTo(HALF, 4);
+		expect(spanAt(to(QUARTER), WIDE, lead)).toBeCloseTo(QUARTER, 4);
+		expect(spanAt(-to(HALF), WIDE, lead)).toBeCloseTo(-HALF, 4);
+	});
+
+	it('shows the face it started on for the first quarter, and then stops', () => {
+		expect(leavingAt(0)).toBe(0);
+		expect(leavingAt(45)).toBe(45);
+		expect(leavingAt(QUARTER)).toBe(QUARTER);
+		// Past edge-on it is showing the reader its back, and stays put.
+		expect(leavingAt(135)).toBe(QUARTER);
+		expect(leavingAt(HALF)).toBe(QUARTER);
+	});
+
+	it('holds the face behind edge-on until the paper is halfway over', () => {
+		expect(arrivingAt(0)).toBe(-QUARTER);
+		expect(arrivingAt(45)).toBe(-QUARTER);
+		expect(arrivingAt(QUARTER)).toBe(-QUARTER);
+		// And then it comes round to square.
+		expect(arrivingAt(135)).toBe(-45);
+		expect(arrivingAt(HALF)).toBe(0);
+	});
+
+	it('never has both faces square-on at once', () => {
+		// Exactly one of them is ever drawn: the other is at a quarter or past it,
+		// which is edge-on and has no width.
+		for (let span = 0; span <= HALF; span += 5) {
+			const showing = [leavingAt(span), arrivingAt(span)].filter((deg) => Math.abs(deg) < QUARTER);
+			expect(showing.length, `at ${span}deg`).toBeLessThanOrEqual(1);
+		}
+	});
+
+	it('mirrors both faces when the push goes the other way', () => {
+		expect(leavingAt(-45)).toBe(-45);
+		expect(arrivingAt(-135)).toBe(45);
+		expect(arrivingAt(-HALF)).toBe(0);
+	});
+
+	it('splits the duration between them, so neither replays the other', () => {
+		// Nothing turned yet: the near face has its whole quarter, the far one its
+		// own behind it.
+		expect(fallOf(0)).toBe(1);
+		expect(riseOf(0)).toBe(1);
+
+		// Halfway: the near face is spent and the far one is all still to come.
+		expect(fallOf(QUARTER)).toBe(0);
+		expect(riseOf(QUARTER)).toBe(1);
+
+		// All the way round by hand: there is nothing left for either to play.
+		expect(fallOf(HALF)).toBe(0);
+		expect(riseOf(HALF)).toBe(0);
 	});
 });
 

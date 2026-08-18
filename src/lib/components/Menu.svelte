@@ -33,7 +33,19 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits, fallOf, leadFor, pushOf, slideAt, SLACK } from '$lib/turn';
+	import {
+		axisAt,
+		commits,
+		fallOf,
+		leadFor,
+		leavingAt,
+		pushOf,
+		QUARTER,
+		riseOf,
+		slideAt,
+		spanAt,
+		SLACK
+	} from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -52,8 +64,19 @@
 		 * out of the edge the sheet folded into rather than out of the other one.
 		 */
 		spin?: 1 | -1;
+		/**
+		 * The angle the page's own drag is holding this face at, while the sheet
+		 * is being turned over by hand and this is the face coming up behind it.
+		 * Null once the finger is off and this face plays its own arrival.
+		 */
+		behind?: number | null;
 		/** Says which way this face was pushed, so the sheet's half agrees. */
 		onclose: (pushed: 1 | -1) => void;
+		/**
+		 * How far round a drag on this face has carried the whole receipt, so the
+		 * page can turn the sheet up behind it under the same finger.
+		 */
+		onspan?: (span: number) => void;
 		/** The panel's half of the turn is done and it can be taken away. */
 		onclosed?: () => void;
 		onimport: () => void;
@@ -65,7 +88,9 @@
 	let {
 		closing = false,
 		spin: arriving = 1,
+		behind = null,
 		onclose,
+		onspan,
 		onclosed,
 		onimport,
 		onexport,
@@ -92,7 +117,9 @@
 		 * back up. From the arrow or from Escape the hand pushed nothing, so the
 		 * whole quarter is still to go.
 		 */
-		document.documentElement.style.setProperty('--flip-out', `${fallOf(from)}`);
+		const root = document.documentElement.style;
+		root.setProperty('--flip-out', `${fallOf(from)}`);
+		root.setProperty('--flip-in', `${riseOf(from)}`);
 		onclose(pushed);
 	}
 
@@ -111,7 +138,24 @@
 	 * and pulling it rightwards turns it over, rather than sliding it off to one
 	 * side as though there were somewhere beside the paper for it to go.
 	 */
-	let turn = $state(0);
+	/*
+	 * Asked here rather than left to the media query, as every animation in this
+	 * app is — and asked before the first angle below is chosen, because with no
+	 * animation to play there is nothing to come round from.
+	 */
+	const motion = browser && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	/*
+	 * Edge-on to begin with, because that is where this face starts: the paper
+	 * is halfway over and this side is coming round. `unfurl` takes whatever is
+	 * here as its first frame rather than naming one, so a drag that has already
+	 * carried it partway hands over without a jump.
+	 *
+	 * Square straight away when nothing is going to animate, or the panel would
+	 * arrive edge-on and stay there — there would be no `animationend` to put it
+	 * right, which is the same trap every other animation here is written around.
+	 */
+	let turn = $state(untrack(() => (behind !== null ? behind : motion ? -QUARTER * arriving : 0)));
 	/**
 	 * Which way round the paper is going.
 	 *
@@ -121,6 +165,12 @@
 	 * hands it back through `onclose` so the sheet's own half agrees in turn.
 	 */
 	let spin = $state<1 | -1>(untrack(() => arriving));
+	/**
+	 * Where this face actually is: under the page's finger while the sheet is
+	 * being turned over, and its own the rest of the time.
+	 */
+	const shown = $derived(behind === null ? turn : behind);
+	const shownSpin = $derived<1 | -1>(behind === null ? spin : arriving);
 	/** Where the axis has been pushed to, as a percentage across the paper. */
 	let axis = $state(50);
 	/** The lead-in: how far the panel has slid before it begins to turn. */
@@ -132,6 +182,10 @@
 	/** Whether this gesture turned the paper, and so was not a press. */
 	let moved = $state(false);
 	let dragStart: { x: number; y: number; at: number } | null = null;
+	/** How far round the whole receipt this face's drag has carried it. */
+	let span = 0;
+	/** Whether it has gone past edge-on, after which there is no winding back. */
+	let crossed = false;
 
 	/*
 	 * Unfurling, once, on arrival — cleared by its own animationend so the drag
@@ -143,7 +197,19 @@
 	 * the sheet gets out of the way — under reduced motion that delay would
 	 * survive on its own and leave the panel edge-on and unreadable for it.
 	 */
-	let entering = $state(browser && !matchMedia('(prefers-reduced-motion: reduce)').matches);
+	/*
+	 * Not while a finger is still carrying it. A panel mounted mid-drag is
+	 * already partway round and being turned by hand; its own arrival is what
+	 * plays out whatever is left once the hand lets go.
+	 */
+	let entering = $state(motion && untrack(() => behind === null));
+	let awaited = untrack(() => behind !== null);
+
+	$effect(() => {
+		if (!awaited || behind !== null) return;
+		awaited = false;
+		if (motion) entering = true;
+	});
 	let logCopied = $state(false);
 
 	/*
@@ -285,6 +351,8 @@
 		if ((event.target as HTMLElement).closest('input, textarea')) return;
 
 		moved = false;
+		crossed = false;
+		span = 0;
 
 		/*
 		 * Caught on its way home. It is only ever a few degrees out by then —
@@ -395,8 +463,17 @@
 
 		spin = pushOf(travelled);
 		slide = slideAt(travelled, lead);
-		turn = angleAt(travelled, panel.clientWidth, lead);
+
+		const reached = spanAt(travelled, panel.clientWidth, lead);
+		// Once it is over it is over — see the same clamp in +page.svelte.
+		if (crossed) span = Math.max(Math.abs(reached), QUARTER) * spin;
+		else span = reached;
+		if (Math.abs(span) >= QUARTER) crossed = true;
+
+		turn = leavingAt(span);
 		axis = axisAt(travelled, panel.clientWidth, lead);
+		// The sheet is the face coming up behind, and the page is what turns it.
+		onspan?.(span);
 	}
 
 	function onpointerup(event: PointerEvent) {
@@ -414,17 +491,20 @@
 		 * there is no jump between the hand and the animation. Short of that it
 		 * swings back upright, which it now actually does: it used to snap.
 		 */
+		if (!commits(travelled, elapsed, panel.clientWidth, lead)) onspan?.(0);
+
 		if (commits(travelled, elapsed, panel.clientWidth, lead)) {
 			// The paper going over is a thing done, and the hand that did it is
 			// still on the glass to feel it.
 			tapped();
-			close(pushOf(travelled), turn);
+			close(pushOf(travelled), span);
 		} else if (turn !== 0 || slide !== 0) springing = true;
 	}
 </script>
 
 <div
 	class="menu"
+	class:held={behind !== null}
 	role="dialog"
 	aria-modal="true"
 	aria-label={t.menu.label}
@@ -433,10 +513,10 @@
 	class:furling={closing}
 	class:springing
 	class:turning={moved}
-	style:--turn="{turn}deg"
+	style:--turn="{shown}deg"
 	style:--axis="{axis}%"
 	style:--slide="{slide}px"
-	style:--spin={spin}
+	style:--spin={shownSpin}
 	bind:this={panel}
 	use:trap={() => close()}
 	use:claim
@@ -477,7 +557,18 @@
 			turn = 0;
 			axis = 50;
 			slide = 0;
-		} else entering = false;
+		} else {
+			/*
+			 * Arrived. `turn` has to be square now, not merely animated to it:
+			 * this face starts edge-on so that `unfurl` can pick it up there
+			 * without naming a first frame, and the moment the animation is taken
+			 * away the inline angle is what draws the paper again. Left at the
+			 * angle it started from, the panel simply vanished the instant it had
+			 * finished arriving.
+			 */
+			entering = false;
+			turn = 0;
+		}
 	}}
 >
 	<!--
@@ -883,7 +974,8 @@
 	 * and has the entire quarter to come round.
 	 */
 	.unfurling {
-		animation: unfurl var(--flip) ease-out calc(var(--flip) * var(--flip-out, 1)) both;
+		animation: unfurl calc(var(--flip) * var(--flip-in, 1)) ease-out
+			calc(var(--flip) * var(--flip-out, 1)) both;
 		will-change: transform;
 	}
 
@@ -919,6 +1011,7 @@
 	 * follows is already swallowed in the capture phase; this is the same rule
 	 * applied for the length of the movement rather than at the end of it.
 	 */
+	.held,
 	.turning :global(button),
 	.turning :global(a),
 	.turning :global(input) {
@@ -948,10 +1041,14 @@
 	 * both halves are exactly edge-on at that instant. And nothing turns past a
 	 * quarter, so no content is ever shown from behind.
 	 */
+	/*
+	 * No `from`: it starts wherever the paper already is. From a tap that is
+	 * edge-on, which is where `turn` is initialised; from a drag it is however
+	 * far round the finger carried it before letting go, so the hand hands over
+	 * to the animation without a jump — the same arrangement `turn-away` on the
+	 * sheet has always used.
+	 */
 	@keyframes unfurl {
-		from {
-			--turn: calc(-90deg * var(--spin));
-		}
 		to {
 			--turn: 0deg;
 		}
