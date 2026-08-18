@@ -9,6 +9,8 @@ import {
 	OVER,
 	progress,
 	pushOf,
+	REACH,
+	fallOf,
 	QUARTER,
 	slideAt,
 	SLACK
@@ -79,13 +81,15 @@ describe('progress', () => {
 	});
 
 	it('counts from the end of the overdrag, not from the touch', () => {
-		expect(progress(SLACK + LEAD + OVER + 39, WIDE, LEAD)).toBeCloseTo(39 / WIDE, 6);
+		// Against the reach rather than the whole width: a phone's paper is the
+		// screen, so a quarter turn geared to the full width was out of hand.
+		expect(progress(SLACK + LEAD + OVER + 39, WIDE, LEAD)).toBeCloseTo(39 / (WIDE * REACH), 6);
 	});
 
 	it('still waits out the overdrag when there was no room to slide into', () => {
 		// No slide at all, but the push before the paper gives in is the same.
 		expect(progress(SLACK + OVER, WIDE, 0)).toBe(0);
-		expect(progress(SLACK + OVER + 39, WIDE, 0)).toBeCloseTo(39 / WIDE, 6);
+		expect(progress(SLACK + OVER + 39, WIDE, 0)).toBeCloseTo(39 / (WIDE * REACH), 6);
 	});
 
 	it('stops at the whole width, however far the hand goes', () => {
@@ -129,6 +133,50 @@ describe('angleAt', () => {
 	});
 });
 
+describe('REACH', () => {
+	it('brings the whole quarter turn inside the reach of a hand', () => {
+		// The paper on a phone is the screen. Geared to the full width, a quarter
+		// turn wanted more pixels of drag than the screen has, so the paper could
+		// not be turned over by hand at all — every gesture fell over from
+		// whatever small angle the thumb had run out of room at.
+		const phone = 390;
+		const dead = SLACK + 8 + OVER;
+		expect(dead + phone * REACH).toBeLessThan(phone);
+	});
+
+	it('puts the commit threshold exactly at halfway round', () => {
+		// Past the middle it falls the rest of the way; short of it, it comes
+		// back. Both sides of the boundary, measured in degrees.
+		const lead = 8;
+		const halfway = SLACK + lead + OVER + (WIDE * REACH) / 2;
+
+		expect(angleAt(halfway + 1, WIDE, lead)).toBeGreaterThan(QUARTER / 2);
+		expect(commits(halfway + 1, 4000, WIDE, lead)).toBe(true);
+		expect(commits(halfway - 1, 4000, WIDE, lead)).toBe(false);
+	});
+});
+
+describe('fallOf', () => {
+	it('asks for the whole duration when the hand moved nothing', () => {
+		expect(fallOf(0)).toBe(1);
+	});
+
+	it('asks for none of it when the hand did the whole turn', () => {
+		expect(fallOf(QUARTER)).toBe(0);
+		expect(fallOf(-QUARTER)).toBe(0);
+	});
+
+	it('asks for what is left, so the paper carries on at one rate', () => {
+		expect(fallOf(QUARTER / 2)).toBeCloseTo(0.5, 6);
+		expect(fallOf(-QUARTER / 2)).toBeCloseTo(0.5, 6);
+	});
+
+	it('never asks for more than there is, or less than none', () => {
+		expect(fallOf(QUARTER * 3)).toBe(0);
+		expect(fallOf(-QUARTER * 3)).toBe(0);
+	});
+});
+
 describe('pushOf', () => {
 	it('reads a push rightwards as one way and leftwards as the other', () => {
 		expect(pushOf(40)).toBe(1);
@@ -149,7 +197,10 @@ describe('axisAt', () => {
 
 	it('wanders with the drag, and no further than the drift', () => {
 		expect(axisAt(WIDE * 2, WIDE, LEAD)).toBe(50 + DRIFT);
-		expect(axisAt(SLACK + LEAD + OVER + WIDE / 2, WIDE, LEAD)).toBeCloseTo(50 + DRIFT / 2, 6);
+		expect(axisAt(SLACK + LEAD + OVER + (WIDE * REACH) / 2, WIDE, LEAD)).toBeCloseTo(
+			50 + DRIFT / 2,
+			6
+		);
 	});
 
 	it('goes off the middle the way the finger went, either way', () => {

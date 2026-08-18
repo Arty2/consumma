@@ -16,7 +16,7 @@
 	import { LIMITS } from '$lib/doc/limits';
 	import { drag } from '$lib/dnd/drag.svelte';
 	import { tapped } from '$lib/feel';
-	import { angleAt, axisAt, commits, leadFor, pushOf, slideAt, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, fallOf, leadFor, pushOf, slideAt, SLACK } from '$lib/turn';
 	import { formatCode } from '$lib/crypto/derive';
 	import { applyImport } from '$lib/markdown/apply';
 	import type { Parsed } from '$lib/markdown/from';
@@ -152,6 +152,21 @@
 		paper?.style.setProperty('--spin', `${spin}`);
 	}
 
+	/**
+	 * How long the half that is leaving has left to play.
+	 *
+	 * Written on the document rather than on the paper, because both faces need
+	 * it and they are not related: the sheet's own turn takes this long, and the
+	 * panel waits exactly this long before unfurling. One number on the root and
+	 * they cannot disagree — passed as a prop they would be two numbers that had
+	 * to be kept in step, which is the arrangement `--spin` was written to avoid.
+	 *
+	 * A tap has pushed the paper nowhere, so it plays the whole thing.
+	 */
+	function falling(from: number) {
+		document.documentElement.style.setProperty('--flip-out', `${fallOf(from)}`);
+	}
+
 	/** Back to a paper nobody has touched. */
 	function flat() {
 		turn = 0;
@@ -166,9 +181,11 @@
 			return;
 		}
 
-		// Nobody pushed it, so it goes the way it goes when nobody does.
+		// Nobody pushed it, so it goes the way it goes when nobody does — and it
+		// has the whole quarter still to go.
 		spin = 1;
 		place();
+		falling(0);
 
 		eye();
 		flip = 'open';
@@ -262,6 +279,14 @@
 		 * mounted now to take the second half.
 		 */
 		if (commits(travelled, elapsed, paper.clientWidth, lead)) {
+			/*
+			 * Only the rest of the way. The hand has already carried the paper
+			 * part of the quarter, so playing the full duration from there flung
+			 * it through whatever was left at a speed the hand had never been
+			 * going — which is what made a small push read as a jump rather than
+			 * as the paper carrying on.
+			 */
+			falling(turn);
 			// The paper going over is a thing done, and the hand that did it is
 			// still on the glass to feel it.
 			tapped();
@@ -645,8 +670,8 @@
 	 */
 	.turning {
 		animation:
-			turn-away var(--flip) ease-in forwards,
-			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
+			turn-away calc(var(--flip) * var(--flip-out, 1)) ease-in forwards,
+			recentre calc(var(--flip) * var(--flip-out, 1) * 0.6) var(--inertia) forwards;
 	}
 
 	/* A drag that stopped short. The paper swings back up and the axis home. */
@@ -662,8 +687,13 @@
 	 * edge-on through that wait rather than standing it up and turning it away
 	 * again.
 	 */
+	/*
+	 * Delayed by the panel's own half, which is however much of it the hand left
+	 * to play — `--flip-out` is written by whichever face is leaving, so this
+	 * waits exactly as long as that face actually takes.
+	 */
 	.returning {
-		animation: turn-back var(--flip) ease-out var(--flip) both;
+		animation: turn-back var(--flip) ease-out calc(var(--flip) * var(--flip-out, 1)) both;
 	}
 
 	@keyframes turn-away {

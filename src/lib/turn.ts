@@ -101,7 +101,26 @@ export function slideAt(travelled: number, lead: number): number {
 }
 
 /**
- * How much of the paper's width the turn has covered, from 0 to 1.
+ * How far a hand has to travel to turn the paper the whole quarter, as a
+ * fraction of the paper's own width.
+ *
+ * Half, and not all of it, because on a phone the paper *is* the screen. At 390
+ * pixels wide on a 390 pixel screen, a quarter turn geared to the full width
+ * needed four hundred and sixteen pixels of drag — the dead travel in front of
+ * it and then the width itself — which is more room than exists. The paper
+ * could not be turned over by hand at all: the furthest a thumb could get it,
+ * running the entire screen, was eighty-two degrees, and any ordinary swipe
+ * reached ten or twenty before it had to let go.
+ *
+ * So every drag ended by falling over from an angle the hand had barely moved
+ * it to, and the animation covered the rest at a speed the hand had never been
+ * going. Geared to half the width, a comfortable swipe turns it most of the way
+ * round and the commit threshold below lands exactly on the halfway point.
+ */
+export const REACH = 0.5;
+
+/**
+ * How much of the turn a drag has covered, from 0 to 1.
  *
  * Counted from the end of the lead-in and the overdrag past it, so the paper is
  * flat for as long as it is only sliding and for the push that follows — and so
@@ -110,7 +129,7 @@ export function slideAt(travelled: number, lead: number): number {
  */
 export function progress(travelled: number, width: number, lead: number): number {
 	if (!(width > 0)) return 0;
-	return Math.min(1, turning(travelled, lead) / width);
+	return Math.min(1, turning(travelled, lead) / (width * REACH));
 }
 
 /**
@@ -152,17 +171,33 @@ function turning(travelled: number, lead: number): number {
 /**
  * Whether letting go here finishes the turn rather than swinging back.
  *
- * A quarter of the paper's width, or a flick. Both are measured on the part of
- * the drag that turned the paper, not on the whole of it — with the slide and
- * the overdrag in front, a flick of forty-one pixels would otherwise commit a
- * turn that had not visibly begun.
+ * Past halfway, or a flick. Halfway is the honest threshold for a thing being
+ * turned over: beyond the middle it falls the rest of the way on its own, and
+ * short of it it comes back — which is what a receipt held on its edge does.
+ * Written as the progress rather than as a distance so it stays the halfway
+ * point if `REACH` is ever retuned.
  *
  * The flick is counted in pixels and milliseconds rather than as a fraction,
  * because a flick is a movement of the hand and a hand does not know how wide
- * the paper is.
+ * the paper is. It is measured on the part of the drag that turned the paper,
+ * not on the whole of it — with the slide and the overdrag in front, a flick of
+ * forty-one pixels would otherwise commit a turn that had not visibly begun.
  */
 export function commits(travelled: number, elapsed: number, width: number, lead: number): boolean {
-	const turned = turning(travelled, lead);
-	const flick = turned > 40 && elapsed < 250;
-	return flick || turned > width * 0.25;
+	const flick = turning(travelled, lead) > 40 && elapsed < 250;
+	return flick || progress(travelled, width, lead) > 0.5;
+}
+
+/**
+ * How much of a half-turn is left to play, from 0 to 1.
+ *
+ * The face on its way out has already been carried part of the way by the hand,
+ * and only the rest of it has to be animated. Given to the animation as a
+ * fraction of `--flip`, the paper carries on at one rate however far round the
+ * finger left it — rather than always taking the full duration, which flung it
+ * through eighty degrees after a small push and crawled through the last five
+ * after a large one.
+ */
+export function fallOf(angle: number): number {
+	return Math.min(1, Math.max(0, (QUARTER - Math.abs(angle)) / QUARTER));
 }

@@ -33,7 +33,7 @@
 	import { sheet } from '$lib/state/doc.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
-	import { angleAt, axisAt, commits, leadFor, pushOf, slideAt, SLACK } from '$lib/turn';
+	import { angleAt, axisAt, commits, fallOf, leadFor, pushOf, slideAt, SLACK } from '$lib/turn';
 
 	/*
 	 * Everything that is not the list itself. The sheet keeps only what someone
@@ -82,9 +82,17 @@
 	 * a finished join there was no push, and the paper goes the way it goes when
 	 * nobody pushes it.
 	 */
-	function close(pushed: 1 | -1 = 1) {
+	function close(pushed: 1 | -1 = 1, from = 0) {
 		if (closing) return;
 		spin = pushed;
+		/*
+		 * How much of this face's half is left for the animation to play — see
+		 * the note beside `falling` in +page.svelte. Written on the document
+		 * because the sheet's own half reads it too, as the wait before it comes
+		 * back up. From the arrow or from Escape the hand pushed nothing, so the
+		 * whole quarter is still to go.
+		 */
+		document.documentElement.style.setProperty('--flip-out', `${fallOf(from)}`);
 		onclose(pushed);
 	}
 
@@ -410,7 +418,7 @@
 			// The paper going over is a thing done, and the hand that did it is
 			// still on the glass to feel it.
 			tapped();
-			close(pushOf(travelled));
+			close(pushOf(travelled), turn);
 		} else if (turn !== 0 || slide !== 0) springing = true;
 	}
 </script>
@@ -867,8 +875,15 @@
 	 * focus already inside — while still being the second thing seen. Nothing
 	 * is held back for a keyboard or a screen reader; only the drawing waits.
 	 */
+	/*
+	 * Held back by the sheet's own half, which is however much of it the hand
+	 * left to play — `--flip-out` is written by whichever face is leaving, so
+	 * this waits exactly as long as that face actually takes rather than always
+	 * a full `--flip`. Its own duration stays whole: this face starts edge-on
+	 * and has the entire quarter to come round.
+	 */
 	.unfurling {
-		animation: unfurl var(--flip) ease-out var(--flip) both;
+		animation: unfurl var(--flip) ease-out calc(var(--flip) * var(--flip-out, 1)) both;
 		will-change: transform;
 	}
 
@@ -912,8 +927,8 @@
 
 	.furling {
 		animation:
-			furl var(--flip) ease-in forwards,
-			recentre calc(var(--flip) * 0.6) var(--inertia) forwards;
+			furl calc(var(--flip) * var(--flip-out, 1)) ease-in forwards,
+			recentre calc(var(--flip) * var(--flip-out, 1) * 0.6) var(--inertia) forwards;
 		pointer-events: none;
 		will-change: transform;
 	}

@@ -531,6 +531,108 @@ test.describe('turning it over by hand', () => {
 		await settle(page);
 	});
 
+	test('a thumb can turn the paper most of the way over on a phone', async ({ page }) => {
+		/*
+		 * The paper on a phone is the screen. Geared to the full width, a quarter
+		 * turn wanted four hundred and sixteen pixels of drag on a three hundred
+		 * and ninety pixel screen — so the paper could not be turned over by hand
+		 * at all, and every gesture ended by falling over from whatever small
+		 * angle the thumb had run out of room at.
+		 */
+		await page.setViewportSize({ width: 390, height: 760 });
+		await page.goto('/');
+
+		const box = (await page.locator('main').boundingBox())!;
+		const y = box.y + box.height - 20;
+		const x = box.x + 4;
+
+		await page.mouse.move(x, y);
+		await page.mouse.down();
+		// Slowly, so this is about reach and not about the flick threshold.
+		await page.mouse.move(x + 300, y, { steps: 20 });
+
+		// All but there, by hand, with room to spare on the screen.
+		expect(await angle(page)).toBeGreaterThan(80);
+
+		await page.mouse.up();
+		await settle(page);
+		await expect(page.getByRole('dialog', dialog)).toBeVisible();
+	});
+
+	test('it falls over once it is past halfway, and not before', async ({ page }) => {
+		await page.setViewportSize({ width: 390, height: 760 });
+
+		/** Drag slowly to `distance`, let go, and say whether it went over. */
+		async function pushTo(distance: number) {
+			await page.goto('/');
+			const box = (await page.locator('main').boundingBox())!;
+			const y = box.y + box.height - 20;
+			const x = box.x + 4;
+
+			await page.mouse.move(x, y);
+			await page.mouse.down();
+			await page.mouse.move(x + distance, y, { steps: 20 });
+			const deg = await angle(page);
+			await page.mouse.up();
+			await settle(page);
+
+			const open = (await page.getByRole('dialog', dialog).count()) > 0;
+			return { deg, open };
+		}
+
+		// Short of the middle it comes back, which is what a receipt held on its
+		// edge does.
+		const shy = await pushTo(120);
+		expect(shy.deg).toBeLessThan(45);
+		expect(shy.open).toBe(false);
+
+		// Past it, it falls the rest of the way on its own.
+		const over = await pushTo(200);
+		expect(over.deg).toBeGreaterThan(45);
+		expect(over.open).toBe(true);
+	});
+
+	test('the animation plays only what the hand left of the turn', async ({ page }) => {
+		/*
+		 * It used to take the full duration however far round the finger had
+		 * already carried it, so a small push was flung through eighty degrees at
+		 * a speed the hand had never been going — which is what read as a jump
+		 * rather than as the paper carrying on.
+		 */
+		await page.setViewportSize({ width: 390, height: 760 });
+
+		/** The length of the sheet's own half, in milliseconds, at release. */
+		async function playing(distance: number) {
+			await page.goto('/');
+			const box = (await page.locator('main').boundingBox())!;
+			const y = box.y + box.height - 20;
+			const x = box.x + 4;
+
+			await page.mouse.move(x, y);
+			await page.mouse.down();
+			await page.mouse.move(x + distance, y, { steps: 20 });
+			await page.mouse.up();
+
+			const ms = await page
+				.locator('.page')
+				.evaluate((el) => parseFloat(getComputedStyle(el).animationDuration) * 1000);
+			await settle(page);
+			if (await page.getByRole('dialog', dialog).count()) {
+				await page.keyboard.press('Escape');
+				await settle(page);
+			}
+			return ms;
+		}
+
+		// Let go just past the middle and about half of it is left to play; let
+		// go with the paper all but edge-on and there is next to nothing.
+		const fromHalfway = await playing(140);
+		const fromNearlyThere = await playing(300);
+
+		expect(fromHalfway).toBeGreaterThan(fromNearlyThere * 2);
+		expect(fromNearlyThere).toBeLessThan(30);
+	});
+
 	test('a press that belongs to a row is left to the row', async ({ page }) => {
 		await page.goto('/');
 
