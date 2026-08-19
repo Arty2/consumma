@@ -48,7 +48,30 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
+			testIgnore: '**/touch.e2e.ts',
 			use: { ...devices['Desktop Chrome'], launchOptions: { executablePath } }
+		},
+		/*
+		 * A phone with a finger, which the rest of the suite is not.
+		 *
+		 * Every gesture test here drives `page.mouse`, and a mouse is exempt from
+		 * `touch-action` and from the browser's own decision about whether a
+		 * movement belongs to the page or to the page's contents. So the whole
+		 * turn — which is built on exactly those two things — was being checked
+		 * against the one input device that cannot exercise it, and a swipe that
+		 * did not work on a phone passed here every time.
+		 *
+		 * Only the touch spec runs in this project. Re-running the mouse tests
+		 * with `hasTouch` set would not make them touch tests.
+		 */
+		{
+			name: 'chromium-touch',
+			testMatch: '**/touch.e2e.ts',
+			use: {
+				...devices['Pixel 7'],
+				browserName: 'chromium',
+				launchOptions: { executablePath }
+			}
 		}
 	]
 });

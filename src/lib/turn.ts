@@ -7,9 +7,12 @@
  * paper, where the axis has wandered to, and whether letting go finishes the
  * turn or lets it swing back.
  *
- * Which way each side turns is not decided here. The sheet goes one way and the
- * panel the other, because together they are one rotation carrying on in one
- * direction, and only the caller knows which half it is.
+ * Which way it turns is decided by the push, and only by the push. A hand
+ * moving rightwards sends the paper round one way and a hand moving leftwards
+ * sends it round the other, the way a receipt spun between two fingers does —
+ * so everything here takes the distance travelled with its sign on and hands
+ * back an answer with the same sign on it. Neither face has a direction of its
+ * own; both are carried by whichever hand is on them.
  */
 
 /**
@@ -19,6 +22,23 @@
  * mirrored — see the keyframes in Menu.svelte.
  */
 export const QUARTER = 90;
+
+/**
+ * The whole movement, which is what a drag covers.
+ *
+ * A receipt turned over goes through a half-turn, and a hand doing it by
+ * feel expects to see the back come round as it pushes — not to let go and be
+ * shown it. The drag therefore drives the whole hundred and eighty degrees and
+ * the two faces divide it between them: the one that is showing turns to
+ * edge-on over the first quarter, and the one behind comes round out of
+ * edge-on over the second. Whichever is past ninety degrees of its own is
+ * turned away and not drawn, so exactly one of them is ever on screen.
+ *
+ * It used to be that a drag only turned the face it started on and the other
+ * was animated in afterwards, which left the paper turning away into an empty
+ * white field for the whole of the gesture.
+ */
+export const HALF = 180;
 
 /**
  * How far the axis wanders from the middle at the end of a full drag, as a
@@ -75,13 +95,49 @@ export function leadFor(room: number): number {
  */
 export const OVER = 14;
 
-/** How far the paper has slid, in pixels: the lead-in, before any turn. */
-export function slideAt(travelled: number, lead: number): number {
-	return Math.min(Math.max(0, lead), Math.max(0, travelled - SLACK));
+/**
+ * Which way a push is going: 1 rightwards, -1 leftwards.
+ *
+ * A push of nothing has no direction to report, and rightwards is the answer
+ * it gives — which is the way a tap turns the paper, so a gesture that never
+ * moved agrees with one that never happened.
+ */
+export function pushOf(travelled: number): 1 | -1 {
+	return travelled < 0 ? -1 : 1;
 }
 
 /**
- * How much of the paper's width the turn has covered, from 0 to 1.
+ * How far the paper has slid, in pixels: the lead-in, before any turn.
+ *
+ * Signed, because the paper slides the way it is pushed. Everything below
+ * measures the reach of a push and leaves its direction to `pushOf`.
+ */
+export function slideAt(travelled: number, lead: number): number {
+	const reach = Math.min(Math.max(0, lead), Math.max(0, Math.abs(travelled) - SLACK));
+	return reach * pushOf(travelled);
+}
+
+/**
+ * How far a hand has to travel to turn the paper the whole quarter, as a
+ * fraction of the paper's own width.
+ *
+ * Half, and not all of it, because on a phone the paper *is* the screen. At 390
+ * pixels wide on a 390 pixel screen, a quarter turn geared to the full width
+ * needed four hundred and sixteen pixels of drag — the dead travel in front of
+ * it and then the width itself — which is more room than exists. The paper
+ * could not be turned over by hand at all: the furthest a thumb could get it,
+ * running the entire screen, was eighty-two degrees, and any ordinary swipe
+ * reached ten or twenty before it had to let go.
+ *
+ * So every drag ended by falling over from an angle the hand had barely moved
+ * it to, and the animation covered the rest at a speed the hand had never been
+ * going. Geared to half the width, a comfortable swipe turns it most of the way
+ * round and the commit threshold below lands exactly on the halfway point.
+ */
+export const REACH = 0.5;
+
+/**
+ * How much of the turn a drag has covered, from 0 to 1.
  *
  * Counted from the end of the lead-in and the overdrag past it, so the paper is
  * flat for as long as it is only sliding and for the push that follows — and so
@@ -90,22 +146,72 @@ export function slideAt(travelled: number, lead: number): number {
  */
 export function progress(travelled: number, width: number, lead: number): number {
 	if (!(width > 0)) return 0;
-	return Math.min(1, turning(travelled, lead) / width);
+	return Math.min(1, turning(travelled, lead) / (width * REACH));
+}
+
+/**
+ * How far round the whole receipt a drag has carried it, in degrees.
+ *
+ * Nought is the face it started on, square to the reader; ninety is edge-on;
+ * a hundred and eighty is the other face square to the reader. The sign is the
+ * push's own.
+ */
+export function spanAt(travelled: number, width: number, lead: number): number {
+	const span = progress(travelled, width, lead) * HALF;
+	// Flat is flat: -0 is a different number from 0 to everything that asks.
+	return span === 0 ? 0 : span * pushOf(travelled);
+}
+
+/**
+ * Where the face the drag started on is, given the whole rotation.
+ *
+ * It turns to edge-on and stays there. Past the quarter it is showing the
+ * reader its back, and the other face has taken over.
+ */
+export function leavingAt(span: number): number {
+	const reached = Math.min(Math.abs(span), QUARTER);
+	return reached === 0 ? 0 : reached * pushOf(span);
+}
+
+/**
+ * Where the face coming round behind it is, given the whole rotation.
+ *
+ * Held edge-on until the paper is halfway over, then it comes round to square.
+ * Clamped rather than left to run from a hundred and eighty, because past a
+ * quarter turn an element is simply shown mirrored — the two faces are two
+ * elements and neither has a back of its own to hide behind.
+ */
+export function arrivingAt(span: number): number {
+	const reached = Math.max(Math.min(Math.abs(span), HALF), QUARTER);
+	const from = reached - HALF;
+	// Square is square: -0 is a different number from 0 to everything that asks.
+	return from === 0 ? 0 : from * pushOf(span);
 }
 
 /**
  * The angle a drag has turned the paper to, in degrees.
  *
- * `sign` is which way this side of the paper goes: the sheet turns one way to
- * show the panel, the panel the other to show the sheet back.
+ * The sign is the push's own. It used to be a parameter, on the reasoning that
+ * the sheet turned one way and the panel the other — but both were always
+ * given the same one, because the two are halves of a single rotation and a
+ * receipt does not know which of its faces is up. What decides the direction
+ * is the hand.
  */
-export function angleAt(travelled: number, width: number, sign: 1 | -1, lead: number): number {
-	return progress(travelled, width, lead) * QUARTER * sign;
+export function angleAt(travelled: number, width: number, lead: number): number {
+	const turned = progress(travelled, width, lead) * QUARTER;
+	// Flat is flat: without this a leftward push that has not begun to turn yet
+	// reports -0, which is a different number from 0 to everything that asks.
+	return turned === 0 ? 0 : turned * pushOf(travelled);
 }
 
-/** Where the axis has wandered to, as a percentage across the paper. */
+/**
+ * Where the axis has wandered to, as a percentage across the paper.
+ *
+ * It gives the way the push does: a hand shoving the paper leftwards carries
+ * the point it turns about leftwards with it.
+ */
 export function axisAt(travelled: number, width: number, lead: number): number {
-	return 50 + progress(travelled, width, lead) * DRIFT;
+	return 50 + progress(travelled, width, lead) * DRIFT * pushOf(travelled);
 }
 
 /**
@@ -115,23 +221,43 @@ export function axisAt(travelled: number, width: number, lead: number): number {
  * neither of which turns anything.
  */
 function turning(travelled: number, lead: number): number {
-	return Math.max(0, travelled - SLACK - Math.max(0, lead) - OVER);
+	return Math.max(0, Math.abs(travelled) - SLACK - Math.max(0, lead) - OVER);
 }
 
 /**
  * Whether letting go here finishes the turn rather than swinging back.
  *
- * A quarter of the paper's width, or a flick. Both are measured on the part of
- * the drag that turned the paper, not on the whole of it — with the slide and
- * the overdrag in front, a flick of forty-one pixels would otherwise commit a
- * turn that had not visibly begun.
+ * Past halfway, or a flick. Halfway is the honest threshold for a thing being
+ * turned over: beyond the middle it falls the rest of the way on its own, and
+ * short of it it comes back — which is what a receipt held on its edge does.
+ * Written as the progress rather than as a distance so it stays the halfway
+ * point if `REACH` is ever retuned.
  *
  * The flick is counted in pixels and milliseconds rather than as a fraction,
  * because a flick is a movement of the hand and a hand does not know how wide
- * the paper is.
+ * the paper is. It is measured on the part of the drag that turned the paper,
+ * not on the whole of it — with the slide and the overdrag in front, a flick of
+ * forty-one pixels would otherwise commit a turn that had not visibly begun.
  */
 export function commits(travelled: number, elapsed: number, width: number, lead: number): boolean {
-	const turned = turning(travelled, lead);
-	const flick = turned > 40 && elapsed < 250;
-	return flick || turned > width * 0.25;
+	const flick = turning(travelled, lead) > 40 && elapsed < 250;
+	return flick || progress(travelled, width, lead) > 0.5;
+}
+
+/**
+ * How much of the leaving face's quarter is left to play, from 0 to 1.
+ *
+ * The hand has already carried the paper part of the way, and only the rest of
+ * it has to be animated. Given to the animation as a fraction of `--flip`, the
+ * paper carries on at one rate however far round the finger left it — rather
+ * than always taking the full duration, which flung it through eighty degrees
+ * after a small push and crawled through the last five after a large one.
+ */
+export function fallOf(span: number): number {
+	return Math.min(1, Math.max(0, (QUARTER - Math.abs(leavingAt(span))) / QUARTER));
+}
+
+/** The same for the face coming round: how much of its own quarter is left. */
+export function riseOf(span: number): number {
+	return Math.min(1, Math.max(0, Math.abs(arrivingAt(span)) / QUARTER));
 }

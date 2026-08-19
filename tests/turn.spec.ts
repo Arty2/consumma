@@ -8,6 +8,14 @@ import {
 	leadFor,
 	OVER,
 	progress,
+	pushOf,
+	REACH,
+	HALF,
+	arrivingAt,
+	fallOf,
+	leavingAt,
+	riseOf,
+	spanAt,
 	QUARTER,
 	slideAt,
 	SLACK
@@ -78,13 +86,15 @@ describe('progress', () => {
 	});
 
 	it('counts from the end of the overdrag, not from the touch', () => {
-		expect(progress(SLACK + LEAD + OVER + 39, WIDE, LEAD)).toBeCloseTo(39 / WIDE, 6);
+		// Against the reach rather than the whole width: a phone's paper is the
+		// screen, so a quarter turn geared to the full width was out of hand.
+		expect(progress(SLACK + LEAD + OVER + 39, WIDE, LEAD)).toBeCloseTo(39 / (WIDE * REACH), 6);
 	});
 
 	it('still waits out the overdrag when there was no room to slide into', () => {
 		// No slide at all, but the push before the paper gives in is the same.
 		expect(progress(SLACK + OVER, WIDE, 0)).toBe(0);
-		expect(progress(SLACK + OVER + 39, WIDE, 0)).toBeCloseTo(39 / WIDE, 6);
+		expect(progress(SLACK + OVER + 39, WIDE, 0)).toBeCloseTo(39 / (WIDE * REACH), 6);
 	});
 
 	it('stops at the whole width, however far the hand goes', () => {
@@ -98,26 +108,152 @@ describe('progress', () => {
 		expect(progress(50, Number.NaN, LEAD)).toBe(0);
 	});
 
-	it('never goes backwards, however far the hand goes the wrong way', () => {
-		expect(progress(-500, WIDE, LEAD)).toBe(0);
+	it('reads a push either way, because the paper follows the hand', () => {
+		// It used to answer nought to anything leftwards, on the reasoning that
+		// there was one way round. The paper goes the way it is pushed now.
+		expect(progress(-500, WIDE, LEAD)).toBe(progress(500, WIDE, LEAD));
+		expect(progress(-500, WIDE, LEAD)).toBeGreaterThan(0);
 	});
 });
 
 describe('angleAt', () => {
 	it('turns the paper a quarter and no further', () => {
-		expect(angleAt(WIDE * 2, WIDE, 1, LEAD)).toBe(QUARTER);
-		expect(angleAt(WIDE * 2, WIDE, -1, LEAD)).toBe(-QUARTER);
+		expect(angleAt(WIDE * 2, WIDE, LEAD)).toBe(QUARTER);
+		expect(angleAt(-WIDE * 2, WIDE, LEAD)).toBe(-QUARTER);
 	});
 
-	it('gives the two sides opposite ways round, which is one rotation', () => {
+	it('goes the way it is pushed, and equally far either way', () => {
+		// One rotation, and the hand on it decides which way round. Neither face
+		// has a direction of its own; both are carried by whoever is pushing.
 		const travelled = 120;
-		expect(angleAt(travelled, WIDE, 1, LEAD)).toBe(-angleAt(travelled, WIDE, -1, LEAD));
+		expect(angleAt(travelled, WIDE, LEAD)).toBe(-angleAt(-travelled, WIDE, LEAD));
 	});
 
 	it('leaves the paper flat for the whole of the lead-in', () => {
-		expect(angleAt(SLACK, WIDE, 1, LEAD)).toBe(0);
-		expect(angleAt(SLACK + LEAD, WIDE, 1, LEAD)).toBe(0);
-		expect(angleAt(SLACK + LEAD + OVER, WIDE, 1, LEAD)).toBe(0);
+		expect(angleAt(SLACK, WIDE, LEAD)).toBe(0);
+		expect(angleAt(SLACK + LEAD, WIDE, LEAD)).toBe(0);
+		expect(angleAt(SLACK + LEAD + OVER, WIDE, LEAD)).toBe(0);
+		// And for the whole of it in the other direction too.
+		expect(angleAt(-(SLACK + LEAD + OVER), WIDE, LEAD)).toBe(0);
+	});
+});
+
+describe('REACH', () => {
+	it('brings the whole quarter turn inside the reach of a hand', () => {
+		// The paper on a phone is the screen. Geared to the full width, a quarter
+		// turn wanted more pixels of drag than the screen has, so the paper could
+		// not be turned over by hand at all — every gesture fell over from
+		// whatever small angle the thumb had run out of room at.
+		const phone = 390;
+		const dead = SLACK + 8 + OVER;
+		expect(dead + phone * REACH).toBeLessThan(phone);
+	});
+
+	it('puts the commit threshold exactly at halfway round', () => {
+		// Past the middle it falls the rest of the way; short of it, it comes
+		// back. Both sides of the boundary, measured in degrees.
+		const lead = 8;
+		const halfway = SLACK + lead + OVER + (WIDE * REACH) / 2;
+
+		expect(angleAt(halfway + 1, WIDE, lead)).toBeGreaterThan(QUARTER / 2);
+		expect(commits(halfway + 1, 4000, WIDE, lead)).toBe(true);
+		expect(commits(halfway - 1, 4000, WIDE, lead)).toBe(false);
+	});
+});
+
+describe('the two faces of one rotation', () => {
+	const lead = 8;
+	/** The drag that carries the receipt exactly `deg` of the way round. */
+	const to = (deg: number) => SLACK + lead + OVER + (WIDE * REACH * deg) / HALF;
+
+	it('carries the whole half-turn, not just the near face of it', () => {
+		// A hand turning a receipt over expects to see the back come round as it
+		// pushes, not to let go and be shown it.
+		expect(spanAt(to(HALF), WIDE, lead)).toBeCloseTo(HALF, 4);
+		expect(spanAt(to(QUARTER), WIDE, lead)).toBeCloseTo(QUARTER, 4);
+		expect(spanAt(-to(HALF), WIDE, lead)).toBeCloseTo(-HALF, 4);
+	});
+
+	it('shows the face it started on for the first quarter, and then stops', () => {
+		expect(leavingAt(0)).toBe(0);
+		expect(leavingAt(45)).toBe(45);
+		expect(leavingAt(QUARTER)).toBe(QUARTER);
+		// Past edge-on it is showing the reader its back, and stays put.
+		expect(leavingAt(135)).toBe(QUARTER);
+		expect(leavingAt(HALF)).toBe(QUARTER);
+	});
+
+	it('holds the face behind edge-on until the paper is halfway over', () => {
+		expect(arrivingAt(0)).toBe(-QUARTER);
+		expect(arrivingAt(45)).toBe(-QUARTER);
+		expect(arrivingAt(QUARTER)).toBe(-QUARTER);
+		// And then it comes round to square.
+		expect(arrivingAt(135)).toBe(-45);
+		expect(arrivingAt(HALF)).toBe(0);
+	});
+
+	it('never has both faces square-on at once', () => {
+		// Exactly one of them is ever drawn: the other is at a quarter or past it,
+		// which is edge-on and has no width.
+		for (let span = 0; span <= HALF; span += 5) {
+			const showing = [leavingAt(span), arrivingAt(span)].filter((deg) => Math.abs(deg) < QUARTER);
+			expect(showing.length, `at ${span}deg`).toBeLessThanOrEqual(1);
+		}
+	});
+
+	it('mirrors both faces when the push goes the other way', () => {
+		expect(leavingAt(-45)).toBe(-45);
+		expect(arrivingAt(-135)).toBe(45);
+		expect(arrivingAt(-HALF)).toBe(0);
+	});
+
+	it('splits the duration between them, so neither replays the other', () => {
+		// Nothing turned yet: the near face has its whole quarter, the far one its
+		// own behind it.
+		expect(fallOf(0)).toBe(1);
+		expect(riseOf(0)).toBe(1);
+
+		// Halfway: the near face is spent and the far one is all still to come.
+		expect(fallOf(QUARTER)).toBe(0);
+		expect(riseOf(QUARTER)).toBe(1);
+
+		// All the way round by hand: there is nothing left for either to play.
+		expect(fallOf(HALF)).toBe(0);
+		expect(riseOf(HALF)).toBe(0);
+	});
+});
+
+describe('fallOf', () => {
+	it('asks for the whole duration when the hand moved nothing', () => {
+		expect(fallOf(0)).toBe(1);
+	});
+
+	it('asks for none of it when the hand did the whole turn', () => {
+		expect(fallOf(QUARTER)).toBe(0);
+		expect(fallOf(-QUARTER)).toBe(0);
+	});
+
+	it('asks for what is left, so the paper carries on at one rate', () => {
+		expect(fallOf(QUARTER / 2)).toBeCloseTo(0.5, 6);
+		expect(fallOf(-QUARTER / 2)).toBeCloseTo(0.5, 6);
+	});
+
+	it('never asks for more than there is, or less than none', () => {
+		expect(fallOf(QUARTER * 3)).toBe(0);
+		expect(fallOf(-QUARTER * 3)).toBe(0);
+	});
+});
+
+describe('pushOf', () => {
+	it('reads a push rightwards as one way and leftwards as the other', () => {
+		expect(pushOf(40)).toBe(1);
+		expect(pushOf(-40)).toBe(-1);
+	});
+
+	it('calls a push of nothing the way a tap goes', () => {
+		// A gesture that never moved has no direction to report, and agreeing
+		// with a tap is the only answer that cannot surprise anyone.
+		expect(pushOf(0)).toBe(1);
 	});
 });
 
@@ -128,11 +264,17 @@ describe('axisAt', () => {
 
 	it('wanders with the drag, and no further than the drift', () => {
 		expect(axisAt(WIDE * 2, WIDE, LEAD)).toBe(50 + DRIFT);
-		expect(axisAt(SLACK + LEAD + OVER + WIDE / 2, WIDE, LEAD)).toBeCloseTo(50 + DRIFT / 2, 6);
+		expect(axisAt(SLACK + LEAD + OVER + (WIDE * REACH) / 2, WIDE, LEAD)).toBeCloseTo(
+			50 + DRIFT / 2,
+			6
+		);
 	});
 
-	it('only ever moves the way the finger went', () => {
-		expect(axisAt(-200, WIDE, LEAD)).toBe(50);
+	it('goes off the middle the way the finger went, either way', () => {
+		// A hand shoving the paper leftwards carries the point it turns about
+		// leftwards with it. It used to sit still for anything but a push right.
+		expect(axisAt(-(WIDE * 2), WIDE, LEAD)).toBe(50 - DRIFT);
+		expect(axisAt(-200, WIDE, LEAD)).toBeLessThan(50);
 	});
 });
 
@@ -167,7 +309,12 @@ describe('commits', () => {
 		expect(commits(SLACK + OVER + 60, 150, 544, 0)).toBe(true);
 	});
 
-	it('never commits on a drag that went the other way', () => {
-		expect(commits(-300, 100, WIDE, LEAD)).toBe(false);
+	it('commits on a drag either way, since either turns the paper', () => {
+		// Measured on the reach of the push rather than on its sign, so the same
+		// movement mirrored asks exactly as much of the hand.
+		expect(commits(-300, 100, WIDE, LEAD)).toBe(commits(300, 100, WIDE, LEAD));
+		expect(commits(-300, 100, WIDE, LEAD)).toBe(true);
+		// And a short one still does not, whichever way it went.
+		expect(commits(-30, 400, WIDE, LEAD)).toBe(false);
 	});
 });
