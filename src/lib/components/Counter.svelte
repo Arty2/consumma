@@ -40,9 +40,19 @@
 	 * the paper's own margin is. That put it beside the start of the writing —
 	 * which is the one part of a long task nobody is looking at when they are
 	 * running out of room. The writing is being done at the bottom of the row,
-	 * so the count belongs at the bottom of the row: `bottom: 0` on a box the
-	 * width of the checkbox column puts it directly under the mark and directly
-	 * beside the line being typed, however many lines there are above it.
+	 * so the count belongs at the bottom of the row: a box the width of the
+	 * checkbox column, pinned to the foot of it, puts the count directly under
+	 * the mark and directly beside the line being typed, however many lines
+	 * there are above it.
+	 *
+	 * Level with that line, though, and not with the foot of the row. The row
+	 * ends half a target below its last line, because the field pads itself by
+	 * `(--touch - 1lh) / 2` at both ends so that a one-line row is a --touch
+	 * square with its writing in the middle. A box with no height of its own
+	 * sat its digits on the very bottom of that padding, which reads as a count
+	 * that has slipped below the line it belongs to. Given the height of a
+	 * target it centres its digits half a target up — which is exactly where
+	 * the last line's own middle is, on a row of one line or of four.
 	 *
 	 * Out of the flow, as it has always been. In the row it was a cell that took
 	 * its width from the line, so the words lost room at exactly the moment
@@ -63,6 +73,8 @@
 		 */
 		top: auto;
 		width: var(--touch);
+		/* Half a target of it above the foot of the row: see the note above. */
+		height: var(--touch);
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;

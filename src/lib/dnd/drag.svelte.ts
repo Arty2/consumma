@@ -63,9 +63,27 @@ export class DragState {
 		return this.target?.groupId === groupId && this.target.index === index;
 	}
 
-	/** The same, for a group being moved among its siblings. */
+	/**
+	 * The same, for a group being moved among its siblings.
+	 *
+	 * The index has to be translated on the way in, because the two sides count
+	 * in different lists. `groupTargetAt` skips the group being carried — a
+	 * group cannot land beside itself, and the order it is asked for is the
+	 * order of the ones staying still, which is what `groupOrderAt` wants too.
+	 * The markup counts with its own `{#each}`, which has every group in it,
+	 * the carried one included.
+	 *
+	 * The two agree until the finger passes the hole the carried group left,
+	 * and from there they are one apart: everything after the hole answers to
+	 * an index one lower in the shorter list. So the rule was drawn a group
+	 * short of where the group would actually land — the drop was right and
+	 * the mark pointing at it was not, which is the worse way round.
+	 */
 	isGroupLanding(index: number): boolean {
-		return this.groupTarget === index;
+		if (this.groupTarget === null) return false;
+		const from = this.groupFrom;
+		const shift = from !== null && this.groupTarget >= from ? 1 : 0;
+		return this.groupTarget + shift === index;
 	}
 
 	reset(): void {

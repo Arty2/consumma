@@ -247,6 +247,28 @@ test('ticking a task to done draws the sparkle flourish, with no toast', async (
 
 	await expect(task(page, 'Coffee').locator('svg.sparkle')).toBeVisible();
 	await expect(page.getByRole('status').filter({ hasText: 'Consummatum' })).toHaveCount(0);
+
+	/*
+	 * And thrown out from the mark, not from the middle of the target.
+	 *
+	 * The flourish is centred on the box it is drawn in, and that box reaches a
+	 * third again wider than the mark and the whole height of the row — so its
+	 * middle is a point out in the words with nothing drawn at it. Centred
+	 * there, the sparkle came off a tick that was not where the ink was.
+	 */
+	const apart = await page.evaluate(() => {
+		const row = document.querySelector('.tasks li:has(svg.sparkle)')!;
+		const mark = row.querySelector('[role="checkbox"] svg:not(.sparkle)')!.getBoundingClientRect();
+		const spark = row.querySelector('svg.sparkle')!.getBoundingClientRect();
+		return {
+			x: Math.abs(mark.left + mark.width / 2 - (spark.left + spark.width / 2)),
+			y: Math.abs(mark.top + mark.height / 2 - (spark.top + spark.height / 2))
+		};
+	});
+
+	// One point, within the rounding a drawn box costs.
+	expect(apart.x).toBeLessThan(1);
+	expect(apart.y).toBeLessThan(1);
 });
 
 test('the header control collapses and expands, and counts what it hides', async ({ page }) => {
@@ -1244,13 +1266,35 @@ test('the count of what is left appears late, and under the checkbox', async ({ 
 		const row = document.querySelector('.tasks li:has(.counter)')!.getBoundingClientRect();
 		const mark = document.querySelector('.tasks li:has(.counter) svg')!.getBoundingClientRect();
 		const count = document.querySelector('.counter')!.getBoundingClientRect();
-		return { rowBottom: row.bottom, rowLeft: row.left, markBottom: mark.bottom, count };
+		const field = document.querySelector('.tasks li:has(.counter) textarea')!;
+		const style = getComputedStyle(field);
+		return {
+			rowBottom: row.bottom,
+			rowLeft: row.left,
+			markBottom: mark.bottom,
+			count,
+			fieldBottom: field.getBoundingClientRect().bottom,
+			padBottom: parseFloat(style.paddingBottom),
+			line: parseFloat(style.lineHeight)
+		};
 	});
 
-	// Below the mark, at the foot of the row, and never right of the words.
+	// Below the mark, and never right of the words.
 	expect(where.count.top).toBeGreaterThan(where.markBottom);
-	expect(Math.abs(where.count.bottom - where.rowBottom)).toBeLessThan(2);
 	expect(where.count.left).toBeGreaterThanOrEqual(where.rowLeft - 1);
+
+	/*
+	 * And level with the line being typed, rather than with the foot of the
+	 * row. The field pads itself by half a target less half a line at each end,
+	 * so a one-line row is a --touch square with its writing in the middle —
+	 * which leaves the last line's own middle sitting that same half-target
+	 * above the bottom of the row. A count with no height of its own sat its
+	 * digits on the floor of that padding instead, a good few pixels under the
+	 * line it was counting.
+	 */
+	const lastLine = where.fieldBottom - where.padBottom - where.line / 2;
+	const middle = where.count.top + where.count.height / 2;
+	expect(Math.abs(middle - lastLine)).toBeLessThan(2);
 
 	await page.keyboard.press('Escape');
 });
@@ -1342,4 +1386,60 @@ test('only three schemes are ever drawn as a link', async ({ page }) => {
 	await addTask(page, 'Nope javascript:alert(1) and blob:https://heracl.es/x either');
 
 	await expect(page.locator('.tasks a')).toHaveCount(0);
+});
+
+/** Adds a named group with one task in it, and returns its title button. */
+async function addGroup(page: Page, name: string, index: number) {
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const field = page.getByRole('textbox', { name: 'New group' });
+	await field.fill(name);
+	await field.press('Enter');
+	await addTask(page, `${name} thing`, index);
+	return page.getByRole('button', { name });
+}
+
+test('the rule a carried group is dropped on is drawn where it will land', async ({ page }) => {
+	/*
+	 * The landing rule and the drop were counted in two different lists. The
+	 * hit test skips the group being carried, because a group cannot land
+	 * beside itself — so its answer counts the groups that are staying still.
+	 * The markup drew the rule by its own loop, which counts every group there
+	 * is, the carried one included. The two agree until the finger passes the
+	 * hole the carried group left, and from there the rule is drawn one group
+	 * short of where the group actually goes.
+	 */
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+	await addGroup(page, 'Deli', 2);
+
+	const title = page.getByRole('button', { name: 'My list' });
+	const from = (await title.boundingBox())!;
+
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+
+	// Everything folds while one is carried, so the titles are all there is.
+	const deli = page.getByRole('button', { name: 'Deli' });
+	const market = page.getByRole('button', { name: 'Market' });
+
+	// Down past Market, into the gap between Market and Deli.
+	const over = (await deli.boundingBox())!;
+	await page.mouse.move(over.x + over.width / 2, over.y + 2);
+
+	const rule = page.locator('.landing');
+	await expect(rule).toHaveCount(1);
+
+	// The rule is below Market and above Deli, which is the gap the finger is in.
+	const drawn = (await rule.boundingBox())!;
+	const above = (await market.boundingBox())!;
+	const below = (await deli.boundingBox())!;
+	expect(drawn.y).toBeGreaterThanOrEqual(above.y + above.height);
+	expect(drawn.y).toBeLessThan(below.y);
+
+	await page.mouse.up();
+
+	// And that is where it went.
+	const order = await page.getByRole('button', { name: /^(My list|Market|Deli)$/ }).allInnerTexts();
+	expect(order).toStrictEqual(['MARKET', 'MY LIST', 'DELI']);
 });

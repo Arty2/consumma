@@ -181,17 +181,28 @@
 	 * The one flourish a tick gets, drawn over the box and held rather than
 	 * faded.
 	 *
-	 * Centred on the box rather than left where the flow puts it — absolute with
-	 * no offsets sits where the element would have been, which is after the box
-	 * and half over the words. `translate` and `scale` are separate properties,
-	 * so the keyframes grow it without disturbing the centring.
+	 * Centred on the mark, and it has to say where the mark is rather than
+	 * halve its parent. `.box` used to be the 44px square the mark sat in the
+	 * middle of, so a plain `50% 50%` found it; the box now reaches a third
+	 * again across and the whole height of the row, and its middle is a point
+	 * out in the words with nothing drawn at it. The flourish followed the
+	 * middle and left the tick behind.
 	 *
-	 * It must never move a row while it lasts, hence out of flow entirely.
+	 * So the same two numbers the padding above is built from, read the other
+	 * way round: the mark starts `--corner-ink` in and is `--glyph` across, so
+	 * its centre is half of `--touch` — and the same down, less the lift that
+	 * puts it level with the capitals. One place decides where the mark goes
+	 * and one decides where the flourish goes, and both are written in the
+	 * variables that would move them together.
+	 *
+	 * `translate` and `scale` are separate properties, so the keyframes grow it
+	 * without disturbing the centring. It must never move a row while it lasts,
+	 * hence out of flow entirely.
 	 */
 	.sparkle {
 		position: absolute;
-		left: 50%;
-		top: 50%;
+		left: calc(var(--touch) / 2);
+		top: calc(var(--touch) / 2 - var(--cap-lift));
 		translate: -50% -50%;
 		pointer-events: none;
 		animation: sparkle 350ms ease-out forwards;
