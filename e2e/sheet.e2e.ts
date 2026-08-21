@@ -247,6 +247,28 @@ test('ticking a task to done draws the sparkle flourish, with no toast', async (
 
 	await expect(task(page, 'Coffee').locator('svg.sparkle')).toBeVisible();
 	await expect(page.getByRole('status').filter({ hasText: 'Consummatum' })).toHaveCount(0);
+
+	/*
+	 * And thrown out from the mark, not from the middle of the target.
+	 *
+	 * The flourish is centred on the box it is drawn in, and that box reaches a
+	 * third again wider than the mark and the whole height of the row — so its
+	 * middle is a point out in the words with nothing drawn at it. Centred
+	 * there, the sparkle came off a tick that was not where the ink was.
+	 */
+	const apart = await page.evaluate(() => {
+		const row = document.querySelector('.tasks li:has(svg.sparkle)')!;
+		const mark = row.querySelector('[role="checkbox"] svg:not(.sparkle)')!.getBoundingClientRect();
+		const spark = row.querySelector('svg.sparkle')!.getBoundingClientRect();
+		return {
+			x: Math.abs(mark.left + mark.width / 2 - (spark.left + spark.width / 2)),
+			y: Math.abs(mark.top + mark.height / 2 - (spark.top + spark.height / 2))
+		};
+	});
+
+	// One point, within the rounding a drawn box costs.
+	expect(apart.x).toBeLessThan(1);
+	expect(apart.y).toBeLessThan(1);
 });
 
 test('the header control collapses and expands, and counts what it hides', async ({ page }) => {
@@ -476,7 +498,7 @@ test('Enter on a task opens a fresh one directly beneath it', async ({ page }) =
 	await expect.poll(order).toStrictEqual(['Bread', 'Butter', 'Jam', 'Milk']);
 });
 
-test('tapping a task takes the caret with it, to the end of what it says', async ({ page }) => {
+test('tapping a task takes the caret with it', async ({ page }) => {
 	/*
 	 * The field used to be swapped in unfocused, which meant it never blurred,
 	 * so the row never committed and never came out of edit mode — it simply sat
@@ -484,21 +506,57 @@ test('tapping a task takes the caret with it, to the end of what it says', async
 	 * that reads exactly like the two being lost.
 	 */
 	await addTask(page, '2x Tomatos 5,08');
-	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).dblclick();
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
 
 	const field = page.getByRole('textbox').first();
 	await expect(field).toBeFocused();
-	// At the end, so typing adds to what is there rather than landing mid-word.
-	expect(await field.evaluate((el: HTMLInputElement) => el.selectionStart)).toBe(15);
+
+	/*
+	 * Somewhere in the task, and inside the name rather than at either end of
+	 * the string: the row draws `Tomatos` alone in the middle cell, and the
+	 * offset has to be carried back past the count to reach the text itself.
+	 * Tapped at the end of a word, so the exact character is not at the mercy
+	 * of where in a glyph the click landed.
+	 */
+	const caret = await field.evaluate((el: HTMLTextAreaElement) => el.selectionStart);
+	expect(caret).toBeGreaterThan(2);
+	expect(caret).toBeLessThanOrEqual(10);
 
 	// And because it can blur, it commits, and the row goes back to being read.
 	await page.keyboard.press('Escape');
 	await expect(page.locator('.tasks li .cost').first()).toHaveText('5,08');
 
-	// The same on a task that is done — where this was first noticed.
+	/*
+	 * The same on a task that is done — where this was first noticed.
+	 *
+	 * Clear of the tap window first. Two taps on one row inside 320ms are one
+	 * run whatever happened between them, and the assertions above run in
+	 * rather less than that — so without the wait this second tap climbs the
+	 * first one's ladder instead of starting a run of its own.
+	 */
+	await page.waitForTimeout(450);
 	await task(page, '2x Tomatos 5,08').click();
-	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).dblclick();
+	await page.waitForTimeout(450);
+	await page.getByRole('button', { name: '2x Tomatos 5,08', exact: true }).click();
 	await expect(page.getByRole('textbox').first()).toBeFocused();
+});
+
+test('the caret lands where the finger did, not at the end', async ({ page }) => {
+	const long = 'Bread and butter and jam and cheese and everything else besides';
+	await addTask(page, long);
+
+	const words = page.getByRole('button', { name: long, exact: true });
+	const box = (await words.boundingBox())!;
+
+	// A quarter of the way along the first line, which is nowhere near either end.
+	await page.mouse.click(box.x + box.width * 0.25, box.y + 12);
+
+	const field = page.getByRole('textbox').first();
+	await expect(field).toBeFocused();
+
+	const caret = await field.evaluate((el: HTMLTextAreaElement) => el.selectionStart);
+	expect(caret).toBeGreaterThan(2);
+	expect(caret).toBeLessThan(long.length - 4);
 });
 
 test('Backspace on an empty row takes the caret back to the one above', async ({ page }) => {
@@ -851,6 +909,176 @@ test('the landing rule is drawn in the gap, and never moves the list', async ({ 
 	await page.mouse.up();
 });
 
+test('the phone answers back, and says different things for different acts', async ({ page }) => {
+	/*
+	 * `navigator.vibrate` is absent on desktop and refused outright by iOS
+	 * Safari, so nothing about this can be seen by looking at the app. Stubbed
+	 * and counted, because a confirmation nobody ever checks is a confirmation
+	 * that quietly stopped working.
+	 */
+	await page.addInitScript(() => {
+		(window as unknown as { buzzes: (number | number[])[] }).buzzes = [];
+		Object.defineProperty(navigator, 'vibrate', {
+			value: (pattern: number | number[]) => {
+				(window as unknown as { buzzes: (number | number[])[] }).buzzes.push(pattern);
+				return true;
+			},
+			configurable: true
+		});
+	});
+	await page.reload();
+
+	const buzzes = () =>
+		page.evaluate(() => (window as unknown as { buzzes: (number | number[])[] }).buzzes);
+	const clear = () =>
+		page.evaluate(() => ((window as unknown as { buzzes: (number | number[])[] }).buzzes = []));
+
+	await addTask(page, 'Bread');
+
+	// A tick is something finished: dot dot dash.
+	await clear();
+	await task(page, 'Bread').click();
+	expect(await buzzes()).toStrictEqual([[10, 50, 10, 50, 45]]);
+
+	// A delete is something taken away: dot dot.
+	await clear();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	expect(await buzzes()).toStrictEqual([[10, 60, 10]]);
+
+	// And a button is a thing done: one tap.
+	await clear();
+	await page.getByRole('button', { name: 'Menu' }).click();
+	expect(await buzzes()).toStrictEqual([10]);
+});
+
+test('a message comes down from above and can be thrown back out', async ({ page }) => {
+	/*
+	 * It used to appear and disappear outright, which is the one thing on the
+	 * sheet that happened rather than moved — and a message that blinks out is
+	 * one you are never sure you saw.
+	 */
+	await addTask(page, 'Bread');
+	await task(page, 'Bread').click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+
+	const toast = page.locator('.toast');
+	await toast.waitFor();
+
+	/*
+	 * It arrives with a movement of its own, from off the top of the paper.
+	 * Svelte scopes the keyframes a component declares, so the name on the page
+	 * carries a hash in front of the one written in the file.
+	 */
+	const names = await toast.evaluate((el) =>
+		el.getAnimations().map((a) => (a as CSSAnimation).animationName)
+	);
+	expect(names.some((name) => name.endsWith('toast-arrive'))).toBe(true);
+
+	await toast.evaluate((el) =>
+		Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined)
+	);
+	const landed = (await toast.boundingBox())!;
+	expect(landed.y).toBeGreaterThan(0);
+
+	// Carried upwards far enough, it goes — and takes the offer of undo with it.
+	await page.mouse.move(landed.x + landed.width / 2, landed.y + landed.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(landed.x + landed.width / 2, landed.y + landed.height / 2 - 60, {
+		steps: 6
+	});
+	await page.mouse.up();
+
+	await expect(toast).toHaveCount(0);
+});
+
+test('a message can be thrown out sideways too, and UNDO still works', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await task(page, 'Bread').click();
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+
+	const toast = page.locator('.toast');
+	await toast.waitFor();
+	await toast.evaluate((el) =>
+		Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined)
+	);
+
+	// A press that never travels is still a press: UNDO brings the task back.
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(toast).toHaveCount(0);
+
+	/*
+	 * And a carry rightwards takes the next one away. The undo put the task
+	 * back exactly as it was, which is done — so it already offers its own way
+	 * out and must not be ticked again.
+	 */
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+	await page.getByRole('button', { name: 'Delete task' }).first().click();
+	await toast.waitFor();
+	await toast.evaluate((el) =>
+		Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined)
+	);
+
+	const box = (await toast.boundingBox())!;
+	await page.mouse.move(box.x + 30, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.mouse.move(box.x + 30 + 70, box.y + box.height / 2, { steps: 6 });
+	await page.mouse.up();
+
+	await expect(toast).toHaveCount(0);
+});
+
+test('a lifted row is offered nowhere that would put it back', async ({ page }) => {
+	/*
+	 * The rule immediately above the row being carried and the rule immediately
+	 * below it are the same rule: both put it back between the same two
+	 * neighbours. A short drag used to spend the whole of itself showing one or
+	 * other of them, which is an offer to do nothing dressed as a target.
+	 */
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const input = page.getByRole('textbox', { name: 'New task' });
+	for (const text of ['One', 'Two', 'Three', 'Four']) {
+		await input.fill(text);
+		await input.press('End');
+		await input.press('Enter');
+	}
+	await page.keyboard.press('Escape');
+
+	const order = () =>
+		page
+			.getByRole('checkbox')
+			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+
+	const before = await order();
+	const row = (await page.getByRole('button', { name: 'Two', exact: true }).boundingBox())!;
+
+	// Lift the second row and hold it over its own place.
+	await page.mouse.move(row.x + 30, row.y + row.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await page.mouse.move(row.x + 30, row.y + row.height / 2 + 4, { steps: 3 });
+
+	// Nothing offered on its own row.
+	await expect(page.locator('.landing')).toHaveCount(0);
+
+	// Nor just above it, which is where it already begins.
+	await page.mouse.move(row.x + 30, row.y - 4, { steps: 3 });
+	await expect(page.locator('.landing')).toHaveCount(0);
+
+	// Nor just below it, which is the same place said the other way round.
+	await page.mouse.move(row.x + 30, row.y + row.height + 4, { steps: 3 });
+	await expect(page.locator('.landing')).toHaveCount(0);
+
+	// A real boundary two rows down does offer one.
+	await page.mouse.move(row.x + 30, row.y + row.height * 2 + 4, { steps: 3 });
+	await expect(page.locator('.landing')).toHaveCount(1);
+
+	// And letting go back over its own place changes nothing at all.
+	await page.mouse.move(row.x + 30, row.y + row.height / 2, { steps: 6 });
+	await page.mouse.up();
+	expect(await order()).toStrictEqual(before);
+});
+
 /*
  * One tap does the common thing and two open it for editing — on a task row
  * and on a group title alike, because it is one finger and one sheet.
@@ -860,36 +1088,69 @@ test('the landing rule is drawn in the gap, and never moves the list', async ({ 
  * take it back, a group title waits. See the note in GroupHeader.
  */
 
-test('one tap ticks a task off, and two open it for editing', async ({ page }) => {
+test('one tap opens a task, two mark it done, three mark it half', async ({ page }) => {
+	await addTask(page, 'Bread and butter');
+
+	const words = page.getByRole('button', { name: 'Bread and butter', exact: true });
+	const box = (await words.boundingBox())!;
+	/*
+	 * Clear of two things at once: the last few characters, where a run is an
+	 * edit and stays one, and the checkbox at the other end, whose target now
+	 * reaches a third again past its own mark and over the start of the words.
+	 */
+	const start = { x: box.x + 20, y: box.y + box.height / 2 };
+
+	/*
+	 * One tap opens it. A list is read far more often than it is ticked in one
+	 * go, and the checkbox beside the words is the control whose whole job is
+	 * the tick — so the words answer the thing the words are for.
+	 */
+	await page.mouse.click(start.x, start.y);
+	await expect(page.getByRole('textbox').first()).toBeFocused();
+	await expect(task(page, 'Bread and butter')).toHaveAttribute('aria-checked', 'false');
+
+	/*
+	 * Clear of the window before starting again, or the next tap climbs this
+	 * run rather than beginning one. The window is 320ms; the wait is generous
+	 * so a slow machine cannot make two deliberate taps read as one gesture.
+	 */
+	await page.keyboard.press('Escape');
+	await page.waitForTimeout(450);
+
+	// Two taps mark it done — the second lands on the field the first opened.
+	await page.mouse.click(start.x, start.y);
+	await page.mouse.click(start.x, start.y);
+	await expect(task(page, 'Bread and butter')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.getByRole('textbox')).toHaveCount(0);
+
+	await page.waitForTimeout(450);
+
+	// And three mark it half, which is the rung above done.
+	await page.mouse.click(start.x, start.y);
+	await page.mouse.click(start.x, start.y);
+	await page.mouse.click(start.x, start.y);
+	await expect(task(page, 'Bread and butter')).toHaveAttribute('aria-checked', 'mixed');
+});
+
+test('a run of taps at the end of the words never ticks the task', async ({ page }) => {
+	/*
+	 * A finger in the last few characters is reaching for the end of the task —
+	 * to add to it, or to press Enter and start the next thing there. Two taps
+	 * there are two attempts at the same thing, not a tick.
+	 */
 	await addTask(page, 'Bread');
 
 	const words = page.getByRole('button', { name: 'Bread', exact: true });
+	const box = (await words.boundingBox())!;
+	// Just past the last letter, which is where somebody adding to it would aim.
+	const end = { x: box.x + box.width - 4, y: box.y + box.height / 2 };
 
-	await words.click();
-	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+	await page.mouse.click(end.x, end.y);
+	await page.mouse.click(end.x, end.y);
+	await page.mouse.click(end.x, end.y);
 
-	/*
-	 * Clear of the double-tap window before tapping again, or this is a double
-	 * tap and opens the row — which is the behaviour under test, not a flake.
-	 * The window is 320ms; the wait is generous so a slow machine cannot make
-	 * two deliberate taps read as one gesture.
-	 */
-	await page.waitForTimeout(450);
-
-	// And back, so a mistaken tick costs one tap.
-	await words.click();
 	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
-
-	await page.waitForTimeout(450);
-
-	/*
-	 * Two taps open the words instead, and put back the tick the first tap
-	 * made. The row is optimistic — the tick happens and is taken back — so
-	 * what matters is where it lands, not what it did on the way.
-	 */
-	await words.dblclick();
 	await expect(page.getByRole('textbox').first()).toBeFocused();
-	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
 });
 
 test('one tap folds a group, and two open its name', async ({ page }) => {
@@ -937,6 +1198,132 @@ test('a row that runs out of room fills up, and the rest starts the next one', a
 	await page.keyboard.press('Escape');
 });
 
+test('Enter carries what is in front of the caret down to a new task', async ({ page }) => {
+	/*
+	 * Enter means "and the next one", and it now means it from wherever the
+	 * caret is. It used to open an empty row wherever the caret stood, so
+	 * splitting a task in two meant retyping the second half.
+	 */
+	await addTask(page, 'Bread and butter');
+
+	await page.getByRole('button', { name: 'Bread and butter', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await expect(field).toBeFocused();
+
+	// Between the two things, which is where a person would break the line.
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(6, 6));
+	await field.press('Enter');
+
+	// The row above kept what was behind the caret; the rest came down with it,
+	// already in the row below and ready to be added to.
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('and butter');
+
+	await page.getByRole('textbox', { name: 'New task' }).press('Enter');
+	await expect(task(page, 'and butter')).toBeVisible();
+});
+
+test('Enter at the very start leaves the task whole', async ({ page }) => {
+	// The head would be empty, and a task may not be — so nothing is pushed
+	// down and an empty row opens beneath, which is what Enter always did.
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'Bread', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
+	await field.press('Enter');
+
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('');
+});
+
+test('the count of what is left appears late, and under the checkbox', async ({ page }) => {
+	// A phone, where a row long enough to be running out of room is several
+	// lines tall — which is the shape the count is placed for.
+	await page.setViewportSize({ width: 390, height: 760 });
+
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	const counter = page.locator('.counter');
+
+	// Quiet through the whole of a long task: there is nothing to do about it
+	// until the very end, since the row goes on taking characters either way.
+	await field.fill('A'.repeat(189));
+	await expect(counter).toHaveCount(0);
+
+	// Ten left, and counting down from there.
+	await field.fill('A'.repeat(190));
+	await expect(counter).toHaveText('10');
+	await field.fill('A'.repeat(196));
+	await expect(counter).toHaveText('4');
+
+	/*
+	 * Under the mark rather than out in the gutter beside the first line. The
+	 * writing is being done at the foot of a long row, so the count belongs
+	 * there — and it is in the checkbox's column, not the words'.
+	 */
+	const where = await page.evaluate(() => {
+		const row = document.querySelector('.tasks li:has(.counter)')!.getBoundingClientRect();
+		const mark = document.querySelector('.tasks li:has(.counter) svg')!.getBoundingClientRect();
+		const count = document.querySelector('.counter')!.getBoundingClientRect();
+		const field = document.querySelector('.tasks li:has(.counter) textarea')!;
+		const style = getComputedStyle(field);
+		return {
+			rowBottom: row.bottom,
+			rowLeft: row.left,
+			markBottom: mark.bottom,
+			count,
+			fieldBottom: field.getBoundingClientRect().bottom,
+			padBottom: parseFloat(style.paddingBottom),
+			line: parseFloat(style.lineHeight)
+		};
+	});
+
+	// Below the mark, and never right of the words.
+	expect(where.count.top).toBeGreaterThan(where.markBottom);
+	expect(where.count.left).toBeGreaterThanOrEqual(where.rowLeft - 1);
+
+	/*
+	 * And level with the line being typed, rather than with the foot of the
+	 * row. The field pads itself by half a target less half a line at each end,
+	 * so a one-line row is a --touch square with its writing in the middle —
+	 * which leaves the last line's own middle sitting that same half-target
+	 * above the bottom of the row. A count with no height of its own sat its
+	 * digits on the floor of that padding instead, a good few pixels under the
+	 * line it was counting.
+	 */
+	const lastLine = where.fieldBottom - where.padBottom - where.line / 2;
+	const middle = where.count.top + where.count.height / 2;
+	expect(Math.abs(middle - lastLine)).toBeLessThan(2);
+
+	await page.keyboard.press('Escape');
+});
+
+test('the checkbox answers to more than the square it draws', async ({ page }) => {
+	/*
+	 * A checkbox is a small square in a line of words, and the words are a much
+	 * bigger thing to hit. So its target reaches a third again past its own
+	 * mark and the whole height of the row — a finger going for the box and
+	 * landing on the first word still ticks the task, which is what it meant.
+	 */
+	await addTask(page, 'Bread and butter and jam and cheese and everything else besides');
+
+	const reach = await page.evaluate(() => {
+		const box = document.querySelector('.tasks li [role="checkbox"]')!.getBoundingClientRect();
+		const mark = document.querySelector('.tasks li [role="checkbox"] svg')!.getBoundingClientRect();
+		const row = document.querySelector('.tasks li')!.getBoundingClientRect();
+		return { box, markRight: mark.right, rowHeight: row.height, rowTop: row.top };
+	});
+
+	// Wider than the mark by a good margin, and the full height of the row.
+	expect(reach.box.width).toBeGreaterThan(reach.markRight - reach.box.left + 20);
+	expect(Math.abs(reach.box.height - reach.rowHeight)).toBeLessThan(2);
+
+	// And a tap inside that reach, past where the mark stops, still ticks it.
+	await page.mouse.click(reach.box.right - 4, reach.rowTop + reach.rowHeight / 2);
+	await expect(page.getByRole('checkbox').first()).toHaveAttribute('aria-checked', 'true');
+});
+
 test('a task drawn over two lines is edited over two lines', async ({ page }) => {
 	const long =
 		'A rather long task that certainly runs onto a second line however wide the sheet is';
@@ -945,7 +1332,7 @@ test('a task drawn over two lines is edited over two lines', async ({ page }) =>
 	const words = page.getByRole('button', { name: long, exact: true });
 	const read = (await words.boundingBox())!.height;
 
-	await words.dblclick();
+	await words.click();
 	const field = page.getByRole('textbox').first();
 	await expect(field).toBeFocused();
 
@@ -999,4 +1386,60 @@ test('only three schemes are ever drawn as a link', async ({ page }) => {
 	await addTask(page, 'Nope javascript:alert(1) and blob:https://heracl.es/x either');
 
 	await expect(page.locator('.tasks a')).toHaveCount(0);
+});
+
+/** Adds a named group with one task in it, and returns its title button. */
+async function addGroup(page: Page, name: string, index: number) {
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const field = page.getByRole('textbox', { name: 'New group' });
+	await field.fill(name);
+	await field.press('Enter');
+	await addTask(page, `${name} thing`, index);
+	return page.getByRole('button', { name });
+}
+
+test('the rule a carried group is dropped on is drawn where it will land', async ({ page }) => {
+	/*
+	 * The landing rule and the drop were counted in two different lists. The
+	 * hit test skips the group being carried, because a group cannot land
+	 * beside itself — so its answer counts the groups that are staying still.
+	 * The markup drew the rule by its own loop, which counts every group there
+	 * is, the carried one included. The two agree until the finger passes the
+	 * hole the carried group left, and from there the rule is drawn one group
+	 * short of where the group actually goes.
+	 */
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+	await addGroup(page, 'Deli', 2);
+
+	const title = page.getByRole('button', { name: 'My list' });
+	const from = (await title.boundingBox())!;
+
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+
+	// Everything folds while one is carried, so the titles are all there is.
+	const deli = page.getByRole('button', { name: 'Deli' });
+	const market = page.getByRole('button', { name: 'Market' });
+
+	// Down past Market, into the gap between Market and Deli.
+	const over = (await deli.boundingBox())!;
+	await page.mouse.move(over.x + over.width / 2, over.y + 2);
+
+	const rule = page.locator('.landing');
+	await expect(rule).toHaveCount(1);
+
+	// The rule is below Market and above Deli, which is the gap the finger is in.
+	const drawn = (await rule.boundingBox())!;
+	const above = (await market.boundingBox())!;
+	const below = (await deli.boundingBox())!;
+	expect(drawn.y).toBeGreaterThanOrEqual(above.y + above.height);
+	expect(drawn.y).toBeLessThan(below.y);
+
+	await page.mouse.up();
+
+	// And that is where it went.
+	const order = await page.getByRole('button', { name: /^(My list|Market|Deli)$/ }).allInnerTexts();
+	expect(order).toStrictEqual(['MARKET', 'MY LIST', 'DELI']);
 });

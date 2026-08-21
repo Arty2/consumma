@@ -64,6 +64,32 @@ export function spill(text: string, max: number): Spill | null {
 }
 
 /**
+ * The cut a person asks for, rather than the one the limit forces.
+ *
+ * Enter in the middle of a task leaves what is behind the caret where it is and
+ * carries what is in front of it down to a new row — which is what Enter does
+ * in the middle of a line of writing anywhere else, and what it did not do
+ * here: it opened an empty row and left the rest of the sentence to be typed
+ * again.
+ *
+ * `start` and `end` are the field's own selection. When they differ, the
+ * selection is what the break replaces — highlighting a word and pressing
+ * Enter cuts there once rather than leaving the word on both rows.
+ *
+ * Counted in UTF-16 units and not code points, unlike `spill` above: these come
+ * from `selectionStart` and `selectionEnd`, which is the unit a textarea
+ * counts in. Slicing by the same measure the caret was reported in is what
+ * keeps a break inside an emoji from happening — the browser will not put a
+ * caret in the middle of one to begin with.
+ */
+export function splitAt(text: string, start: number, end: number): Spill {
+	const from = Math.max(0, Math.min(start, text.length));
+	const to = Math.max(from, Math.min(end, text.length));
+
+	return { head: text.slice(0, from), tail: text.slice(to) };
+}
+
+/**
  * The same cut applied over and over, for text arriving all at once.
  *
  * Pasting four hundred characters into a row is not typing past the end of it,

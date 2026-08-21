@@ -3,6 +3,7 @@
 	import '../app.css';
 	import { handUnderlineTile } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { theme } from '$lib/state/theme.svelte';
 
 	let { children } = $props();
@@ -77,6 +78,23 @@
 			'--underline',
 			`url("data:image/svg+xml,${encodeURIComponent(tiles[resolved])}")`
 		);
+	});
+
+	/*
+	 * Debug, put where CSS can see it.
+	 *
+	 * The same switch that keeps the sync log also draws every box on the page,
+	 * because both are the same question — what is this actually doing — asked
+	 * of a phone, where there is no console to open and no inspector to reach
+	 * for. See the rule it turns on in app.css.
+	 *
+	 * Removed rather than written `off`, which is the shape the theme beside it
+	 * uses and for the same reason: the default is the absence of the attribute,
+	 * so nothing has to be said to mean it.
+	 */
+	$effect(() => {
+		if (diagnostics.enabled) document.documentElement.dataset.debug = 'on';
+		else delete document.documentElement.dataset.debug;
 	});
 </script>
 

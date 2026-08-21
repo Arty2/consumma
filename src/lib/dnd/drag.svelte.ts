@@ -29,10 +29,22 @@ export class DragState {
 	/** The task currently lifted, if any. */
 	taskId = $state<string | null>(null);
 	target = $state<DropTarget | null>(null);
+	/**
+	 * Where the lifted thing came from, so the places that would put it back
+	 * exactly there can offer nothing.
+	 *
+	 * A landing rule drawn immediately above or immediately below the row being
+	 * carried is a landing rule for the place it already occupies: letting go on
+	 * either changes nothing, and the sheet spends most of a short drag showing
+	 * two of them. Read once at the lift rather than derived, because the list
+	 * moves under the finger as groups expand.
+	 */
+	from = $state<DropTarget | null>(null);
 
 	/** The group currently lifted, if any. Never both at once. */
 	groupId = $state<string | null>(null);
 	groupTarget = $state<number | null>(null);
+	groupFrom = $state<number | null>(null);
 
 	get dragging(): boolean {
 		return this.taskId !== null || this.groupId !== null;
@@ -51,16 +63,36 @@ export class DragState {
 		return this.target?.groupId === groupId && this.target.index === index;
 	}
 
-	/** The same, for a group being moved among its siblings. */
+	/**
+	 * The same, for a group being moved among its siblings.
+	 *
+	 * The index has to be translated on the way in, because the two sides count
+	 * in different lists. `groupTargetAt` skips the group being carried — a
+	 * group cannot land beside itself, and the order it is asked for is the
+	 * order of the ones staying still, which is what `groupOrderAt` wants too.
+	 * The markup counts with its own `{#each}`, which has every group in it,
+	 * the carried one included.
+	 *
+	 * The two agree until the finger passes the hole the carried group left,
+	 * and from there they are one apart: everything after the hole answers to
+	 * an index one lower in the shorter list. So the rule was drawn a group
+	 * short of where the group would actually land — the drop was right and
+	 * the mark pointing at it was not, which is the worse way round.
+	 */
 	isGroupLanding(index: number): boolean {
-		return this.groupTarget === index;
+		if (this.groupTarget === null) return false;
+		const from = this.groupFrom;
+		const shift = from !== null && this.groupTarget >= from ? 1 : 0;
+		return this.groupTarget + shift === index;
 	}
 
 	reset(): void {
 		this.taskId = null;
 		this.target = null;
+		this.from = null;
 		this.groupId = null;
 		this.groupTarget = null;
+		this.groupFrom = null;
 	}
 }
 
@@ -95,8 +127,13 @@ function targetAt(x: number, y: number, movingId: string): DropTarget | null {
 	 * The dragged row is still in the DOM, just tilted, so hovering over its
 	 * own former place would otherwise hit-test as itself — and, filtered out
 	 * of its own siblings list, report the end of the group. There is no
-	 * landing spot there: only the boundaries between other rows offer one, so
-	 * the previous target stands until the finger reaches one of those.
+	 * landing spot there, and nothing is drawn until the finger reaches a
+	 * boundary between two other rows.
+	 *
+	 * The previous target used to stand instead. That kept a rule on the sheet
+	 * through the whole of a short drag, and the rule it kept was almost always
+	 * one of the two either side of the row itself — which is to say a rule
+	 * offering to put the row back where it already was.
 	 */
 	if (elements.some((el) => el instanceof HTMLElement && el.dataset.task === movingId)) {
 		return null;
@@ -286,21 +323,62 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 	};
 }
 
+/**
+ * Where a row sits now, counted among its siblings including itself.
+ *
+ * That count is exactly the index that would put it back: taking a row out of
+ * its own list shifts everything below it up by one, so inserting at the same
+ * number in the shortened list lands it between the same two neighbours.
+ */
+function homeOf(taskId: string): DropTarget | null {
+	const row = document.querySelector<HTMLElement>(`[data-task="${taskId}"]`);
+	const groupId = row?.closest<HTMLElement>('[data-group]')?.dataset.group;
+	if (!row || !groupId) return null;
+
+	const siblings = [
+		...document.querySelectorAll<HTMLElement>(`[data-group="${groupId}"] [data-task]`)
+	];
+	return { groupId, index: siblings.indexOf(row) };
+}
+
+/** Whether a target is the place the lifted row is already in. */
+function isHome(target: DropTarget | null): boolean {
+	return (
+		target !== null &&
+		drag.from !== null &&
+		target.groupId === drag.from.groupId &&
+		target.index === drag.from.index
+	);
+}
+
 export const dragRow: Action<HTMLElement, DragOptions> = (node, initial) => {
 	let options = initial;
+
+	/** A target, unless it is the one that would change nothing. */
+	function landing(x: number, y: number): DropTarget | null {
+		const next = targetAt(x, y, options.taskId);
+		return isHome(next) ? null : next;
+	}
 
 	const destroy = pressDrag(node, () => ({
 		enabled: () => true,
 		lift(x, y) {
 			drag.taskId = options.taskId;
-			drag.target = targetAt(x, y, options.taskId);
+			drag.from = homeOf(options.taskId);
+			drag.target = landing(x, y);
 		},
 		move(x, y) {
-			const next = targetAt(x, y, options.taskId);
+			/*
+			 * Cleared rather than held. Over its own row, or at either boundary
+			 * beside it, there is nothing to offer — and a rule left standing
+			 * from a moment ago is a rule pointing at somewhere the finger has
+			 * left.
+			 */
+			const next = landing(x, y);
+			drag.target = next;
 			if (!next) return;
 
 			if (next.groupId !== options.groupId) options.onEnterGroup?.(next.groupId);
-			drag.target = next;
 		},
 		drop() {
 			if (drag.target) options.onDrop(drag.target);
@@ -349,19 +427,32 @@ function groupTargetAt(y: number, movingId: string): number | null {
 	return sections.length;
 }
 
+/** Where a group sits now, counted among its siblings including itself. */
+function groupHomeOf(groupId: string): number | null {
+	const sections = [...document.querySelectorAll<HTMLElement>('[data-group]')];
+	const at = sections.findIndex((el) => el.dataset.group === groupId);
+	return at === -1 ? null : at;
+}
+
 /** The same long press that lifts a row, lifting the whole group instead. */
 export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) => {
 	let options = initial;
+
+	/** The same rule the rows follow: no landing where it already is. */
+	function landing(y: number): number | null {
+		const next = groupTargetAt(y, options.groupId);
+		return next !== null && next === drag.groupFrom ? null : next;
+	}
 
 	const destroy = pressDrag(node, () => ({
 		enabled: () => options.enabled,
 		lift(_x, y) {
 			drag.groupId = options.groupId;
-			drag.groupTarget = groupTargetAt(y, options.groupId);
+			drag.groupFrom = groupHomeOf(options.groupId);
+			drag.groupTarget = landing(y);
 		},
 		move(_x, y) {
-			const next = groupTargetAt(y, options.groupId);
-			if (next !== null) drag.groupTarget = next;
+			drag.groupTarget = landing(y);
 		},
 		drop() {
 			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);

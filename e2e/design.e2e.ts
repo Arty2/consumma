@@ -138,6 +138,37 @@ test('the palette is black on white and nothing else', async ({ page }) => {
 	}
 });
 
+test('debug draws every box, and only when it is asked to', async ({ page }) => {
+	/*
+	 * The one deliberate breach of the two colours. It is a tool for whoever is
+	 * building the app rather than a state the app has, so what matters is that
+	 * it cannot appear without being asked for.
+	 */
+	const outlined = () =>
+		page.evaluate(
+			() =>
+				[...document.querySelectorAll('*')].filter((el) => {
+					const style = getComputedStyle(el);
+					// Focus rings are dashed ink and are not this.
+					return style.outlineStyle === 'dotted';
+				}).length
+		);
+
+	expect(await outlined()).toBe(0);
+	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBeUndefined();
+
+	await openMenu(page);
+	await page.getByRole('button', { name: 'Debug: Off' }).click();
+
+	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBe('on');
+	expect(await outlined()).toBeGreaterThan(10);
+
+	// And off again takes the attribute away rather than writing a second state.
+	await page.getByRole('button', { name: 'Debug: On' }).click();
+	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBeUndefined();
+	expect(await outlined()).toBe(0);
+});
+
 test('one handwritten face, served from our origin, and only one', async ({ page }) => {
 	const families = await page.evaluate(() => [...document.fonts].map((f) => f.family));
 
@@ -232,6 +263,14 @@ test('Greek loses its tonos in caps, and keeps it everywhere else', async ({ pag
 	// A word that goes visibly wrong without the language: ΜΑΪ́ΣΤΡΟΣ, with a
 	// stranded combining acute, rather than ΜΑΪΣΤΡΟΣ.
 	await input.fill('μαΐστρος');
+	/*
+	 * Enter cuts the row at the caret, so the caret has to be where a person
+	 * typing would have left it. `fill` does not always leave it at the end —
+	 * on this word Chrome reports it two characters short — which is an
+	 * artefact of setting the value rather than typing it, and would otherwise
+	 * make this test about the wrong thing entirely.
+	 */
+	await input.press('End');
 	await input.press('Enter');
 	await page.keyboard.press('Escape');
 
@@ -440,7 +479,19 @@ test('a checkbox sits level with the capitals it is beside', async ({ page }) =>
 	const offset = await page.evaluate(() => {
 		const row = document.querySelector('.tasks li')!;
 		const text = row.querySelector('.text')!;
-		const box = row.querySelector('svg path')!.getBoundingClientRect();
+		/*
+		 * The `<svg>` and not the `<path>` inside it.
+		 *
+		 * This is about where the mark is placed, and the path is drawn by a hand
+		 * that wanders: `handRect` overshoots each corner by up to `overshoot`,
+		 * seeded by the task's id, so the ink's own top edge lands somewhere new
+		 * on every run. Measured off the path the answer swung across two thirds
+		 * of a pixel from seed to seed against a bar of one, and crossed it often
+		 * enough to fail a full parallel run and never a single test. The svg's
+		 * box is exactly the 22px square the glyph is laid out in, and is the
+		 * thing the lift actually moves.
+		 */
+		const box = row.querySelector('[role="checkbox"] svg')!.getBoundingClientRect();
 
 		const style = getComputedStyle(text);
 		const range = document.createRange();
@@ -814,6 +865,11 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 	// The row pops before it actually goes, so the undo toast lands a beat
 	// after the click rather than in the same tick.
 	await page.locator('.toast').waitFor();
+	// It comes down from above the paper now, so it has to have landed before
+	// anything measures where it landed.
+	await page
+		.locator('.toast')
+		.evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined));
 
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
@@ -830,10 +886,17 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 		};
 	});
 
-	// On the buttons' own line, standing where they stand rather than a row
-	// below them — and covering them outright while it shows, which is why it
-	// has to reach at least as far as the burger does at either end.
-	expect(where.top).toBeCloseTo(where.cornerTop, 0);
+	/*
+	 * On the buttons' own line, standing where they stand rather than a row
+	 * below them — and covering them outright while it shows, which is why it
+	 * has to reach at least as far as the burger does at either end.
+	 *
+	 * `--toast-lead` holds it a few pixels lower than dead level, so its own
+	 * drawn box does not sit on the burger's ink. Below the row rather than
+	 * above it, and never far enough to open a second line.
+	 */
+	expect(where.top - where.cornerTop).toBeGreaterThanOrEqual(0);
+	expect(where.top - where.cornerTop).toBeLessThan(6);
 	expect(where.bottom).toBeGreaterThanOrEqual(where.cornerBottom);
 	expect(where.right).toBeGreaterThanOrEqual(where.cornerRight);
 

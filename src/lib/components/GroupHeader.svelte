@@ -3,10 +3,12 @@
 	import Perforation from './Perforation.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handCross } from '$lib/draw/hand';
+	import { handScribble } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
+	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { taken, tapped } from '$lib/feel';
+	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
 
 	type Props = {
@@ -53,16 +55,10 @@
 
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
-	/* The same mark, the same size, as the ✕ on every done task below it. */
-	const CROSS = 11;
+	/* The same mark, the same size, as the one on every done task below it. */
+	const MARK = 11;
 
-	const cross = $derived(handCross(CROSS, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
-
-	/**
-	 * Long enough to be a second tap, short enough not to catch two decisions.
-	 * The same window a task row and the checkbox use — it is the same finger.
-	 */
-	const DOUBLE_TAP_MS = 320;
+	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
 
 	let folding: ReturnType<typeof setTimeout> | null = null;
 
@@ -194,10 +190,13 @@
 		<button
 			class="icon"
 			type="button"
-			onclick={ontoggle}
+			onclick={() => {
+				tapped();
+				ontoggle();
+			}}
 			onmousedown={(event) => event.preventDefault()}
 			aria-expanded={!collapsed}
-			aria-label={collapsed ? 'Expand group' : 'Collapse group'}
+			aria-label={collapsed ? t.group.expand : t.group.collapse}
 		>
 			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
 		</button>
@@ -218,7 +217,7 @@
 				bind:value={draft}
 				use:grow={draft}
 				maxlength={LIMITS.groupTitle}
-				aria-label="Group title"
+				aria-label={t.group.title}
 				autofocus
 				onblur={commit}
 				{onkeydown}></textarea>
@@ -253,7 +252,7 @@
 					role="button"
 					tabindex="0"
 					lang={langOf(title)}
-					aria-label={title === '' ? 'Untitled group' : title}
+					aria-label={title === '' ? t.group.untitled : title}
 					onclick={ontap}
 					ondblclick={onsecondtap}
 					onkeydown={(event) => {
@@ -281,7 +280,7 @@
 		{#if editing}
 			<!--
 				The way to get rid of the group, offered only while its name is being
-				edited — and out in the gutter, in the same column as the ✕ on every
+				edited — and out in the gutter, in the same column as the mark on every
 				done task below it. Deleting is one thing and it happens in one place.
 			-->
 			<button
@@ -291,11 +290,11 @@
 				disabled={!finished}
 				onclick={remove}
 				onmousedown={(event) => event.preventDefault()}
-				aria-label={finished ? 'Delete group' : 'Delete group — finish its tasks first'}
-				title={finished ? 'Delete group' : 'Finish its tasks first'}
+				aria-label={finished ? t.group.delete : t.group.deleteBlocked}
+				title={finished ? t.group.delete : t.group.deleteBlockedHint}
 			>
-				<svg viewBox="0 0 {CROSS} {CROSS}" width={CROSS} height={CROSS} aria-hidden="true">
-					<path d={cross} class="drawn" />
+				<svg viewBox="0 0 {MARK} {MARK}" width={MARK} height={MARK} aria-hidden="true">
+					<path d={scribble} class="drawn" />
 				</svg>
 			</button>
 		{/if}
@@ -489,7 +488,7 @@
 	}
 
 	/*
-	 * The same column every ✕ on the sheet stands in — see `--gutter` in
+	 * The same column every delete mark on the sheet stands in — see `--gutter` in
 	 * app.css. Out of the row's flow, so the total keeps its place whether the
 	 * name is being edited or not.
 	 */
@@ -510,10 +509,10 @@
 
 	/*
 	 * The mark alone steps in; the button does not, so the tap area stays out
-	 * in the margin — see --cross-step.
+	 * in the margin — see --mark-step.
 	 */
 	.remove svg {
-		translate: calc(-1 * var(--cross-step)) 0;
+		translate: calc(-1 * var(--mark-step)) 0;
 	}
 
 	/* Drawn, but not offered: the group still has something in it to do. */

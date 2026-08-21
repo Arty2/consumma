@@ -171,6 +171,19 @@ test.describe('with motion as it comes', () => {
 });
 
 test.describe('the edge that comes forward', () => {
+	/*
+	 * The sheet's edges are drawn to a height they have to be measured for, so
+	 * there is a frame after navigation where the paper is on screen and its
+	 * sides are not yet ink. Reading the weight in that frame gives `null`, and
+	 * `null` is indistinguishable from an edge drawn at no weight at all — so
+	 * under a loaded machine these tests failed on the reading rather than on
+	 * the thing they are about. Waited for once, at the start, rather than
+	 * folded into `weight`: mid-drag a `null` is a real answer.
+	 */
+	async function inked(page: Page) {
+		await page.locator('.page svg.edge.left path').waitFor();
+	}
+
 	/**
 	 * The drawn weight of one side edge, in pixels.
 	 *
@@ -192,6 +205,7 @@ test.describe('the edge that comes forward', () => {
 
 	test('the near edge reaches its full weight, and the far one is left alone', async ({ page }) => {
 		await page.goto('/');
+		await inked(page);
 
 		const base = (await weight(page, '.page', 'left'))!;
 		expect(base).toBeGreaterThan(0);
@@ -234,6 +248,7 @@ test.describe('the edge that comes forward', () => {
 
 	test('the weight ramps with the turn rather than stepping halfway', async ({ page }) => {
 		await page.goto('/');
+		await inked(page);
 		const base = (await weight(page, '.page', 'left'))!;
 
 		/*
@@ -261,6 +276,7 @@ test.describe('the edge that comes forward', () => {
 
 	test('nothing is weighted while the paper is only sliding', async ({ page }) => {
 		await page.goto('/');
+		await inked(page);
 		const base = (await weight(page, '.page', 'left'))!;
 
 		const box = (await page.locator('main').boundingBox())!;
@@ -295,6 +311,7 @@ test.describe('the edge that comes forward', () => {
 
 	test('springing home never makes the edge heavier on the way back', async ({ page }) => {
 		await page.goto('/');
+		await inked(page);
 		const base = (await weight(page, '.page', 'left'))!;
 
 		const box = (await page.locator('main').boundingBox())!;
@@ -328,6 +345,7 @@ test.describe('the edge that comes forward', () => {
 
 	test('a finger turning the paper takes the edge with it', async ({ page }) => {
 		await page.goto('/');
+		await inked(page);
 		const base = (await weight(page, '.page', 'left'))!;
 
 		const box = (await page.locator('main').boundingBox())!;
@@ -574,11 +592,11 @@ test.describe('turning it back by hand', () => {
 
 		/*
 		 * The other half of letting the drag start on a button: pressing one has
-		 * to go on working. Debug log toggles in place and says so, which makes
+		 * to go on working. The debug toggle flips in place and says so, which makes
 		 * it the one button here that can be pressed and checked without leaving
 		 * the panel or touching the network.
 		 */
-		const toggle = page.getByRole('button', { name: /debug log/i });
+		const toggle = page.getByRole('button', { name: /^debug:/i });
 		await expect(toggle).toHaveText(/off/i);
 		await toggle.click();
 		await expect(toggle).toHaveText(/on/i);
@@ -595,7 +613,7 @@ test.describe('turning it back by hand', () => {
 		 * the paper springs back, so the panel is still here to be checked — and
 		 * the toggle it started on has not changed its mind.
 		 */
-		const toggle = page.getByRole('button', { name: /debug log/i });
+		const toggle = page.getByRole('button', { name: /^debug:/i });
 		await expect(toggle).toHaveText(/off/i);
 
 		const box = (await toggle.boundingBox())!;

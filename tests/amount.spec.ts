@@ -136,6 +136,7 @@ describe('a task with both', () => {
 			amount: '2x',
 			count: 2,
 			name: 'Tomatos',
+			nameAt: 3,
 			cost: '20.00',
 			money: { cents: 2000, separator: '.', decimals: 2, currency: null }
 		});
@@ -146,6 +147,7 @@ describe('a task with both', () => {
 			amount: null,
 			count: null,
 			name: 'Bread',
+			nameAt: 0,
 			cost: null,
 			money: null
 		});

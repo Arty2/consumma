@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
+	import Counter from './Counter.svelte';
 	import { langOf } from '$lib/doc/lang';
-	import { COUNTER_WITHIN, LIMITS } from '$lib/doc/limits';
-	import { length } from '$lib/doc/clean';
-	import { nearLimit, spill } from '$lib/doc/spill';
+	import { LIMITS } from '$lib/doc/limits';
+	import { spill, splitAt } from '$lib/doc/spill';
 	import { handRect } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
 	import { grow } from '$lib/grow';
+	import { t } from '$lib/i18n';
 
 	type Props = {
 		/** Returns true if the task was created, so the row can stay open. */
@@ -59,9 +60,6 @@
 	/** Whether the box is drawn at all, rather than kept back. */
 	const shown = $derived(open || lone);
 
-	const remaining = $derived(LIMITS.taskText - length(draft));
-	const showCounter = $derived(open && nearLimit(draft, LIMITS.taskText, COUNTER_WITHIN));
-
 	// Placed already open rather than tapped: take the caret with it, and put it
 	// at the end — a row opened by a spill already has the rest of the sentence
 	// in it, and the next character belongs after it.
@@ -83,6 +81,7 @@
 
 	function start() {
 		if (disabled) return;
+		tapped();
 		byTap = true;
 		queueMicrotask(() => input?.focus());
 	}
@@ -124,10 +123,39 @@
 		}
 	}
 
+	/**
+	 * The same cut the rows above make: what is behind the caret becomes the
+	 * task, and what is in front of it stays in the row to carry on being typed.
+	 *
+	 * A caret at the very start has nothing behind it to make a task of, so it
+	 * falls back to committing the whole of what is written — which is what
+	 * Enter has always done here, and matches what a task row does when its own
+	 * caret is at the start.
+	 */
+	function onenter(field: HTMLTextAreaElement) {
+		const { head, tail } = splitAt(draft, field.selectionStart, field.selectionEnd);
+
+		if (head.trim() === '' || tail === '') {
+			commit(true);
+			return;
+		}
+
+		if (!onadd(head.trim())) return;
+
+		tapped();
+		draft = tail;
+		// At the start of what came down with it, which is where the writing
+		// stopped — the caret has not moved, only the row under it has.
+		queueMicrotask(() => {
+			input?.focus();
+			input?.setSelectionRange(0, 0);
+		});
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			commit(true);
+			onenter(event.currentTarget as HTMLTextAreaElement);
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			draft = '';
@@ -149,10 +177,7 @@
 </script>
 
 <li class="row">
-	{#if showCounter}
-		<!-- The same gutter, the same count, as on a task being edited. -->
-		<span class="counter num" aria-live="polite">{remaining}</span>
-	{/if}
+	<Counter {draft} {open} />
 
 	<!--
 		Tappable, because it looks it: an empty box in a 44px target beside a row
@@ -180,13 +205,13 @@
 			lang={langOf(draft)}
 			bind:this={input}
 			bind:value={draft}
-			aria-label="New task"
+			aria-label={t.task.new}
 			onblur={() => commit(false)}
 			{oninput}
 			{onkeydown}
 			use:grow={draft}></textarea>
 	{:else}
-		<button class="text caps" type="button" onclick={start} {disabled} aria-label="Add a task">
+		<button class="text caps" type="button" onclick={start} {disabled} aria-label={t.task.add}>
 			…
 		</button>
 	{/if}
@@ -204,34 +229,23 @@
 		font-size: var(--size-task);
 		/* The same column the rows above it keep. */
 		padding-right: var(--corner-ink);
+		/* And the same room for the box, which is out of the flow here too. */
+		padding-left: calc(var(--touch) + 0.25rem);
 	}
 
-	/* The mirror of the ✕ column, as on a task row. */
-	.counter {
-		position: absolute;
-		left: calc(-1 * var(--gutter));
-		top: 0;
-		width: var(--gutter);
-		height: var(--touch);
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		opacity: 0.55;
-		font-size: var(--size-small);
-		user-select: none;
-		-webkit-user-select: none;
-	}
-
+	/* The same geometry the real checkbox above it has — see TriCheckbox. */
 	.box {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: calc(var(--touch) * 1.3);
+
 		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		width: var(--touch);
-		height: var(--touch);
-		flex: 0 0 var(--touch);
-		/* Level with the capitals beside it, not with their line box. */
-		position: relative;
-		top: calc(-1 * var(--cap-lift));
+		align-items: flex-start;
+		justify-content: flex-start;
+		padding-left: var(--corner-ink);
+		padding-top: calc(var(--corner-ink) - var(--cap-lift));
 		/* It opens a text field, so it offers the same cursor the field does. */
 		cursor: text;
 	}

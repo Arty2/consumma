@@ -31,5 +31,10 @@ export const LIMITS = {
  * limit moves. Past the limit the row does not stop accepting characters —
  * it fills up and the rest starts the next row (see doc/spill.ts) — so this
  * is a last stretch of page rather than a warning.
+ *
+ * Ten, not twenty. Twenty characters is a third of a line and the count sat
+ * there through the whole of it, which made it a thing to read rather than a
+ * thing to notice — and there is nothing to do about it until the very end,
+ * since the row goes on taking characters either way.
  */
-export const COUNTER_WITHIN = 20;
+export const COUNTER_WITHIN = 10;

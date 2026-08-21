@@ -2,6 +2,7 @@ import { derive, newCode, normaliseCode, type Room } from '$lib/crypto/derive';
 import { canonical } from '$lib/doc/canonical';
 import type { Doc } from '$lib/doc/types';
 import { parseDoc } from '$lib/doc/validate';
+import { t } from '$lib/i18n';
 import { pull, syncNow, type SyncOutcome } from '$lib/sync/client';
 import { errorText, trace } from '$lib/sync/trace';
 import { sheet } from './doc.svelte';
@@ -335,21 +336,21 @@ export class SyncState {
 function messageFor(outcome: SyncOutcome): string | null {
 	switch (outcome.status) {
 		case 'offline':
-			return 'Couldn’t reach the list — your changes are saved here.';
+			return t.sync.errorOffline;
 		case 'refused':
 			// Naming the code is the point: it is the only thing that says whether
 			// the route is missing or its store is.
-			return `The list’s server answered ${outcome.code}. Nothing here was lost.`;
+			return t.sync.errorRefused({ code: outcome.code });
 		case 'wrong-code':
-			return 'That code doesn’t match a list.';
+			return t.sync.errorWrongCode;
 		case 'damaged':
-			return 'That list looks damaged.';
+			return t.sync.errorDamaged;
 		case 'too-large':
-			return 'This list is too big to send — clear some.';
+			return t.sync.errorTooLarge;
 		case 'busy':
-			return 'Couldn’t sync — try again in a moment.';
+			return t.sync.errorBusy;
 		case 'error':
-			return `Something went wrong: ${outcome.message}`;
+			return t.sync.errorOther({ message: outcome.message });
 		default:
 			return null;
 	}

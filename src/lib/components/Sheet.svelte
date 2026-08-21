@@ -9,6 +9,7 @@
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, NEW_GROUP, type DropTarget } from '$lib/dnd/drag.svelte';
+	import { t } from '$lib/i18n';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -68,13 +69,15 @@
 		if (!gone) return;
 
 		const count = gone.tasks.length;
-		const what = count === 0 ? label(title) : `${label(title)} and ${count} done`;
+		const what =
+			count === 0 ? label(title) : t.toast.removedWithDone({ what: label(title), count });
 
 		// The confirm stops nothing here — the header only offers it on a finished
 		// group — so the undo is what covers a change of mind.
-		ui.say(`Removed ${what}.`, () => {
+		ui.say(t.toast.removed({ what }), () => {
 			sheet.restoreGroup(gone);
-			ui.dismiss();
+			// The change is undone, so the message describing it goes at once.
+			ui.dismiss(true);
 		});
 	}
 
@@ -94,9 +97,10 @@
 		const entry = sheet.deleteTask(id);
 		if (!entry) return;
 
-		ui.say('Deleted.', () => {
+		ui.say(t.toast.deleted, () => {
 			sheet.restore([entry]);
-			ui.dismiss();
+			// The change is undone, so the message describing it goes at once.
+			ui.dismiss(true);
 		});
 	}
 
@@ -132,7 +136,7 @@
 		 */
 		if (target.groupId === NEW_GROUP) {
 			if (!sheet.canAddGroup) {
-				ui.say(`That would go over ${LIMITS.groups} groups.`);
+				ui.say(t.toast.overGroups({ max: LIMITS.groups }));
 				return;
 			}
 
@@ -140,7 +144,7 @@
 			if (id === null) return;
 
 			sheet.moveTask(taskId, id, sheet.orderAt(id, 0, taskId));
-			ui.announce('Moved to a new group.');
+			ui.announce(t.sheet.movedToNewGroup);
 			return;
 		}
 
@@ -163,7 +167,7 @@
 
 		if (target >= 0 && target < group.tasks.length) {
 			sheet.moveTask(task.id, group.id, sheet.orderAt(group.id, target, task.id));
-			ui.announce(`Moved to position ${target + 1} in ${label(group.title)}.`);
+			ui.announce(t.sheet.movedWithin({ position: target + 1, group: label(group.title) }));
 			return;
 		}
 
@@ -175,11 +179,11 @@
 		const position = direction === 1 ? 0 : next.tasks.length;
 		sheet.moveTask(task.id, next.id, sheet.orderAt(next.id, position, task.id));
 		ui.expand(next.id);
-		ui.announce(`Moved to ${label(next.title)}, position ${position + 1}.`);
+		ui.announce(t.sheet.movedTo({ group: label(next.title), position: position + 1 }));
 	}
 
 	function label(title: string) {
-		return title === '' ? 'the untitled group' : title;
+		return title === '' ? t.group.untitledInSentence : title;
 	}
 
 	function addGroup() {
@@ -224,7 +228,7 @@
 				type="text"
 				lang={langOf(newGroupDraft)}
 				maxlength={LIMITS.groupTitle}
-				aria-label="New group"
+				aria-label={t.group.new}
 				autofocus
 				bind:value={newGroupDraft}
 				onblur={addGroup}
@@ -235,7 +239,7 @@
 				type="button"
 				class="caps"
 				disabled={!sheet.canAddGroup}
-				aria-label="Add a group"
+				aria-label={t.group.add}
 				onclick={() => (newGroupOpen = true)}
 			>
 				…
@@ -389,7 +393,7 @@
 	{/if}
 
 	{#if overLimit}
-		<p class="over">{sheet.taskCount} of {LIMITS.tasks} — clear some</p>
+		<p class="over">{t.sheet.over({ count: sheet.taskCount, max: LIMITS.tasks })}</p>
 	{/if}
 </div>
 

@@ -1,3 +1,4 @@
+import { t } from '$lib/i18n';
 import { byOrder } from './order';
 import type { Doc, Task } from './types';
 
@@ -8,7 +9,13 @@ import type { Doc, Task } from './types';
  */
 
 export const LOOSE_ENDS_ID = '__loose__';
-export const LOOSE_ENDS_TITLE = 'Loose ends';
+/*
+ * Kept as a constant here rather than read from the catalogue at every call
+ * site: this is the accessible name of a mark, and everything that reaches for
+ * it — the perforation, a keyboard move's announcement, the tests — is asking
+ * for the same one thing. The words themselves live with all the other words.
+ */
+export const LOOSE_ENDS_TITLE: string = t.doc.looseEnds;
 
 export type ViewGroup = {
 	id: string;

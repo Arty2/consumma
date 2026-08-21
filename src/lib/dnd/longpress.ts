@@ -13,6 +13,18 @@ export type LongPressOptions = {
 
 export const LONG_PRESS_MS = 450;
 
+/**
+ * How long a second tap has to arrive within to be a second tap.
+ *
+ * Long enough to be one, short enough not to catch two separate decisions. It
+ * lives here beside the press because it is the same fact about the same
+ * finger, and it was written out three times — on the task row, on the
+ * checkbox and on the group title — each with a comment saying it had to agree
+ * with the other two. A number that has to agree with itself in three places
+ * only agrees until somebody retunes one of them.
+ */
+export const DOUBLE_TAP_MS = 320;
+
 /** The lift, under the finger. Re-exported so the drag keeps one import. */
 export { tapped as buzz };
 

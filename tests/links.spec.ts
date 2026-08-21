@@ -37,14 +37,22 @@ describe('abbreviate', () => {
 
 describe('pieces', () => {
 	it('gives one text piece back when there is no address', () => {
-		expect(pieces('2x TOMATOS 5,08')).toStrictEqual([{ kind: 'text', text: '2x TOMATOS 5,08' }]);
+		expect(pieces('2x TOMATOS 5,08')).toStrictEqual([
+			{ kind: 'text', text: '2x TOMATOS 5,08', at: 0 }
+		]);
 	});
 
 	it('keeps the words either side of an address', () => {
 		expect(pieces('SEE https://heracl.es/consumma FIRST')).toStrictEqual([
-			{ kind: 'text', text: 'SEE ' },
-			{ kind: 'link', href: 'https://heracl.es/consumma', label: 'heracl.es/consumma' },
-			{ kind: 'text', text: ' FIRST' }
+			{ kind: 'text', text: 'SEE ', at: 0 },
+			{
+				kind: 'link',
+				href: 'https://heracl.es/consumma',
+				label: 'heracl.es/consumma',
+				raw: 'https://heracl.es/consumma',
+				at: 4
+			},
+			{ kind: 'text', text: ' FIRST', at: 30 }
 		]);
 	});
 
@@ -57,7 +65,9 @@ describe('pieces', () => {
 		expect(link('https://heracl.es/a/b/c?d=e#f')).toStrictEqual({
 			kind: 'link',
 			href: 'https://heracl.es/a/b/c?d=e#f',
-			label: 'heracl.es/…/c'
+			label: 'heracl.es/…/c',
+			raw: 'https://heracl.es/a/b/c?d=e#f',
+			at: 0
 		});
 	});
 

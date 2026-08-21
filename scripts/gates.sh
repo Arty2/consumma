@@ -132,6 +132,23 @@ else
 	pass "no background-images but the drawn link underline"
 fi
 
+# ── 7. Every word the app says lives in the catalogue ────────────────────────
+# src/lib/i18n holds the strings, so that they can be read in one sitting and
+# translated in one file. An accessible name is the one that gets forgotten:
+# it is invisible while the app is being looked at, so a literal written back
+# into a component survives every review that is done by eye.
+#
+# Only the attribute form is policed, because only that form is mechanical. A
+# name built in the script and bound in — `aria-label={label}` — is where the
+# interesting ones live, and those are caught by reading the catalogue instead.
+labels=$(grep -rn 'aria-label="' src --include='*.svelte' 2>/dev/null)
+
+if [ -n "$labels" ]; then
+	fail "accessible name written into a component rather than src/lib/i18n" "$labels"
+else
+	pass "accessible names come from the catalogue"
+fi
+
 if [ "$status" -ne 0 ]; then
 	printf '\ngates failed\n'
 fi

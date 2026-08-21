@@ -334,9 +334,60 @@ export function handCheckBack(size: number, options: HandOptions): string {
 	);
 }
 
-/** The ✕ that removes a task, and the one that closes a modal. */
+/** The ✕ that closes a modal — putting something away, not taking it away. */
 export function handCross(size: number, options: HandOptions): string {
 	return `${handCheck(size, options)} ${handCheckBack(size, options)}`;
+}
+
+/**
+ * The mark that removes a task, and the one that removes a group: something
+ * scribbled out.
+ *
+ * It was a ✕ — the same two strokes the checkbox uses for done, at half the
+ * size and a few millimetres away from them. Two marks made of the same
+ * gesture, one meaning finished and one meaning gone, is a distinction the eye
+ * has to be told about rather than one it can see. Crossing a thing out is
+ * what a hand does to a line on paper it wants rid of, and nothing else on the
+ * sheet is drawn that way.
+ *
+ * One stroke, never lifted: a scribble is the pen going back and forth without
+ * leaving the paper, and drawing it as separate passes would make it hatching,
+ * which is shading rather than deletion. So the points run right, left, right
+ * across the box, dropping a little each time, and handPath bends every leg —
+ * the turns at the ends come out round because a pen reversing has to.
+ *
+ * The ends fall short of the corners rather than reaching them, and the whole
+ * figure keeps handCheck's own padding, so it occupies the box the ✕ occupied
+ * and every place one stood still fits it.
+ */
+export function handScribble(size: number, options: HandOptions): string {
+	const random = rng(options.seed ^ 0x165667b1);
+	const pad = size * 0.18;
+	const span = size - pad * 2;
+
+	/*
+	 * Four legs, which is the fewest that reads as a scribble rather than as a
+	 * zigzag: three would be a `Z` and five in eleven pixels is a smudge.
+	 */
+	const legs = 4;
+	const drop = span / legs;
+	const jitter = (much: number) => (random() * 2 - 1) * size * much;
+	/** Always inwards, so a turn never lands outside the box it is drawn in. */
+	const pull = () => random() * size * 0.1;
+
+	const points: Pt[] = [];
+	for (let i = 0; i <= legs; i++) {
+		/*
+		 * Alternating ends, and each one pulled in by a different amount, so the
+		 * turns do not stack up into a straight edge down either side — which is
+		 * what makes a machine's zigzag look like one.
+		 */
+		const atRight = i % 2 === 1;
+		const x = atRight ? pad + span - pull() : pad + pull();
+		points.push({ x, y: pad + drop * i + jitter(0.05) });
+	}
+
+	return handPath(points, { ...options, wobble: options.wobble ?? 0.9 });
 }
 
 /** The chevron on a group title. */
