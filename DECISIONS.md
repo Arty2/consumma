@@ -24,9 +24,11 @@ Numbers in brackets are the section of the build plan a decision came from.
    skipped and counted. [§12.7]
 7. **Labels are uppercased in CSS only.** A group typed as "Weekend jobs" still
    exports as "Weekend jobs". [§12.8]
-8. **Limits: 100 characters per task, 100 tasks, 50 characters per group title,
+8. **Limits: 200 characters per task, 100 tasks, 50 characters per group title,
    20 groups, 128 KB per blob.** Enforced on input, never by discarding in
-   merge. [§12.9]
+   merge. The task limit was 100 and enforced with `maxlength`, which on a
+   phone is indistinguishable from a dead keyboard; it is 200 now and a full
+   row spills the rest onto the next one. [§12.9]
 9. **Six-month expiry, swept by a daily cron.** Editing keeps a list alive;
    reading does not. [§12.10]
 10. **Storage is one JSON file per list in Vercel Blob.** No database, no rate

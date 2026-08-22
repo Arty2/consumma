@@ -22,6 +22,43 @@ The vocabulary here is its own, and does not follow semver's names:
 - **"bump the version"** moves the middle number: `0.1.0` → `0.2.0`.
 - **"minor bump"** moves the last one: `0.2.0` → `0.2.1`.
 
+## The README
+
+`README.md`'s **Using it** section is the only place the app says what it
+answers to. Nothing on the sheet is labelled, there is no help screen, no
+tooltip and no empty-state copy — that is settled (§12.14) and is not going to
+change — so a gesture that is not written down there is a gesture nobody
+outside this repository can find.
+
+**A change to any interaction is not finished until that section says so, in
+the same commit.** Not a follow-up, not a later tidy: a README describing an
+app that no longer exists is worse than one describing nothing, because it is
+believed. The section says as much of itself, so the promise is on the page.
+
+What counts as an interaction, and so has to be reflected there:
+
+- A tap, a double tap, a long press, a drag or a throw — added, removed, moved
+  to a different hit area, or made to mean something else.
+- A key: the ladder on a row, `Alt+↑/↓`, `F2`, `Enter`, `Backspace`, `Escape`,
+  `Space`/`⇧Space`, or any new one.
+- When a control is offered at all — the group's mark only with the group in
+  hand, a task's mark only once it is done, the sync button only when it has
+  something to say. Availability is half of what a control is.
+- What a control's mark reads: `[…]` against `[1/3]` against `[3]`.
+- A number somebody would count on: where a row fills up, how many ticks in
+  how long raise the offer to clear, how long a message stands. Read every one
+  of them off `LIMITS`, `burst.ts` and `ui.svelte.ts` at the time of writing,
+  never from memory or from prose — the limits line below said 100 characters
+  per task for as long as the code said 200.
+- Anything read off the text rather than stored — a count, a price, a total, a
+  link — since that is behaviour with no control attached and is therefore the
+  least discoverable thing in the app.
+
+What does **not** go there: why it is that way, which belongs in
+`DECISIONS.md`, and how it is built, which belongs here or in `TECHNICAL.md`.
+The README says what a finger does and what happens; one clause of reason
+where it stops the reader wondering, and no more.
+
 ## Non-negotiable
 
 - The share code, derived keys, and plaintext never leave the browser. Server sees ciphertext only.
@@ -57,7 +94,7 @@ The vocabulary here is its own, and does not follow semver's names:
 - **Graphe has no `[` or `]`, so a substituted face draws them and it sets them on the true baseline** — low against Graphe's own figures and capitals, which ride high above theirs. The brackets in the group's fold icon lift by `--bracket-lift` to sit level with what they hold (`.bracket` in GroupHeader). Measured in a browser like `--cap-lift` and `--num-lift`, which are the same fact one face nearer; one number for every platform, because the substitutes differ from each other by far less than any of them differs from Graphe. Never fixed by swapping in characters Graphe does have.
 - Anything drawn that sits beside capitals lifts by `--cap-lift`. Graphe's caps ride high in their own line box, so a centred checkbox reads low against them. The value is measured in a browser, not derived — retune it with the face.
 - Anything showing user text in caps sets `lang={langOf(text)}` (src/lib/doc/lang.ts). Greek drops the tonos in capitals and browsers only apply that with the language declared — without it Chrome renders μαΐστρος as ΜΑΪ́ΣΤΡΟΣ. Never uppercase in JS to work around it; that would break the CSS-only rule above.
-- Limits: 100 chars/task, 100 tasks, 50 chars/group title, 20 groups, 128 KB blob. Enforce at input; merge never discards to fit.
+- Limits: 200 chars/task, 100 tasks, 50 chars/group title, 20 groups, 128 KB blob. Enforce at input; merge never discards to fit. Read them from `LIMITS`, never from here — this line has been wrong before.
 - Never {@html}, never innerHTML, never eval. `pnpm gates` fails on them.
 - All user text is sanitised at the input boundary (src/lib/doc/clean.ts): NFC, no control or bidi characters, capped length in code points.
 

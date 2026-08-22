@@ -60,18 +60,119 @@ break a build. The exact jobs, their timings, and how to run the full suite by
 hand without marking anything ready are in
 [TECHNICAL.md](./TECHNICAL.md#ci).
 
-## Gestures
+## Using it
 
-A couple of things aren't discoverable just by looking at the sheet, which is
-the accepted cost of keeping it clean.
+Nothing on the sheet is labelled, so this is the whole of what it answers to.
+Most of it is one tap doing the common thing; the rest is a long press —
+about half a second — or a second tap inside a third of one.
 
-- **Long-press a checkbox to set a task half done.** Tapping toggles it
-  between to-do and done; holding for about half a second gives you the third
-  state. Holding a half-done task returns it to to-do. On a keyboard, `Space`
-  toggles and `Shift+Space` sets half.
-- **Long-press the text of a row to pick it up and drag it**, including into
-  another group. There's no drag handle. The checkbox keeps its own
-  long-press, so the two gestures never collide.
+Everything below is a live record: if a gesture here disagrees with the app,
+the app is right and this file is a bug.
+
+### A task
+
+| Where          | Gesture            | What happens                                              |
+| -------------- | ------------------ | --------------------------------------------------------- |
+| The checkbox   | Tap                | To-do ⇄ done                                              |
+| The checkbox   | Two taps, or hold  | Half done. Holding a half-done task puts it back to to-do |
+| The checkbox   | `Space` / `⇧Space` | The same two                                              |
+| The words      | Tap                | Opens the row for editing, caret where you touched        |
+| The words      | Two taps           | Marks it done                                             |
+| The words      | Three taps         | Marks it half done                                        |
+| The words      | Four taps          | Back to where it started, and open for editing again      |
+| The words      | Hold, then drag    | Picks the task up, including into another group           |
+| The words      | `F2`               | Opens the row for editing                                 |
+| A done task    | Tap the mark       | Deletes it, with an undo                                  |
+| Anywhere on it | `Alt+↑` / `Alt+↓`  | Moves it, across group boundaries at the ends             |
+
+A run of taps that begins in the last few characters of a task never climbs
+that ladder — reaching for the end of a line means adding to it, so two taps
+there are two attempts at the same thing rather than a tick. A run that begins
+inside an already-open field is left alone too, since that is a caret being
+placed.
+
+### While a row is open
+
+| Gesture     | What happens                                                         |
+| ----------- | -------------------------------------------------------------------- |
+| `Enter`     | Cuts the task at the caret and carries the rest to a new row beneath |
+| `Backspace` | On an emptied row: the row goes, caret to the end of the one above   |
+| `Escape`    | Discards and closes                                                  |
+| Overflow    | At 200 characters the row fills up and the rest starts the next one  |
+
+Nothing is ever refused mid-sentence. A word travels whole, and a paste spills
+by the same rule as typing.
+
+### A group
+
+| Where          | Gesture         | What happens                                                    |
+| -------------- | --------------- | --------------------------------------------------------------- |
+| The title      | Tap             | Folds the group                                                 |
+| The title      | Two taps, `F2`  | Opens the name for changing                                     |
+| The title      | Hold, then drag | Picks the whole group up; everything folds while it is carried  |
+| The `[…]` icon | Tap             | Folds the group, for anyone who would rather aim at it          |
+| The `[…]` icon | Hold            | Folds **every** group — or opens them all, if none is left open |
+| The name field | `Enter`         | Commits, and opens a task at the top of the group               |
+
+Folded, the icon reads `[1/3]`: what is still to do, out of what is hidden.
+Half done counts as still to do. With nothing in the group done it reads `[3]`,
+since both halves of the fraction would be the same number.
+
+The mark out in the margin has two jobs and is never drawn without one. While
+there is something in the group still to do it clears the finished tasks; once
+there is nothing left to do it removes the group, tasks and all. Both leave an
+undo. It is only offered with the group in hand — while the name is open, or
+while the group is folded — so a list being read does not grow a column of
+live deletes down its side.
+
+The `…` under the last group makes a new one. A task dragged onto it makes one
+on the spot and becomes its first, arriving unnamed.
+
+### The sheet, and the back of it
+
+| Where         | Gesture                | What happens                                               |
+| ------------- | ---------------------- | ---------------------------------------------------------- |
+| The sheet     | Drag rightwards        | Turns the paper over to the menu — from bare paper         |
+| The menu      | Drag rightwards        | Turns it back, from anywhere on it, buttons included       |
+| Top right     | Tap the burger         | The same turn, without the drag                            |
+| Top right     | Tap the theme mark     | Theme: the opposite of the phone, then following it again  |
+| Top left      | Tap the mark           | Syncs. It is only there when there is something to say     |
+| The list name | Tap                    | Opens the list switcher, once there is a second list       |
+| The list name | Two taps               | Straight to the next list, without opening anything        |
+| A message     | Tap `UNDO?`            | Puts back what the message is about                        |
+| A message     | Throw it up or right   | Dismisses it. Down is the sheet's scroll, left is the turn |
+| A panel       | Drag down, `Esc`, or ✕ | Closes it                                                  |
+
+The paper only ever spins one way, so a swipe rightwards turns it whichever
+side is showing. On the sheet the drag has to start on bare paper, because
+every control there already owns a press — the ones that lift a task and a
+group. On the menu it can start anywhere: nothing in there owns a press, and a
+drag that crossed a button does not press it.
+
+Tick three tasks inside five seconds and a message offers to clear exactly
+those three. It is only ever an offer — nothing sweeps the sheet by itself —
+and it is made once per run rather than once per tick after the third.
+
+A message with `UNDO?` on it stands for ten seconds after anything that takes
+something away — a deleted task, a cleared group, a removed group — and after
+a move made with a finger, which is the one change that leaves no trace of
+where the thing came from. A move made with `Alt+↑/↓` says where the task went
+instead: it is exact, and a run of them would raise a message a step.
+
+### What the sheet reads
+
+Counts and prices are read off the text and never stored beside it. A number
+at the front of a task is how many (`2x apples`, `3 lemons`); a number at the
+end is what it costs (`Bread 2,50`). Both `,` and `.` work as the decimal
+mark, and a group writes the whole column the way most of it was written.
+
+The group total is what is **still to buy** — done does not count, half counts
+in full, and a row counts as its count times its price. It stays while the
+group is folded, which is when it is worth most.
+
+An address in a task is drawn as what it points at rather than as every
+character of how to get there, and opens in its own tab. Nothing about any of
+this changes the text: what you typed is what is stored, synced and exported.
 
 ## What it doesn't do
 
