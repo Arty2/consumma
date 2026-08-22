@@ -39,6 +39,7 @@ const calls: Record<string, unknown[]> = {
 	'toast.removed': [{ what: 'Weekend' }],
 	'toast.removedWithDone': [{ what: 'Weekend', count: 3 }],
 	'toast.cleared': [{ count: 4 }],
+	'toast.doneRun': [{ count: 1 }, { count: 3 }],
 	'toast.copied': [{ count: 1 }, { count: 2 }],
 	'toast.added': [{ count: 3 }],
 	'toast.addedSkipped': [{ count: 3, skipped: 1 }],
@@ -56,7 +57,6 @@ const calls: Record<string, unknown[]> = {
 		{ tasks: 1, groups: 1 },
 		{ tasks: 2, groups: 2 }
 	],
-	'confirm.clearBody': [{ count: 1 }, { count: 2 }],
 	'confirm.leaveBody': [{ code: '5e6b 7c1a 93f2' }],
 	'confirm.leaveUnsent': [{ count: 1 }, { count: 2 }]
 };

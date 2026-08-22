@@ -51,19 +51,10 @@
 		onclosed?: () => void;
 		onimport: () => void;
 		onexport: () => void;
-		onclear: () => void;
 		ondelete: () => void;
 	};
 
-	let {
-		closing = false,
-		onclose,
-		onclosed,
-		onimport,
-		onexport,
-		onclear,
-		ondelete
-	}: Props = $props();
+	let { closing = false, onclose, onclosed, onimport, onexport, ondelete }: Props = $props();
 
 	/*
 	 * Asking twice to close is asking once. Escape during the furl, or a second
@@ -551,21 +542,14 @@
 				</button>
 			</div>
 
-			<!-- The only two that take something away, and both stop and ask. -->
+			<!--
+				The one thing in here that takes something away, and it stops and
+				asks. CLEAR stood beside it and does not any more: sweeping what is
+				done belongs beside the group it would sweep, on the same mark that
+				removes the group once there is nothing left in it to do. A list is
+				cleared while looking at the list.
+			-->
 			<div class="pair">
-				<button
-					type="button"
-					class="caps boxed"
-					class:nothing={sheet.doneCount === 0}
-					disabled={sheet.doneCount === 0}
-					onclick={() => {
-						tapped();
-						onclear();
-					}}
-				>
-					<HandRect seed="btnclear" wobble={1.4} radius={3} />
-					{t.menu.clear}
-				</button>
 				<button
 					type="button"
 					class="caps boxed"
@@ -1111,10 +1095,6 @@
 
 	.pair button:disabled {
 		cursor: default;
-	}
-
-	.nothing {
-		opacity: 0.4;
 	}
 
 	/* Hyphenated where the word allows it — see `.text` in TaskRow. */

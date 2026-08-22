@@ -9,7 +9,9 @@
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, NEW_GROUP, type DropTarget } from '$lib/dnd/drag.svelte';
+	import type { State, Task } from '$lib/doc/types';
 	import { t } from '$lib/i18n';
+	import { Burst } from '$lib/state/burst';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -74,11 +76,104 @@
 
 		// The confirm stops nothing here — the header only offers it on a finished
 		// group — so the undo is what covers a change of mind.
-		ui.say(t.toast.removed({ what }), () => {
-			sheet.restoreGroup(gone);
-			// The change is undone, so the message describing it goes at once.
-			ui.dismiss(true);
+		ui.say(
+			t.toast.removed({ what }),
+			undoing(() => sheet.restoreGroup(gone))
+		);
+	}
+
+	/**
+	 * The same mark on a group that still has something left to do: what is
+	 * finished with goes, and the group stays.
+	 *
+	 * No confirm. The mark is only ever drawn where it has something to sweep,
+	 * the sweep is named on the button, and the ten-second undo is what covers a
+	 * change of mind — which is exactly how removing a group already works two
+	 * lines up. CLEAR asked first because it lived in a menu, where a tap is a
+	 * long way from the tasks it was about to take.
+	 */
+	function clearGroup(tasks: readonly Task[]) {
+		const done = tasks.filter((task) => task.state === 'done').map((task) => task.id);
+		const cleared = sheet.clearDone(done);
+		if (cleared.length === 0) return;
+
+		ui.say(
+			t.toast.cleared({ count: cleared.length }),
+			undoing(() => sheet.restore(cleared))
+		);
+	}
+
+	/**
+	 * A message with a way back, which is nearly every message that follows a
+	 * change here. Written once because the undo always ends the same way: the
+	 * change is undone, so the message describing it goes at once rather than
+	 * sliding out over the change it was about.
+	 */
+	function undoing(run: () => void) {
+		return {
+			label: t.toast.undo,
+			run: () => {
+				run();
+				ui.dismiss(true);
+			}
+		};
+	}
+
+	/*
+	 * A run of ticks, watched in one place because every way of ticking a task
+	 * comes through here — the checkbox, the ladder on the words, and the
+	 * keyboard.
+	 */
+	const burst = new Burst();
+
+	function setState(id: string, state: State) {
+		sheet.setState(id, state);
+
+		if (state !== 'done') {
+			burst.forget();
+			return;
+		}
+
+		const run = burst.note(id, performance.now());
+		if (!run) return;
+
+		/*
+		 * Offered, never done: this is the app noticing what is going on and
+		 * putting the tidying up within reach, and a message that swept three
+		 * rows off the sheet by itself would be the app deciding.
+		 */
+		ui.say(t.toast.doneRun({ count: run.length }), {
+			label: t.toast.clear,
+			run: () => {
+				const cleared = sheet.clearDone(run);
+				if (cleared.length === 0) {
+					ui.dismiss(true);
+					return;
+				}
+
+				ui.say(
+					t.toast.cleared({ count: cleared.length }),
+					undoing(() => sheet.restore(cleared))
+				);
+			}
 		});
+	}
+
+	/**
+	 * A long press on any one fold icon folds the sheet — or opens it again,
+	 * when there is nothing left folded to see the point of.
+	 *
+	 * Loose ends is not among them: it is a perforation rather than a heading,
+	 * has no fold control of its own, and what is under it was never filed
+	 * anywhere on purpose.
+	 */
+	function foldAll() {
+		const ids = sheet.groups.filter((group) => !group.synthetic).map((group) => group.id);
+		if (ids.length === 0) return;
+
+		const shut = ids.every((id) => ui.isCollapsed(id));
+		ui.foldAll(ids);
+		ui.announce(shut ? t.sheet.unfoldedAll : t.sheet.foldedAll);
 	}
 
 	/**
@@ -97,11 +192,10 @@
 		const entry = sheet.deleteTask(id);
 		if (!entry) return;
 
-		ui.say(t.toast.deleted, () => {
-			sheet.restore([entry]);
-			// The change is undone, so the message describing it goes at once.
-			ui.dismiss(true);
-		});
+		ui.say(
+			t.toast.deleted,
+			undoing(() => sheet.restore([entry]))
+		);
 	}
 
 	/**
@@ -125,8 +219,26 @@
 		opening = above?.id ?? null;
 	}
 
-	/** Where a drag let go. The neighbours are never restamped. */
+	/**
+	 * Where a drag let go. The neighbours are never restamped.
+	 *
+	 * A drop is the one change a finger makes that leaves no trace of where the
+	 * thing came from, so it is the one that most wants taking back — and where
+	 * it came from is two strings, read off the task before it moves. Putting
+	 * the old key back is an ordinary move stamped now, not a rewind, so the
+	 * merge sees what it always sees.
+	 *
+	 * The keyboard's own move (`move`, below) says where the task went instead
+	 * of offering this. It is announced because it cannot be seen, it is exact,
+	 * and a run of Alt+↓ down a list would raise a message a step.
+	 */
 	function drop(taskId: string, target: DropTarget) {
+		const was = sheet.doc.tasks[taskId];
+		if (!was) return;
+
+		const home = { groupId: was.groupId, order: was.order };
+		const back = () => sheet.moveTask(taskId, home.groupId, home.order);
+
 		/*
 		 * Let go on the row that offers a new group: the group is made on the
 		 * spot and the task is its first. It arrives unnamed, showing the same
@@ -145,6 +257,16 @@
 
 			sheet.moveTask(taskId, id, sheet.orderAt(id, 0, taskId));
 			ui.announce(t.sheet.movedToNewGroup);
+
+			// The group was made by the drop, so undoing the drop unmakes it —
+			// after the task is out of it, or it would go with the group.
+			ui.say(
+				t.toast.moved,
+				undoing(() => {
+					back();
+					sheet.deleteGroup(id);
+				})
+			);
 			return;
 		}
 
@@ -152,6 +274,20 @@
 		if (sheet.groups.find((g) => g.id === target.groupId)?.synthetic) return;
 
 		sheet.moveTask(taskId, target.groupId, sheet.orderAt(target.groupId, target.index, taskId));
+		ui.say(t.toast.moved, undoing(back));
+	}
+
+	/** The same, for a whole group carried among its siblings. */
+	function reorder(id: string, index: number) {
+		const was = sheet.doc.groups[id];
+		if (!was) return;
+
+		const order = was.order;
+		sheet.moveGroup(id, sheet.groupOrderAt(index, id));
+		ui.say(
+			t.toast.moved,
+			undoing(() => sheet.moveGroup(id, order))
+		);
 	}
 
 	/**
@@ -288,14 +424,18 @@
 				seed={group.id}
 				collapsed={folded || ui.isCollapsed(group.id)}
 				count={group.tasks.length}
+				open={group.tasks.filter((task) => task.state !== 'done').length}
+				done={group.tasks.filter((task) => task.state === 'done').length}
 				finished={group.tasks.every((task) => task.state === 'done')}
 				synthetic={group.synthetic}
 				total={fig.total}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
+				onfoldall={foldAll}
 				onrename={(title) => sheet.renameGroup(group.id, title)}
 				ondelete={() => removeGroup(group.id, group.title)}
+				onclear={() => clearGroup(group.tasks)}
 				onaddtask={() => (inserting = { groupId: group.id, index: 0 })}
-				onreorder={(index) => sheet.moveGroup(group.id, sheet.groupOrderAt(index, group.id))}
+				onreorder={(index) => reorder(group.id, index)}
 			/>
 
 			{#if !folded && !ui.isCollapsed(group.id)}
@@ -326,7 +466,7 @@
 							groupId={group.id}
 							style={fig.style}
 							open={opening === task.id}
-							onstate={(state) => sheet.setState(task.id, state)}
+							onstate={(state) => setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
 							onsplit={(carried) =>

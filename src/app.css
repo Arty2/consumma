@@ -75,6 +75,35 @@
 	 */
 	--num-lift: 0.06em;
 
+	/*
+	 * How far a bracket lifts to sit level with what it holds.
+	 *
+	 * The same fact again, one face further out. Graphe has no `[` or `]` and
+	 * falls back for them deliberately — they are what a markdown checkbox is
+	 * written with, and swapping in characters it does have would be changing
+	 * the mark to suit the tool. So the platform substitutes a face of its own
+	 * (Roboto on Android, whatever is to hand elsewhere), that face sets its
+	 * brackets on the true baseline, and Graphe's figures and capitals are
+	 * drawn well above it — the brackets came out sitting low around the
+	 * numbers they enclose.
+	 *
+	 * Larger than `--num-lift` because it corrects further: a mono digit is
+	 * still a figure of about the right height on about the right line, where a
+	 * substituted bracket is a tall glyph centred on somebody else's baseline.
+	 *
+	 * Measured in a browser, not derived: painted on a canvas at 24px, a
+	 * substituted `[` puts its ink from 17 above the baseline to 3 below, and
+	 * Graphe's figures and capitals both run 19 above to 3 above. Four pixels
+	 * between the two middles, which is this. The brackets then overhang the
+	 * figures a little at each end, which is what brackets are for.
+	 *
+	 * One number for every platform, which is the honest thing to have when the
+	 * face at the other end is whatever the phone happens to own: the
+	 * substitutes differ from each other by far less than any of them differs
+	 * from Graphe. Retune it with the face.
+	 */
+	--bracket-lift: 0.167em;
+
 	/* 32 / 22 / 17 / 14. Handwritten faces need more line-height than you think. */
 	--size-display: 2rem;
 	--size-title: 1.5rem;

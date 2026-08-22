@@ -55,7 +55,6 @@ export class Sheet {
 	groupCount: number = $derived(ops.countGroups(this.doc));
 	canAddTask: boolean = $derived(ops.canAddTask(this.doc));
 	canAddGroup: boolean = $derived(ops.canAddGroup(this.doc));
-	doneCount: number = $derived(ops.doneTasks(this.doc).length);
 	open: number = $derived(openCount(this.doc));
 
 	/** Called once the browser exists. Until then the sheet is empty. */
@@ -195,11 +194,14 @@ export class Sheet {
 		return entry;
 	}
 
-	/** CLEAR. Returns what went, so the toast can offer it back. */
-	clearDone(): { id: string; text: string }[] {
+	/**
+	 * Sweeps done tasks — a group's own, or a run just ticked off. Returns what
+	 * went, so the toast can offer it back.
+	 */
+	clearDone(ids?: readonly string[]): { id: string; text: string }[] {
 		if (!this.#ctx) return [];
 
-		const { doc, cleared } = ops.clearDone(this.doc, this.#ctx);
+		const { doc, cleared } = ops.clearDone(this.doc, this.#ctx, ids);
 		if (cleared.length === 0) return [];
 
 		this.doc = doc;
@@ -231,9 +233,7 @@ export class Sheet {
 			.filter((t) => t.id !== movingId)
 			.map((t) => t.order);
 
-		const before = index > 0 ? (siblings[index - 1] ?? null) : null;
-		const after = siblings[index] ?? null;
-		return between(before, after);
+		return at(siblings, index);
 	}
 
 	groupOrderAt(index: number, movingId?: string): string {
@@ -242,9 +242,7 @@ export class Sheet {
 			.filter((g) => g.id !== movingId)
 			.map((g) => g.order);
 
-		const before = index > 0 ? (siblings[index - 1] ?? null) : null;
-		const after = siblings[index] ?? null;
-		return between(before, after);
+		return at(siblings, index);
 	}
 
 	// ── internals ───────────────────────────────────────────────────────────
@@ -290,6 +288,24 @@ export class Sheet {
 		const existing = read(KEYS.clientId);
 		return existing && isId(existing) ? existing : newId();
 	}
+}
+
+/**
+ * The key that lands something at `index` among `siblings`, which are already
+ * in order and already have whatever is being moved taken out of them.
+ *
+ * The clamp is the point. Off the end, `before` and `after` both came out null
+ * and `between(null, null)` answers with the *first* key there is — so a drop
+ * past the last row landed at the top of the group instead. The hit test no
+ * longer counts that way (see `targetAt`), but a caller that is one out should
+ * be one out, not inverted.
+ */
+function at(siblings: readonly string[], index: number): string {
+	const where = Math.max(0, Math.min(index, siblings.length));
+
+	const before = where > 0 ? (siblings[where - 1] ?? null) : null;
+	const after = siblings[where] ?? null;
+	return between(before, after);
 }
 
 export const sheet = new Sheet();

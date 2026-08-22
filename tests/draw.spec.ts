@@ -710,8 +710,12 @@ describe('handLine', () => {
 });
 
 describe('handScribble', () => {
-	/** The size both the task's mark and the group's are drawn at. */
-	const SIZE = 11;
+	/**
+	 * The one box every scribble on the sheet is drawn in: as tall as the
+	 * checkbox across the row, and narrower, because the column it stands in is.
+	 */
+	const W = 14;
+	const H = 22;
 
 	/*
 	 * It replaced a ✕ that was the checkbox's own two strokes at half the size.
@@ -719,7 +723,7 @@ describe('handScribble', () => {
 	 * is a distinction the eye has to be told about rather than one it can see.
 	 */
 	it('is one stroke the pen never leaves the paper for', () => {
-		const d = handScribble(SIZE, { seed: 3 });
+		const d = handScribble(W, H, { seed: 3 });
 
 		// One `M` and nothing but curves after it: a scribble is a pen going back
 		// and forth, and separate passes would be hatching, which is shading.
@@ -728,14 +732,14 @@ describe('handScribble', () => {
 	});
 
 	it('goes back and forth rather than down one way', () => {
-		const points = endpoints(handScribble(SIZE, { seed: 3 }));
+		const points = endpoints(handScribble(W, H, { seed: 3 }));
 
 		/*
 		 * Every turn is on the opposite side from the one before it. A run of
 		 * two on the same side is a zigzag that has lost its way, and reads as a
 		 * `Z` rather than as something crossed out.
 		 */
-		const sides = points.map((p) => p.x > SIZE / 2);
+		const sides = points.map((p) => p.x > W / 2);
 		for (let i = 1; i < sides.length; i++) {
 			expect(sides[i], `turn ${i}`).toBe(!sides[i - 1]);
 		}
@@ -747,7 +751,7 @@ describe('handScribble', () => {
 	});
 
 	it('crosses the middle of the box every time it turns', () => {
-		const points = endpoints(handScribble(SIZE, { seed: 9 }));
+		const points = endpoints(handScribble(W, H, { seed: 9 }));
 
 		// Four legs, so four crossings: fewer would be a tick, more a smudge.
 		expect(points).toHaveLength(5);
@@ -755,22 +759,36 @@ describe('handScribble', () => {
 
 	it('stays inside its box at any seed', () => {
 		for (let seed = 0; seed < 40; seed++) {
-			for (const { x, y } of endpoints(handScribble(SIZE, { seed, wobble: 1 }))) {
+			for (const { x, y } of endpoints(handScribble(W, H, { seed, wobble: 1 }))) {
 				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
-				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(W);
 				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
-				expect(y, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(H);
 			}
 		}
 	});
 
+	/*
+	 * Taller than it is wide, and it has to be read that way rather than
+	 * squared off: the mark stands as tall as the checkbox and in a column
+	 * narrower than the checkbox is, which is what turns a squat zigzag into an
+	 * S struck through.
+	 */
+	it('fills a tall box rather than a square one', () => {
+		const points = endpoints(handScribble(W, H, { seed: 3 }));
+		const xs = points.map((p) => p.x);
+		const ys = points.map((p) => p.y);
+
+		expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(Math.max(...xs) - Math.min(...xs));
+	});
+
 	it('is stable for a seed, and differs across them', () => {
-		expect(handScribble(SIZE, { seed: 4 })).toBe(handScribble(SIZE, { seed: 4 }));
-		expect(handScribble(SIZE, { seed: 4 })).not.toBe(handScribble(SIZE, { seed: 5 }));
+		expect(handScribble(W, H, { seed: 4 })).toBe(handScribble(W, H, { seed: 4 }));
+		expect(handScribble(W, H, { seed: 4 })).not.toBe(handScribble(W, H, { seed: 5 }));
 	});
 
 	it('is not the ✕ it replaced, which the modal still closes with', () => {
-		expect(handScribble(SIZE, { seed: 4 })).not.toBe(handCross(SIZE, { seed: 4 }));
+		expect(handScribble(W, H, { seed: 4 })).not.toBe(handCross(W, { seed: 4 }));
 	});
 });
 

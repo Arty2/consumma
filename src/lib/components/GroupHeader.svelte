@@ -3,10 +3,10 @@
 	import Perforation from './Perforation.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handScribble } from '$lib/draw/hand';
+	import { handScribble, SCRIBBLE } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
-	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
+	import { DOUBLE_TAP_MS, longPress } from '$lib/dnd/longpress';
 	import { taken, tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
@@ -16,6 +16,10 @@
 		seed: string;
 		collapsed: boolean;
 		count: number;
+		/** How many of them are still to do — half counts as still to do. */
+		open: number;
+		/** How many are done, which is what the mark would clear. */
+		done: number;
 		/** Whether every task in the group is done, so the group can go. */
 		finished: boolean;
 		/**
@@ -26,8 +30,12 @@
 		/** What the group's unfinished tasks come to, or nothing to total. */
 		total: string | null;
 		ontoggle: () => void;
+		/** A long press on the fold icon takes the whole sheet with it. */
+		onfoldall: () => void;
 		onrename: (title: string) => void;
 		ondelete: () => void;
+		/** The same mark, on a group that still has something left to do. */
+		onclear: () => void;
 		/** Enter leaves the name and opens a task at the top of the group. */
 		onaddtask: () => void;
 		onreorder: (index: number) => void;
@@ -38,12 +46,16 @@
 		seed,
 		collapsed,
 		count,
+		open,
+		done,
 		finished,
 		synthetic,
 		total,
 		ontoggle,
+		onfoldall,
 		onrename,
 		ondelete,
+		onclear,
 		onaddtask,
 		onreorder
 	}: Props = $props();
@@ -55,10 +67,50 @@
 
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
-	/* The same mark, the same size, as the one on every done task below it. */
-	const MARK = 11;
+	/*
+	 * Literally the same mark as the one on every done task below it — one
+	 * drawing from one seed, not a second scribble at the same size. See
+	 * SCRIBBLE in draw/hand.
+	 */
+	const scribble = handScribble(SCRIBBLE.w, SCRIBBLE.h, {
+		seed: seedFrom(SCRIBBLE.seed),
+		wobble: 0.7
+	});
 
-	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
+	/**
+	 * What the mark in the gutter would do, or nothing at all.
+	 *
+	 * A group with everything done can go, tasks and all — that is what the mark
+	 * has always meant here. A group with something still to do cannot, but its
+	 * finished tasks can, and that is the same gesture on the same mark: get rid
+	 * of what is finished with. Which of the two it is, is not a mode anybody
+	 * sets; it is a reading of the group.
+	 *
+	 * Nothing done and something still to do means it would do neither, and then
+	 * it is not drawn at all — the rule a task's own mark follows.
+	 */
+	const job = $derived(finished ? 'delete' : done > 0 ? 'clear' : null);
+
+	/**
+	 * And whether it is offered at all, which is a separate question.
+	 *
+	 * Two states put a group in hand rather than in a list: its name is open, or
+	 * it is folded away. Both are somebody attending to this group and not to
+	 * what is on the sheet — and it is there that a way to get rid of it belongs.
+	 * Drawn on every expanded group with a done task in it, the sheet grows a
+	 * column of live deletes down a list somebody is only reading.
+	 */
+	const mark = $derived(editing || collapsed ? job : null);
+
+	/**
+	 * What the icon holds between its brackets.
+	 *
+	 * Folded, the fraction — unless nothing in the group is done, when both
+	 * halves of it are the same number and it says no more than the total does.
+	 * Open, the ellipsis that means "there is more here" everywhere else on the
+	 * sheet.
+	 */
+	const shown = $derived(!collapsed ? '…' : done > 0 ? `${open}/${count}` : `${count}`);
 
 	let folding: ReturnType<typeof setTimeout> | null = null;
 
@@ -78,8 +130,8 @@
 	 * clicks by their timing, so nothing depends on them arriving as a pair.
 	 *
 	 * A long press on the title picks the group up instead, the way it picks a
-	 * task up. The icon beside the name still folds on one tap and does nothing
-	 * else, for anyone who would rather aim at it.
+	 * task up. The icon beside the name folds on one tap, for anyone who would
+	 * rather aim at it, and folds the whole sheet on a long press.
 	 */
 	function ontap() {
 		if (synthetic || editing) return;
@@ -99,6 +151,31 @@
 		folding = null;
 
 		startEditing();
+	}
+
+	/**
+	 * Set by a long press and eaten by the click that follows it.
+	 *
+	 * The icon stays a real button, because that is also how a keyboard folds a
+	 * group — and a button releases a click whether or not the finger was held.
+	 * The same swallow the drag does after a drop, for the same reason: the
+	 * press has already done something, and the tap must not undo it.
+	 */
+	let pressed = false;
+
+	function foldAll() {
+		pressed = true;
+		onfoldall();
+	}
+
+	function fold() {
+		if (pressed) {
+			pressed = false;
+			return;
+		}
+
+		tapped();
+		ontoggle();
 	}
 
 	function startEditing() {
@@ -138,10 +215,19 @@
 	 */
 	const POP_MS = 180;
 
-	function remove() {
-		if (!finished) return;
-		editing = false;
+	/** The mark in the gutter, doing whichever of its two jobs this group asks. */
+	function strike() {
+		if (mark === null) return;
 		taken();
+
+		if (mark === 'clear') {
+			// The group stays exactly where it is; only what is finished with
+			// leaves it, so there is nothing here to pop.
+			onclear();
+			return;
+		}
+
+		editing = false;
 
 		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			ondelete();
@@ -176,10 +262,21 @@
 	</div>
 {:else}
 	<!--
-		Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
-		[…], the same ellipsis an untitled group and the add row use for "there
-		is more here". Graphe has no brackets and falls back for them,
-		deliberately. Do not swap in characters it does have.
+		Collapsed it reads [1/3] — what is still to do, out of what is hidden.
+		The bare total answered the wrong question: a group is folded away
+		because it is dealt with or because it is not yet, and how many tasks
+		are under there says neither. Half done counts as still to do, because
+		it is. Nothing done at all and the fraction says nothing either, since
+		both halves are the same number, so it goes back to being a total.
+		Expanded it reads […], the same ellipsis an untitled group and the add
+		row use for "there is more here". Graphe has no brackets and falls back
+		for them, deliberately. Do not swap in characters it does have — the
+		brackets are lifted onto its baseline instead, which is what
+		`.bracket` is for.
+
+		One tap folds this group and a long press folds every group on the
+		sheet — the icon is the fold control, so more of the gesture belongs to
+		it. The press is what makes a long list navigable; the tap is unchanged.
 
 		The mousedown guard matters while editing — a mousedown on the icon
 		there must not steal focus from the field, or the blur it causes
@@ -190,15 +287,17 @@
 		<button
 			class="icon"
 			type="button"
-			onclick={() => {
-				tapped();
-				ontoggle();
-			}}
+			onclick={fold}
 			onmousedown={(event) => event.preventDefault()}
+			use:longPress={{ onpress: foldAll }}
 			aria-expanded={!collapsed}
 			aria-label={collapsed ? t.group.expand : t.group.collapse}
 		>
-			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
+			<!-- No whitespace anywhere in here: a newline between the brackets and
+				what they hold renders as a space. -->
+			<span aria-hidden="true"
+				><span class="bracket">[</span>{shown}<span class="bracket">]</span></span
+			>
 		</button>
 	{/snippet}
 
@@ -233,8 +332,8 @@
 
 				One tap folds the group, two open the name for changing, and a long
 				press picks the group up — the same gesture that lifts a task, on
-				the same kind of row. The icon still folds on one tap and does
-				nothing else, for anyone who would rather aim at it.
+				the same kind of row. The icon still folds on one tap, for anyone
+				who would rather aim at it, and folds every group on a press.
 			-->
 			<!--
 				A span with a role rather than a real <button>: Chromium keeps a
@@ -277,23 +376,31 @@
 			<span class="num total">{total}</span>
 		{/if}
 
-		{#if editing}
+		{#if mark !== null}
 			<!--
-				The way to get rid of the group, offered only while its name is being
-				edited — and out in the gutter, in the same column as the mark on every
-				done task below it. Deleting is one thing and it happens in one place.
+				Out in the gutter, in the same column as the mark on every done task
+				below it, and the same drawing: getting rid of what is finished with
+				is one gesture and it is made in one place.
+
+				It used to appear only while the name was being edited, and only ever
+				deleted. Now it is there whenever it has something to do — which is
+				what a done task's own mark does — and it clears the group's finished
+				tasks while there is still something left to do, then removes the
+				whole group once there is not.
 			-->
 			<button
 				class="remove"
-				class:nothing={!finished}
 				type="button"
-				disabled={!finished}
-				onclick={remove}
+				onclick={strike}
 				onmousedown={(event) => event.preventDefault()}
-				aria-label={finished ? t.group.delete : t.group.deleteBlocked}
-				title={finished ? t.group.delete : t.group.deleteBlockedHint}
+				aria-label={mark === 'delete' ? t.group.delete : t.group.clear}
 			>
-				<svg viewBox="0 0 {MARK} {MARK}" width={MARK} height={MARK} aria-hidden="true">
+				<svg
+					viewBox="0 0 {SCRIBBLE.w} {SCRIBBLE.h}"
+					width={SCRIBBLE.w}
+					height={SCRIBBLE.h}
+					aria-hidden="true"
+				>
 					<path d={scribble} class="drawn" />
 				</svg>
 			</button>
@@ -467,6 +574,27 @@
 		-webkit-user-select: none;
 	}
 
+	/*
+	 * Graphe has no `[` or `]`, so the platform substitutes something for them —
+	 * Roboto on Android, whatever the browser has elsewhere. A substituted face
+	 * sets its glyphs on the true baseline, and Graphe's are drawn riding high
+	 * above theirs, so the brackets sat visibly low against the figures they
+	 * hold and against the capitals of the title beside them.
+	 *
+	 * The same correction `--cap-lift` and `--num-lift` make, for the same
+	 * reason and in the same direction: a shared baseline is not the same as
+	 * looking level. Measured in a browser against the digits inside the
+	 * brackets, not derived — retune it with the face.
+	 *
+	 * Never fixed by swapping in characters Graphe does have. The brackets are
+	 * the mark, they are what a markdown checkbox is written with, and the
+	 * fallback is deliberate.
+	 */
+	.bracket {
+		position: relative;
+		top: calc(-1 * var(--bracket-lift));
+	}
+
 	.icon {
 		flex: 0 0 auto;
 		min-width: var(--touch);
@@ -513,11 +641,5 @@
 	 */
 	.remove svg {
 		translate: calc(-1 * var(--mark-step)) 0;
-	}
-
-	/* Drawn, but not offered: the group still has something in it to do. */
-	.remove.nothing {
-		opacity: var(--faint);
-		cursor: default;
 	}
 </style>

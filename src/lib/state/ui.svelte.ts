@@ -2,8 +2,13 @@ import { KEYS, readJson, writeJson, type ListKeySet } from './storage';
 
 export type Toast = {
 	text: string;
-	/** Present only while an action is still reversible. */
-	undo?: () => void;
+	/**
+	 * What the message can still do about what it is describing, while it is
+	 * still on screen. Nearly always an undo; a run of ticks offers to clear
+	 * itself instead, which is the same shape and a different word, so the
+	 * label travels with the action rather than being assumed.
+	 */
+	action?: { label: string; run: () => void };
 };
 
 /**
@@ -60,18 +65,38 @@ export class Ui {
 		writeJson(this.#key, this.collapsed);
 	}
 
+	/**
+	 * Every group at once, from a long press on any one fold icon.
+	 *
+	 * It folds them unless they are all folded already, in which case it opens
+	 * them — a gesture that does nothing on a sheet that is entirely put away
+	 * is a gesture with no way back. Written in one go rather than by calling
+	 * `toggleCollapsed` down the list, which would save the file once per
+	 * group and, worse, decide each group's answer separately.
+	 */
+	foldAll(groupIds: readonly string[]): void {
+		if (groupIds.length === 0) return;
+
+		const shut = groupIds.every((id) => this.isCollapsed(id));
+		const next = { ...this.collapsed };
+		for (const id of groupIds) next[id] = !shut;
+
+		this.collapsed = next;
+		writeJson(this.#key, this.collapsed);
+	}
+
 	expand(groupId: string): void {
 		if (!this.isCollapsed(groupId)) return;
 		this.collapsed = { ...this.collapsed, [groupId]: false };
 		writeJson(this.#key, this.collapsed);
 	}
 
-	say(text: string, undo?: () => void): void {
+	say(text: string, action?: { label: string; run: () => void }): void {
 		if (this.#timer) clearTimeout(this.#timer);
 
 		this.leaving = false;
-		this.toast = { text, undo };
-		this.#timer = setTimeout(() => this.dismiss(), undo ? 10_000 : 4_000);
+		this.toast = { text, action };
+		this.#timer = setTimeout(() => this.dismiss(), action ? 10_000 : 4_000);
 	}
 
 	/**

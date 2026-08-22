@@ -58,9 +58,29 @@ export class DragState {
 		return this.groupId === groupId;
 	}
 
-	/** True where the dashed landing rule should be drawn. */
+	/**
+	 * True where the dashed landing rule should be drawn.
+	 *
+	 * The index has to be translated on the way in, for the same reason
+	 * `isGroupLanding` translates its own: the two sides count in different
+	 * lists. `targetAt` skips the row being carried, because that is the list
+	 * `orderAt` puts it back into; the markup counts with an `{#each}` that has
+	 * every row in it, the carried one included.
+	 *
+	 * The two agree until the boundary passes the hole the carried row left,
+	 * and from there they are one apart. So the rule was drawn a row short of
+	 * where the row would actually land — and the row it was drawn under was
+	 * usually the carried one itself, which is an offer to put it back where it
+	 * already is next to a drop that would do something else.
+	 */
 	isLanding(groupId: string, index: number): boolean {
-		return this.target?.groupId === groupId && this.target.index === index;
+		if (this.target === null || this.target.groupId !== groupId) return false;
+
+		const from = this.from;
+		const shift =
+			from !== null && from.groupId === groupId && this.target.index >= from.index ? 1 : 0;
+
+		return this.target.index + shift === index;
 	}
 
 	/**
@@ -162,7 +182,22 @@ function targetAt(x: number, y: number, movingId: string): DropTarget | null {
 		HTMLElement | undefined;
 
 	if (group?.dataset.group) {
-		const count = group.querySelectorAll('[data-task]').length;
+		/*
+		 * Counted without the row being carried, exactly as the branch above
+		 * counts. This is the space `orderAt` works in, and it did not use to be
+		 * the space this line answered in: a drop below the last task — which
+		 * lands here, on the add row rather than on any task — reported one more
+		 * than there were siblings, so `orderAt` found no neighbour on either
+		 * side and `between(null, null)` handed back the *first* key there is.
+		 * The task went to the top of the group, from the bottom of it.
+		 *
+		 * It was also the one place the no-op guard could not fire: a row already
+		 * last in its group asked to be put after itself, and the count being one
+		 * too high is what stopped `isHome` recognising it.
+		 */
+		const count = [...group.querySelectorAll<HTMLElement>('[data-task]')].filter(
+			(el) => el.dataset.task !== movingId
+		).length;
 		return { groupId: group.dataset.group, index: count };
 	}
 
