@@ -436,6 +436,9 @@ test('clearing is beside the group now, not in the menu', async ({ page }) => {
 	).toHaveCount(0);
 	await page.getByRole('button', { name: 'Close' }).click();
 
+	// The sheet's own title, not the switcher pill in the panel behind it,
+	// which is named for the list it is showing and is still furling.
+	await page.locator('section[data-group] .title').dblclick();
 	await page.getByRole('button', { name: 'Clear done tasks' }).click();
 	await expect(task(page, 'Bread')).toHaveCount(0);
 	await expect(task(page, 'Coffee')).toBeVisible();

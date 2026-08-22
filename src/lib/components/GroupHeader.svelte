@@ -86,11 +86,31 @@
 	 * of what is finished with. Which of the two it is, is not a mode anybody
 	 * sets; it is a reading of the group.
 	 *
-	 * Nothing done and something still to do means the mark is not drawn at all,
-	 * the way a task shows its own mark only once it is done. A control that is
-	 * only ever there when it has something to do never has to explain itself.
+	 * Nothing done and something still to do means it would do neither, and then
+	 * it is not drawn at all — the rule a task's own mark follows.
 	 */
-	const mark = $derived(finished ? 'delete' : done > 0 ? 'clear' : null);
+	const job = $derived(finished ? 'delete' : done > 0 ? 'clear' : null);
+
+	/**
+	 * And whether it is offered at all, which is a separate question.
+	 *
+	 * Two states put a group in hand rather than in a list: its name is open, or
+	 * it is folded away. Both are somebody attending to this group and not to
+	 * what is on the sheet — and it is there that a way to get rid of it belongs.
+	 * Drawn on every expanded group with a done task in it, the sheet grows a
+	 * column of live deletes down a list somebody is only reading.
+	 */
+	const mark = $derived(editing || collapsed ? job : null);
+
+	/**
+	 * What the icon holds between its brackets.
+	 *
+	 * Folded, the fraction — unless nothing in the group is done, when both
+	 * halves of it are the same number and it says no more than the total does.
+	 * Open, the ellipsis that means "there is more here" everywhere else on the
+	 * sheet.
+	 */
+	const shown = $derived(!collapsed ? '…' : done > 0 ? `${open}/${count}` : `${count}`);
 
 	let folding: ReturnType<typeof setTimeout> | null = null;
 
@@ -246,10 +266,13 @@
 		The bare total answered the wrong question: a group is folded away
 		because it is dealt with or because it is not yet, and how many tasks
 		are under there says neither. Half done counts as still to do, because
-		it is. Expanded it reads […], the same ellipsis an untitled group and
-		the add row use for "there is more here". Graphe has no brackets and
-		falls back for them, deliberately. Do not swap in characters it does
-		have.
+		it is. Nothing done at all and the fraction says nothing either, since
+		both halves are the same number, so it goes back to being a total.
+		Expanded it reads […], the same ellipsis an untitled group and the add
+		row use for "there is more here". Graphe has no brackets and falls back
+		for them, deliberately. Do not swap in characters it does have — the
+		brackets are lifted onto its baseline instead, which is what
+		`.bracket` is for.
 
 		One tap folds this group and a long press folds every group on the
 		sheet — the icon is the fold control, so more of the gesture belongs to
@@ -270,7 +293,11 @@
 			aria-expanded={!collapsed}
 			aria-label={collapsed ? t.group.expand : t.group.collapse}
 		>
-			<span aria-hidden="true">{collapsed ? `[${open}/${count}]` : '[…]'}</span>
+			<!-- No whitespace anywhere in here: a newline between the brackets and
+				what they hold renders as a space. -->
+			<span aria-hidden="true"
+				><span class="bracket">[</span>{shown}<span class="bracket">]</span></span
+			>
 		</button>
 	{/snippet}
 
@@ -545,6 +572,27 @@
 		font-size: var(--size-task);
 		user-select: none;
 		-webkit-user-select: none;
+	}
+
+	/*
+	 * Graphe has no `[` or `]`, so the platform substitutes something for them —
+	 * Roboto on Android, whatever the browser has elsewhere. A substituted face
+	 * sets its glyphs on the true baseline, and Graphe's are drawn riding high
+	 * above theirs, so the brackets sat visibly low against the figures they
+	 * hold and against the capitals of the title beside them.
+	 *
+	 * The same correction `--cap-lift` and `--num-lift` make, for the same
+	 * reason and in the same direction: a shared baseline is not the same as
+	 * looking level. Measured in a browser against the digits inside the
+	 * brackets, not derived — retune it with the face.
+	 *
+	 * Never fixed by swapping in characters Graphe does have. The brackets are
+	 * the mark, they are what a markdown checkbox is written with, and the
+	 * fallback is deliberate.
+	 */
+	.bracket {
+		position: relative;
+		top: calc(-1 * var(--bracket-lift));
 	}
 
 	.icon {

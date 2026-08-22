@@ -1151,11 +1151,18 @@ relative` rather than a transform, which does not apply to an inline box.
     not, it removes the group, which is what it always did.
 
     So the mark is drawn whenever it has a job and never when it has not,
-    which is the rule a done task's own mark already follows — and it is no
-    longer hidden behind opening the title for renaming. No confirm: the mark
-    says which of the two it is, it is only ever there with something to
+    which is the rule a done task's own mark already follows. No confirm: the
+    mark says which of the two it is, it is only ever there with something to
     sweep, and the ten-second undo covers the change of mind, exactly as it
     does for removing a group.
+
+    Having a job is not enough to be offered, though. Two states put a group
+    in hand rather than in a list — its name is open, or it is folded away —
+    and the mark belongs to those. Drawn on every expanded group with a done
+    task under it, the sheet grows a column of live deletes down a list
+    somebody is only reading, which is the thing a task's own mark was taken
+    off hover to avoid. A row's mark is different in kind: it sits on the one
+    task it would remove.
 
 89. **A run of ticks offers to sweep itself.** Three tasks ticked inside five
     seconds is somebody at the end of a shop going down the list, and what
@@ -1190,14 +1197,24 @@ relative` rather than a transform, which does not apply to an inline box.
     draw/hand), so the mark on a task and the mark on a group header are the
     same drawing. It is as tall as the checkbox at the other end of the row and
     narrower than it is tall, because the column it stands in is narrower than
-    the checkbox and the ink must keep clear of the paper's drawn edge — and a
-    scribble made in a tall box comes out an S struck through.
+    the checkbox and the ink must keep clear of the paper's drawn edge.
+
+    The shape is unchanged — four legs, alternating ends, one unlifted stroke.
+    What the taller box did change is the padding: read as one fraction of
+    both axes, four legs in a tall box land three pixels apart and merge into
+    a smudge, so the two are now fractions of their own axis. What keeps a leg
+    from lying flat is room above and below it, not room either side.
 
 93. **A collapsed group says what is left, not how much is under it.** `[3]`
     answered the wrong question: a group is folded away because it is dealt
     with or because it is not yet, and a total says neither. `[1/3]` is what is
     still to do out of what is hidden, with half counting as still to do,
     because it is.
+
+    Unless nothing in it is done, when both halves of the fraction are the same
+    number and it says no more than the total does — so it goes back to being
+    a total. A fraction is worth its second number only where there is a
+    difference between them to report.
 
 94. **A long press on the fold icon folds every group.** The icon is the fold
     control, so the bigger version of folding belongs to it — and on a long
@@ -1226,6 +1243,23 @@ relative` rather than a transform, which does not apply to an inline box.
     the row in the hand — an offer to put it back where it already was, beside
     a drop that would have done something else. `isGroupLanding` had this
     translation and its own docstring explaining why; `isLanding` now has both.
+
+97. **The brackets are lifted onto Graphe's baseline.** Graphe has no `[` or
+    `]`, and that is deliberate: they are what a markdown checkbox is written
+    with, and swapping in characters the face does have would be changing the
+    mark to suit the tool. So the platform substitutes a face of its own —
+    Roboto on Android, whatever is to hand elsewhere — and that face sets its
+    brackets on the true baseline, while Graphe's figures and capitals are
+    drawn well above theirs. The brackets in the fold icon came out sitting low
+    around the numbers they enclose.
+
+    `--bracket-lift` is the correction, and it is the same fact as `--cap-lift`
+    and `--num-lift` one face further out. Measured rather than derived: on a
+    canvas at 24px a substituted `[` runs from 17 above the baseline to 3
+    below, and Graphe's figures and capitals both run 19 above to 3 above —
+    four pixels between the two middles. One number for every platform, which
+    is the honest thing to have when the face at the other end is whatever the
+    phone happens to own.
 
 ## Known limits
 

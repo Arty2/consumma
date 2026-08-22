@@ -744,27 +744,17 @@ describe('handScribble', () => {
 			expect(sides[i], `turn ${i}`).toBe(!sides[i - 1]);
 		}
 
-		// The S travels down the box as it goes, rather than retracing one line.
-		const s = points.slice(0, 4);
-		for (let i = 1; i < s.length; i++) {
-			expect(s[i].y).toBeGreaterThan(s[i - 1].y);
+		// And it travels down the box as it goes, rather than retracing one line.
+		for (let i = 1; i < points.length; i++) {
+			expect(points[i].y).toBeGreaterThan(points[i - 1].y);
 		}
 	});
 
-	/*
-	 * The pen goes back up through the whole figure from the foot of the S to
-	 * its head, and that return is the strike. The zigzag on its own is a mark;
-	 * a mark crossed out is a mark got rid of.
-	 */
-	it('comes back up through itself, in the same unlifted stroke', () => {
+	it('crosses the middle of the box every time it turns', () => {
 		const points = endpoints(handScribble(W, H, { seed: 9 }));
 
-		// Three legs make the S, and the fourth is the strike back through it.
+		// Four legs, so four crossings: fewer would be a tick, more a smudge.
 		expect(points).toHaveLength(5);
-
-		const last = points[points.length - 1];
-		expect(last.y).toBeLessThan(points[0].y + H * 0.2);
-		expect(last.y).toBeLessThan(points[3].y);
 	});
 
 	it('stays inside its box at any seed', () => {

@@ -184,8 +184,11 @@ test('the group mark sweeps its done tasks only, and half-done stays', async ({ 
 	/*
 	 * Clearing is no longer in the menu. The group's own mark does it while
 	 * there is still something in the group to do, and removes the group once
-	 * there is not — one mark, in the column every delete mark stands in.
+	 * there is not — one mark, in the column every delete mark stands in. It
+	 * is offered while the name is open, which is one of the two states that
+	 * put a group in hand rather than in a list.
 	 */
+	await page.getByRole('button', { name: 'My list' }).dblclick();
 	await page.getByRole('button', { name: 'Clear done tasks' }).click();
 
 	await expect(task(page, 'Bread')).toHaveCount(0);
@@ -197,25 +200,59 @@ test('the group mark sweeps its done tasks only, and half-done stays', async ({ 
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
-test('the group mark is only there when it has something to do', async ({ page }) => {
+test('the group mark says which of its two jobs it would do', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
 
 	const clear = page.getByRole('button', { name: 'Clear done tasks' });
 	const remove = page.getByRole('button', { name: 'Delete group' });
 
+	// Folded is one of the two states that put a group in hand.
+	await page.getByRole('button', { name: 'Collapse group' }).click();
+
 	// Nothing done: the mark would do neither thing, so it is not drawn.
 	await expect(clear).toHaveCount(0);
 	await expect(remove).toHaveCount(0);
 
+	await page.getByRole('button', { name: 'Expand group' }).click();
 	await task(page, 'Bread').click();
+	await page.getByRole('button', { name: 'Collapse group' }).click();
 	await expect(clear).toBeVisible();
 	await expect(remove).toHaveCount(0);
 
 	// Everything done, so what the mark offers is the group itself.
+	await page.getByRole('button', { name: 'Expand group' }).click();
 	await task(page, 'Coffee').click();
+	await page.getByRole('button', { name: 'Collapse group' }).click();
 	await expect(clear).toHaveCount(0);
 	await expect(remove).toBeVisible();
+});
+
+test('the group mark keeps out of a list being read', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+	await task(page, 'Bread').click();
+
+	const clear = page.getByRole('button', { name: 'Clear done tasks' });
+
+	/*
+	 * Open and not being edited, the group is one heading in a list somebody is
+	 * reading — and a live delete on every heading with a done task under it is
+	 * a column of them down the sheet. The row's own mark is a different thing:
+	 * it is on the task it would remove.
+	 */
+	await expect(clear).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Delete task' })).toBeVisible();
+
+	// Attending to this group, either way, and it is there.
+	await page.getByRole('button', { name: 'Collapse group' }).click();
+	await expect(clear).toBeVisible();
+
+	await page.getByRole('button', { name: 'Expand group' }).click();
+	await expect(clear).toHaveCount(0);
+
+	await page.getByRole('button', { name: 'My list' }).dblclick();
+	await expect(clear).toBeVisible();
 });
 
 test('makes a group, collapses it, and remembers that locally', async ({ page }) => {
@@ -232,11 +269,12 @@ test('makes a group, collapses it, and remembers that locally', async ({ page })
 	// The icon collapses; the title is for renaming and does not toggle.
 	await page.getByRole('button', { name: 'Collapse group' }).nth(1).click();
 	await expect(task(page, 'Bread')).toHaveCount(0);
-	// What is still to do, out of what is hidden — and nowhere else on the row.
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1/1]');
+	// Nothing in it is done, so both halves of a fraction would be the same
+	// number and it says no more than the total does.
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
 
 	await page.reload();
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1/1]');
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
 
 	await page.getByRole('button', { name: 'Expand group' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
@@ -466,13 +504,13 @@ test('the header control collapses and expands, and counts what it hides', async
 	await collapse.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
 
-	// Closed, the numbers are the only account of what went away: what is still
-	// to do, out of how much is under there.
+	// Closed, the number is the only account of what went away — and while
+	// nothing in there is done, a total is the whole of what there is to say.
 	const expand = page.getByRole('button', { name: 'Expand group' });
 	await expect(expand).toHaveAttribute('aria-expanded', 'false');
-	await expect(expand).toHaveText('[2/2]');
+	await expect(expand).toHaveText('[2]');
 
-	// And the first of the two says the thing a bare total could not.
+	// Once something is done, the fraction says the thing a total could not.
 	await expand.click();
 	await task(page, 'Bread').click();
 	await page.getByRole('button', { name: 'Collapse group' }).click();
@@ -560,20 +598,29 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	const remove = page.getByRole('button', { name: 'Delete group' });
 	const clear = page.getByRole('button', { name: 'Clear done tasks' });
 
+	// With the name open, which is where the mark is offered.
+	const open = () => page.locator('section[data-group] .title').dblclick();
+	const shut = () => page.keyboard.press('Escape');
+
 	/*
 	 * The mark in the gutter is not a disabled delete waiting to be earned. It
 	 * is drawn when it has something to do and named for whichever of its two
 	 * jobs that is: nothing done, so nothing yet.
 	 */
+	await open();
 	await expect(remove).toHaveCount(0);
 	await expect(clear).toHaveCount(0);
+	await shut();
 
 	await task(page, 'Bread').click();
 	// One still open, so the group cannot go — but what is done can.
+	await open();
 	await expect(remove).toHaveCount(0);
 	await expect(clear).toBeVisible();
+	await shut();
 
 	await task(page, 'Milk').click();
+	await open();
 	await expect(clear).toHaveCount(0);
 	await expect(remove).toBeEnabled();
 	await remove.click();
