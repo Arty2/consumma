@@ -340,8 +340,23 @@ export function handCross(size: number, options: HandOptions): string {
 }
 
 /**
- * The mark that removes a task, and the one that removes a group: something
- * scribbled out.
+ * The box every delete mark is drawn in, and the seed every one of them is
+ * drawn from — so the mark that removes a task and the mark that clears a
+ * group are not merely alike but the same drawing, made once.
+ *
+ * As tall as the checkbox across the row (`--glyph`), and narrower, because
+ * the column it stands in is: `--gutter` is the paper's own margin and the
+ * mark has to stay clear of the drawn edge at the end of it.
+ *
+ * This is where "seeded so it never re-jitters" is at its strictest: the seed
+ * is the mark's own name rather than the row's, so a sheet of forty done tasks
+ * shows one mark forty times instead of forty scribbles.
+ */
+export const SCRIBBLE = { w: 14, h: 22, seed: 'scribble' } as const;
+
+/**
+ * The mark that removes a task, and the one that clears or removes a group:
+ * something scribbled out.
  *
  * It was a ✕ — the same two strokes the checkbox uses for done, at half the
  * size and a few millimetres away from them. Two marks made of the same
@@ -350,30 +365,42 @@ export function handCross(size: number, options: HandOptions): string {
  * what a hand does to a line on paper it wants rid of, and nothing else on the
  * sheet is drawn that way.
  *
- * One stroke, never lifted: a scribble is the pen going back and forth without
- * leaving the paper, and drawing it as separate passes would make it hatching,
- * which is shading rather than deletion. So the points run right, left, right
- * across the box, dropping a little each time, and handPath bends every leg —
- * the turns at the ends come out round because a pen reversing has to.
+ * It is an S struck through, and it is one stroke the pen never leaves the
+ * paper for. Three legs down the box make the S — an S written in straight
+ * lines is a zigzag, which is why a fourth leg only ever made it a longer
+ * zigzag and, at this size, a pair of chevrons. The pen then goes back up
+ * through the whole figure to where it started, and that return is the strike.
+ * Both halves are needed: the zigzag alone is a mark, and a mark crossed out
+ * is a mark got rid of.
  *
- * The ends fall short of the corners rather than reaching them, and the whole
- * figure keeps handCheck's own padding, so it occupies the box the ✕ occupied
- * and every place one stood still fits it.
+ * Never separate passes. Lifting the pen between them would make it hatching,
+ * which is shading rather than deletion, and handPath bends every leg so the
+ * turns at the ends come out round, because a pen reversing has to.
+ *
+ * Width and height are asked for separately, which they did not use to be. The
+ * mark stands as tall as the checkbox it answers to across the row, and the
+ * column it stands in is narrower than that. The two paddings are different
+ * fractions for the same reason: the legs run the width and are stacked down
+ * the height, so what keeps a leg from lying flat is room above and below it,
+ * not room either side.
+ *
+ * The ends fall short of the corners rather than reaching them, so the figure
+ * keeps clear of whatever it is drawn beside.
  */
-export function handScribble(size: number, options: HandOptions): string {
+export function handScribble(width: number, height: number, options: HandOptions): string {
 	const random = rng(options.seed ^ 0x165667b1);
-	const pad = size * 0.18;
-	const span = size - pad * 2;
+	const padX = width * 0.2;
+	const padY = height * 0.08;
+	const spanX = width - padX * 2;
+	const spanY = height - padY * 2;
 
-	/*
-	 * Four legs, which is the fewest that reads as a scribble rather than as a
-	 * zigzag: three would be a `Z` and five in eleven pixels is a smudge.
-	 */
-	const legs = 4;
-	const drop = span / legs;
-	const jitter = (much: number) => (random() * 2 - 1) * size * much;
+	/** Three, so the zigzag is an S rather than a longer zigzag. */
+	const legs = 3;
+	const drop = spanY / legs;
+	/** Down the page, so it is read against the height. */
+	const jitter = (much: number) => (random() * 2 - 1) * height * much;
 	/** Always inwards, so a turn never lands outside the box it is drawn in. */
-	const pull = () => random() * size * 0.1;
+	const pull = () => random() * width * 0.1;
 
 	const points: Pt[] = [];
 	for (let i = 0; i <= legs; i++) {
@@ -383,9 +410,16 @@ export function handScribble(size: number, options: HandOptions): string {
 		 * what makes a machine's zigzag look like one.
 		 */
 		const atRight = i % 2 === 1;
-		const x = atRight ? pad + span - pull() : pad + pull();
-		points.push({ x, y: pad + drop * i + jitter(0.05) });
+		const x = atRight ? padX + spanX - pull() : padX + pull();
+		points.push({ x, y: padY + drop * i + jitter(0.05) });
 	}
+
+	/*
+	 * And back up through it, from the foot of the S to its head: the strike.
+	 * The pen has not left the paper, so this is the same gesture carrying on
+	 * rather than a second mark laid over the first.
+	 */
+	points.push({ x: padX + pull(), y: padY + jitter(0.05) });
 
 	return handPath(points, { ...options, wobble: options.wobble ?? 0.9 });
 }

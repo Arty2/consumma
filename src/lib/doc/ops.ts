@@ -247,12 +247,25 @@ export function restoreTasks(
 	return { ...doc, tasks };
 }
 
-/** CLEAR sweeps `done` tasks and only those. Half-done stays. */
+/**
+ * Clearing sweeps `done` tasks and only those. Half-done stays.
+ *
+ * `ids` narrows it to a handful — a group's own finished tasks, or the run of
+ * them somebody has just ticked off. The rule does not change with the
+ * narrowing: an id in the list that is no longer done, or no longer there, is
+ * left exactly as it is, so an offer made a few seconds ago cannot sweep
+ * something that has been un-ticked since.
+ */
 export function clearDone(
 	doc: Doc,
-	ctx: Ctx
+	ctx: Ctx,
+	ids?: readonly string[]
 ): { doc: Doc; cleared: { id: string; text: string }[] } {
-	const cleared = doneTasks(doc).map((t) => ({ id: t.id, text: t.text }));
+	const only = ids === undefined ? null : new Set(ids);
+
+	const cleared = doneTasks(doc)
+		.filter((t) => only === null || only.has(t.id))
+		.map((t) => ({ id: t.id, text: t.text }));
 
 	let next = doc;
 	for (const task of cleared) next = deleteTask(next, ctx, task.id);

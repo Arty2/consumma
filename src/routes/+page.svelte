@@ -30,8 +30,9 @@
 
 	/*
 	 * Nothing sits on the page but the sheet and the buttons in its corners.
-	 * Syncing, sharing, importing, clearing and the credit all live behind the
+	 * Syncing, sharing, importing, leaving and the credit all live behind the
 	 * one that opens the menu — the paper carries only what someone wrote on it.
+	 * Clearing is not among them: it belongs beside the group it sweeps.
 	 *
 	 * The theme sits beside it rather than inside it, because it is the one
 	 * setting whose result is the screen itself: a control for how the sheet
@@ -41,7 +42,7 @@
 	 * a keyboard trap, and returning to a menu buried under a confirm is not a
 	 * step anyone wants.
 	 */
-	type Panel = 'menu' | 'import' | 'clear' | 'delete' | null;
+	type Panel = 'menu' | 'import' | 'delete' | null;
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
 
@@ -356,19 +357,6 @@
 		);
 	}
 
-	function onClear() {
-		panel = null;
-		const cleared = sheet.clearDone();
-		if (cleared.length === 0) return;
-
-		// The confirm stops the accident; the undo covers the change of mind.
-		ui.say(t.toast.cleared({ count: cleared.length }), () => {
-			sheet.restore(cleared);
-			// The change is undone, so the message describing it goes at once.
-			ui.dismiss(true);
-		});
-	}
-
 	function onDelete() {
 		panel = null;
 		lists.deleteCurrent();
@@ -478,21 +466,10 @@
 		onclosed={() => (panel = null)}
 		onimport={onImport}
 		onexport={onExportFromMenu}
-		onclear={() => (panel = 'clear')}
 		ondelete={() => (panel = 'delete')}
 	/>
 {:else if panel === 'import'}
 	<ImportModal initial={pasted} onapply={applyMarkdown} onclose={() => (panel = null)} />
-{:else if panel === 'clear'}
-	<ConfirmModal
-		title={t.confirm.clearTitle}
-		seed="clear"
-		confirmLabel={t.confirm.clearConfirm}
-		onconfirm={onClear}
-		oncancel={() => (panel = null)}
-	>
-		{t.confirm.clearBody({ count: sheet.doneCount })}
-	</ConfirmModal>
 {:else if panel === 'delete'}
 	<ConfirmModal
 		title={t.confirm.leaveTitle}

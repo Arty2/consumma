@@ -239,7 +239,7 @@
 		left: 0;
 		top: 0;
 		bottom: 0;
-		width: calc(var(--touch) * 1.3);
+		width: var(--touch);
 
 		display: inline-flex;
 		align-items: flex-start;

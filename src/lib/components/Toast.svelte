@@ -1,7 +1,6 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
 	import { taken } from '$lib/feel';
-	import { t } from '$lib/i18n';
 	import { ui } from '$lib/state/ui.svelte';
 
 	/*
@@ -149,8 +148,10 @@
 	>
 		<HandRect seed="toast" wobble={2} />
 		<span class="caps">{ui.toast.text}</span>
-		{#if ui.toast.undo}
-			<button type="button" class="caps" onclick={ui.toast.undo}>{t.toast.undo}</button>
+		{#if ui.toast.action}
+			<button type="button" class="caps" onclick={ui.toast.action.run}
+				>{ui.toast.action.label}</button
+			>
 		{/if}
 	</div>
 {/if}

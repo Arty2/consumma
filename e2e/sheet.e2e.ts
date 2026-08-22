@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fromMenu } from './menu';
 
 /*
  * M1's acceptance: add, edit, reorder, tri-state, group, collapse and delete
@@ -172,7 +171,7 @@ test('deletes a task and offers it back', async ({ page }) => {
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
-test('CLEAR sweeps done tasks only, and half-done stays', async ({ page }) => {
+test('the group mark sweeps its done tasks only, and half-done stays', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
 	await addTask(page, 'Milk');
@@ -182,15 +181,41 @@ test('CLEAR sweeps done tasks only, and half-done stays', async ({ page }) => {
 	await task(page, 'Coffee').focus();
 	await page.keyboard.press('Shift+ ');
 
-	await fromMenu(page, 'Clear');
-	await page.getByRole('button', { name: 'Clear', exact: true }).click();
+	/*
+	 * Clearing is no longer in the menu. The group's own mark does it while
+	 * there is still something in the group to do, and removes the group once
+	 * there is not — one mark, in the column every delete mark stands in.
+	 */
+	await page.getByRole('button', { name: 'Clear done tasks' }).click();
 
 	await expect(task(page, 'Bread')).toHaveCount(0);
 	await expect(task(page, 'Coffee')).toBeVisible();
 	await expect(task(page, 'Milk')).toBeVisible();
 
+	// No confirm in front of it, so the undo is the whole of the way back.
 	await page.getByRole('button', { name: 'UNDO?' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
+});
+
+test('the group mark is only there when it has something to do', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+
+	const clear = page.getByRole('button', { name: 'Clear done tasks' });
+	const remove = page.getByRole('button', { name: 'Delete group' });
+
+	// Nothing done: the mark would do neither thing, so it is not drawn.
+	await expect(clear).toHaveCount(0);
+	await expect(remove).toHaveCount(0);
+
+	await task(page, 'Bread').click();
+	await expect(clear).toBeVisible();
+	await expect(remove).toHaveCount(0);
+
+	// Everything done, so what the mark offers is the group itself.
+	await task(page, 'Coffee').click();
+	await expect(clear).toHaveCount(0);
+	await expect(remove).toBeVisible();
 });
 
 test('makes a group, collapses it, and remembers that locally', async ({ page }) => {
@@ -207,11 +232,11 @@ test('makes a group, collapses it, and remembers that locally', async ({ page })
 	// The icon collapses; the title is for renaming and does not toggle.
 	await page.getByRole('button', { name: 'Collapse group' }).nth(1).click();
 	await expect(task(page, 'Bread')).toHaveCount(0);
-	// The count is in the header control, and nowhere else on the row.
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
+	// What is still to do, out of what is hidden — and nowhere else on the row.
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1/1]');
 
 	await page.reload();
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1/1]');
 
 	await page.getByRole('button', { name: 'Expand group' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
@@ -238,6 +263,163 @@ test('moves a task with the keyboard and announces where it went', async ({ page
 	expect(await order()).toStrictEqual(['Coffee', 'Bread']);
 });
 
+/**
+ * Pick something up: press, hold past the long press, and stay still while it
+ * lifts. Movement before the threshold is a scroll and cancels the gesture.
+ */
+async function lift(page: Page, locator: ReturnType<Page['getByRole']>) {
+	const box = (await locator.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+}
+
+async function carryTo(page: Page, locator: ReturnType<Page['getByRole']>) {
+	const box = (await locator.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 8 });
+}
+
+const order = (page: Page) =>
+	page.getByRole('checkbox').evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
+
+test('a task dropped below the last one lands last, not first', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+	await addTask(page, 'Milk');
+
+	/*
+	 * Below the last row there is no row to hit-test, only the group — and the
+	 * group used to count the row being carried among its own children, so the
+	 * drop asked for a place one past the end. Neither neighbour existed at
+	 * that index, and a key between nothing and nothing is the first key there
+	 * is: the task went to the top of the group from the bottom of it.
+	 */
+	await lift(page, page.getByRole('button', { name: 'Coffee', exact: true }));
+	await carryTo(page, page.getByRole('button', { name: 'Add a task' }).first());
+	await page.mouse.up();
+
+	expect(await order(page)).toStrictEqual(['Bread', 'Milk', 'Coffee']);
+
+	await page.reload();
+	expect(await order(page)).toStrictEqual(['Bread', 'Milk', 'Coffee']);
+});
+
+test('a task already last is offered no landing below itself', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+
+	// The same dead zone the row itself has: letting go here changes nothing,
+	// so nothing is drawn offering to do it.
+	await lift(page, page.getByRole('button', { name: 'Coffee', exact: true }));
+	await carryTo(page, page.getByRole('button', { name: 'Add a task' }).first());
+
+	await expect(page.locator('.landing')).toHaveCount(0);
+	await page.mouse.up();
+
+	expect(await order(page)).toStrictEqual(['Bread', 'Coffee']);
+});
+
+test('the landing rule is drawn where the row would land, not under itself', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+	await addTask(page, 'Milk');
+
+	const coffee = (await page.getByRole('button', { name: 'Coffee', exact: true }).boundingBox())!;
+
+	/*
+	 * The lower half of Coffee means below Coffee. The hit test counts the rows
+	 * with the carried one taken out and the sheet draws every row it has, so
+	 * without translating between the two the rule appeared directly under the
+	 * row in the hand — an offer to put it back where it already was, beside a
+	 * drop that would have done something else.
+	 */
+	await lift(page, page.getByRole('button', { name: 'Bread', exact: true }));
+	await page.mouse.move(coffee.x + coffee.width / 2, coffee.y + coffee.height - 3, { steps: 8 });
+
+	const where = await page.evaluate(() => {
+		const rule = document.querySelector('.landing')!.getBoundingClientRect();
+		const rows = [...document.querySelectorAll('[data-task]')].map((el) =>
+			el.getBoundingClientRect()
+		);
+		return { rule: rule.top, first: rows[0].bottom, second: rows[1].bottom };
+	});
+
+	expect(where.rule).toBeGreaterThan(where.first);
+	expect(where.rule).toBeGreaterThanOrEqual(where.second - 3);
+
+	await page.mouse.up();
+	expect(await order(page)).toStrictEqual(['Coffee', 'Bread', 'Milk']);
+});
+
+test('a move can be taken back from the message it leaves', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+	await addTask(page, 'Milk');
+
+	await lift(page, page.getByRole('button', { name: 'Bread', exact: true }));
+	await carryTo(page, page.getByRole('button', { name: 'Add a task' }).first());
+	await page.mouse.up();
+
+	expect(await order(page)).toStrictEqual(['Coffee', 'Milk', 'Bread']);
+
+	// A drop leaves no trace of where the thing came from, which is why it is
+	// the one change a finger makes that most wants taking back.
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+	expect(await order(page)).toStrictEqual(['Bread', 'Coffee', 'Milk']);
+});
+
+test('a run of ticks offers to clear itself', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+	await addTask(page, 'Milk');
+
+	await task(page, 'Bread').click();
+	await task(page, 'Coffee').click();
+
+	// Two is a pair, which happens all day.
+	await expect(page.getByRole('button', { name: 'CLEAR?' })).toHaveCount(0);
+
+	await task(page, 'Milk').click();
+	await expect(page.getByRole('status').filter({ hasText: '3 things done' })).toBeVisible();
+
+	await page.getByRole('button', { name: 'CLEAR?' }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+	// And the sweep is a change like any other, so it can be taken back.
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(3);
+});
+
+test('a long press on the fold icon folds every group', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const title = page.getByRole('textbox', { name: 'New group' });
+	await title.fill('Market');
+	await title.press('Enter');
+	await addTask(page, 'Milk', 1);
+
+	const icon = page.getByRole('button', { name: 'Collapse group' }).first();
+	const box = (await icon.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await page.mouse.up();
+
+	// Both, from one icon — and the tap that follows the press does not open
+	// the group again underneath it.
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveCount(2);
+	await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+	// Nothing left folded to see the point of, so the press opens them again.
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await page.mouse.up();
+
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+});
+
 test('ticking a task to done draws the sparkle flourish, with no toast', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
@@ -251,10 +433,10 @@ test('ticking a task to done draws the sparkle flourish, with no toast', async (
 	/*
 	 * And thrown out from the mark, not from the middle of the target.
 	 *
-	 * The flourish is centred on the box it is drawn in, and that box reaches a
-	 * third again wider than the mark and the whole height of the row — so its
-	 * middle is a point out in the words with nothing drawn at it. Centred
-	 * there, the sparkle came off a tick that was not where the ink was.
+	 * The flourish is centred on the box it is drawn in, and that box is the
+	 * whole height of the row — so on a task over two lines its middle is a
+	 * point with nothing drawn at it. Centred there, the sparkle came off a
+	 * tick that was not where the ink was.
 	 */
 	const apart = await page.evaluate(() => {
 		const row = document.querySelector('.tasks li:has(svg.sparkle)')!;
@@ -284,10 +466,17 @@ test('the header control collapses and expands, and counts what it hides', async
 	await collapse.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
 
-	// Closed, the number is the only account of what went away.
+	// Closed, the numbers are the only account of what went away: what is still
+	// to do, out of how much is under there.
 	const expand = page.getByRole('button', { name: 'Expand group' });
 	await expect(expand).toHaveAttribute('aria-expanded', 'false');
-	await expect(expand).toHaveText('[2]');
+	await expect(expand).toHaveText('[2/2]');
+
+	// And the first of the two says the thing a bare total could not.
+	await expand.click();
+	await task(page, 'Bread').click();
+	await page.getByRole('button', { name: 'Collapse group' }).click();
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1/2]');
 
 	await expand.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
@@ -368,27 +557,26 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	await addTask(page, 'Bread');
 	await addTask(page, 'Milk');
 
-	// Editing the name is where the way out lives, in the icon's place.
-	await page.getByRole('button', { name: 'My list' }).dblclick();
-	const remove = page.getByRole('button', { name: /^Delete group/ });
+	const remove = page.getByRole('button', { name: 'Delete group' });
+	const clear = page.getByRole('button', { name: 'Clear done tasks' });
 
-	// Two tasks open, so it is drawn but not offered.
-	await expect(remove).toBeDisabled();
-	await expect(remove).toHaveAttribute('aria-label', /finish its tasks first/i);
-	await page.keyboard.press('Escape');
+	/*
+	 * The mark in the gutter is not a disabled delete waiting to be earned. It
+	 * is drawn when it has something to do and named for whichever of its two
+	 * jobs that is: nothing done, so nothing yet.
+	 */
+	await expect(remove).toHaveCount(0);
+	await expect(clear).toHaveCount(0);
 
 	await task(page, 'Bread').click();
-	await page.getByRole('button', { name: 'My list' }).dblclick();
-	// One still open: still refused.
-	await expect(page.getByRole('button', { name: /^Delete group/ })).toBeDisabled();
-	await page.keyboard.press('Escape');
+	// One still open, so the group cannot go — but what is done can.
+	await expect(remove).toHaveCount(0);
+	await expect(clear).toBeVisible();
 
 	await task(page, 'Milk').click();
-	await page.getByRole('button', { name: 'My list' }).dblclick();
-
-	const ready = page.getByRole('button', { name: 'Delete group' });
-	await expect(ready).toBeEnabled();
-	await ready.click();
+	await expect(clear).toHaveCount(0);
+	await expect(remove).toBeEnabled();
+	await remove.click();
 
 	// The group and everything in it, and a toast that says how much went.
 	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);
@@ -1094,9 +1282,7 @@ test('one tap opens a task, two mark it done, three mark it half', async ({ page
 	const words = page.getByRole('button', { name: 'Bread and butter', exact: true });
 	const box = (await words.boundingBox())!;
 	/*
-	 * Clear of two things at once: the last few characters, where a run is an
-	 * edit and stays one, and the checkbox at the other end, whose target now
-	 * reaches a third again past its own mark and over the start of the words.
+	 * Clear of the last few characters, where a run is an edit and stays one.
 	 */
 	const start = { x: box.x + 20, y: box.y + box.height / 2 };
 
@@ -1299,29 +1485,36 @@ test('the count of what is left appears late, and under the checkbox', async ({ 
 	await page.keyboard.press('Escape');
 });
 
-test('the checkbox answers to more than the square it draws', async ({ page }) => {
+test('the checkbox keeps to its own square, and the words are the row’s', async ({ page }) => {
 	/*
-	 * A checkbox is a small square in a line of words, and the words are a much
-	 * bigger thing to hit. So its target reaches a third again past its own
-	 * mark and the whole height of the row — a finger going for the box and
-	 * landing on the first word still ticks the task, which is what it meant.
+	 * It used to reach a third again past its own mark, so that a finger going
+	 * for the box and landing on the first word still ticked the task. What
+	 * that cost was the first word or two: they belonged to the checkbox, so a
+	 * tap there ticked instead of opening the row and a press there could not
+	 * lift the task at all. Two of the row's three gestures went missing at the
+	 * end of the row a finger naturally goes to.
 	 */
 	await addTask(page, 'Bread and butter and jam and cheese and everything else besides');
 
 	const reach = await page.evaluate(() => {
 		const box = document.querySelector('.tasks li [role="checkbox"]')!.getBoundingClientRect();
-		const mark = document.querySelector('.tasks li [role="checkbox"] svg')!.getBoundingClientRect();
+		const words = document.querySelector('.tasks li .text')!.getBoundingClientRect();
 		const row = document.querySelector('.tasks li')!.getBoundingClientRect();
-		return { box, markRight: mark.right, rowHeight: row.height, rowTop: row.top };
+		return { box, wordsLeft: words.left, rowHeight: row.height, rowTop: row.top };
 	});
 
-	// Wider than the mark by a good margin, and the full height of the row.
-	expect(reach.box.width).toBeGreaterThan(reach.markRight - reach.box.left + 20);
+	// The 44px target, and no wider — it stops before the writing starts.
+	expect(reach.box.width).toBeLessThan(48);
+	expect(reach.box.right).toBeLessThanOrEqual(reach.wordsLeft + 1);
+
+	// Still the full height of the row: a task over three lines has three
+	// lines of checkbox beside it, which is what a column of anything means.
 	expect(Math.abs(reach.box.height - reach.rowHeight)).toBeLessThan(2);
 
-	// And a tap inside that reach, past where the mark stops, still ticks it.
-	await page.mouse.click(reach.box.right - 4, reach.rowTop + reach.rowHeight / 2);
-	await expect(page.getByRole('checkbox').first()).toHaveAttribute('aria-checked', 'true');
+	// And a tap on the first word opens the row rather than ticking it.
+	await page.mouse.click(reach.wordsLeft + 6, reach.rowTop + reach.rowHeight / 2);
+	await expect(page.getByRole('textbox').first()).toBeFocused();
+	await expect(page.getByRole('checkbox').first()).toHaveAttribute('aria-checked', 'false');
 });
 
 test('a task drawn over two lines is edited over two lines', async ({ page }) => {

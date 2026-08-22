@@ -219,7 +219,7 @@ test('works at 320px without scrolling sideways', async ({ page }) => {
 		)
 	).toBe(false);
 
-	for (const label of ['Import', 'Export', 'Leave', 'Clear']) {
+	for (const label of ['Import', 'Export', 'Leave']) {
 		const box = await page
 			.getByRole('dialog', { name: 'Menu' })
 			.getByRole('button', { name: label })

@@ -10,7 +10,7 @@
 	import { hasLink, pieces } from '$lib/doc/links';
 	import { spill, splitAt } from '$lib/doc/spill';
 	import type { State, Task } from '$lib/doc/types';
-	import { handScribble } from '$lib/draw/hand';
+	import { handScribble, SCRIBBLE } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
 	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
@@ -110,29 +110,23 @@
 		reading.money === null || style === null ? null : format(reading.money.cents, style)
 	);
 	/*
-	 * The mark stands in the middle of the paper's own right margin, and its
-	 * size is what decides how much air is left either side of it.
-	 *
-	 * It draws its ink across the middle two thirds of whatever size it is
-	 * given, so eleven paints about seven and a half. Thirteen left the stroke
-	 * within a pixel and a half of the drawn edge — and the edge is drawn by a
-	 * hand that wanders about as far again, so the two met. Two marks touching
-	 * read as one smudge, and one of them says where the paper stops.
-	 *
-	 * The same size as the group's mark above it, because they stand in one
-	 * column and are one thing.
-	 */
-	const MARK = 11;
-
-	/*
-	 * Something scribbled out, not a ✕.
+	 * Something scribbled out, not a ✕, and the same one everywhere.
 	 *
 	 * The ✕ here was the checkbox's own two strokes at half the size, a few
 	 * millimetres from them — one gesture meaning finished and the same gesture
 	 * meaning gone. Crossing a thing out is what a hand does to a line it wants
 	 * rid of, and it is the only mark on the sheet drawn that way.
+	 *
+	 * Drawn from the mark's own name rather than this task's, so every delete
+	 * mark on the sheet is one drawing rather than forty scribbles that happen
+	 * to mean the same thing — see SCRIBBLE in draw/hand. It stands as tall as
+	 * the checkbox at the other end of the row and no wider than the margin it
+	 * stands in, which is what makes it an S struck through.
 	 */
-	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`x${task.id}`), wobble: 0.7 }));
+	const scribble = handScribble(SCRIBBLE.w, SCRIBBLE.h, {
+		seed: seedFrom(SCRIBBLE.seed),
+		wobble: 0.7
+	});
 
 	/*
 	 * Negative infinity, not zero: `performance.now()` counts from the page
@@ -590,7 +584,12 @@
 	-->
 	{#if task.state === 'done' && !editing && !drag.dragging}
 		<button class="remove" type="button" onclick={pop} aria-label={t.task.delete}>
-			<svg viewBox="0 0 {MARK} {MARK}" width={MARK} height={MARK} aria-hidden="true">
+			<svg
+				viewBox="0 0 {SCRIBBLE.w} {SCRIBBLE.h}"
+				width={SCRIBBLE.w}
+				height={SCRIBBLE.h}
+				aria-hidden="true"
+			>
 				<path d={scribble} class="drawn" />
 			</svg>
 		</button>

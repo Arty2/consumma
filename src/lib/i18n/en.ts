@@ -68,13 +68,13 @@ export const en = {
 		expand: 'Expand group',
 		collapse: 'Collapse group',
 		/*
-		 * Two of each: the accessible name says what the button is for, and the
-		 * tooltip says why it is not available. A disabled control that says only
-		 * "Delete group" leaves the reason to be guessed at.
+		 * One mark in the gutter, two things to call it. It removes the group
+		 * once every task in it is done, and until then it clears the ones that
+		 * are — so what it is named has to say which of the two a tap would do.
+		 * It is not offered at all when it would do neither.
 		 */
 		delete: 'Delete group',
-		deleteBlocked: 'Delete group — finish its tasks first',
-		deleteBlockedHint: 'Finish its tasks first'
+		clear: 'Clear done tasks'
 	},
 
 	sheet: {
@@ -84,7 +84,10 @@ export const en = {
 		movedWithin: ({ position, group }: { position: number; group: string }) =>
 			`Moved to position ${position} in ${group}.`,
 		movedTo: ({ group, position }: { group: string; position: number }) =>
-			`Moved to ${group}, position ${position}.`
+			`Moved to ${group}, position ${position}.`,
+		/** A long press on any one fold icon takes every group with it. */
+		foldedAll: 'Every group folded.',
+		unfoldedAll: 'Every group opened.'
 	},
 
 	toast: {
@@ -94,6 +97,15 @@ export const en = {
 		removedWithDone: ({ what, count }: { what: string; count: number }) =>
 			`${what} and ${count} done`,
 		cleared: ({ count }: { count: number }) => `Cleared ${count}.`,
+		/** A move is the one change a finger makes that it cannot see undone. */
+		moved: 'Moved.',
+		/*
+		 * A run of ticks, and the offer to sweep it. Not "UNDO?": the run is not
+		 * a mistake to be taken back, it is work finished with, and what the
+		 * message offers is to put it away.
+		 */
+		doneRun: ({ count }: { count: number }) => `${count} ${plural(count, 'thing', 'things')} done.`,
+		clear: 'CLEAR?',
 		copied: ({ count }: { count: number }) => `Copied ${count} ${plural(count, 'task', 'tasks')}.`,
 		nothingToCopy: 'Nothing to copy yet.',
 		couldNotCopy: 'Couldn’t copy.',
@@ -126,7 +138,6 @@ export const en = {
 		neverSynced: 'Only on this device. Sync it to get a code you can share.',
 		import: 'Import',
 		export: 'Export',
-		clear: 'Clear',
 		leave: 'Leave',
 		joinList: 'Join list',
 		code: 'Code',
@@ -228,10 +239,6 @@ export const en = {
 
 	confirm: {
 		cancel: 'Cancel',
-		clearTitle: 'Clear completed tasks',
-		clearConfirm: 'Clear',
-		clearBody: ({ count }: { count: number }) =>
-			`Remove ${count} completed ${plural(count, 'task', 'tasks')}? They go for everyone on this list, the next time you sync.`,
 		leaveTitle: 'Leave this list',
 		leaveConfirm: 'Leave',
 		leaveBody: ({ code }: { code: string }) =>

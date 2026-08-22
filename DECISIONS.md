@@ -9,9 +9,9 @@ Numbers in brackets are the section of the build plan a decision came from.
 1. **DELETE removes the list from this device only.** No server call, no
    revocation. The confirm shows the code first, because that screen is the
    last place on the device it exists. [§12.1]
-2. **CLEAR sweeps `done` tasks and only those.** Half-done stays. A confirm
-   _and_ a ten-second undo: the confirm stops the accident, the undo covers the
-   change of mind. [§12.2, §12.16]
+2. **Clearing sweeps `done` tasks and only those.** Half-done stays. It had a
+   confirm _and_ a ten-second undo while it lived in the menu; it lives beside
+   the group now and keeps the undo alone — see §88. [§12.2, §12.16]
 3. **Tap toggles to-do and done; long-press sets half.** `Shift+Space` is the
    keyboard equivalent. [§12.3]
 4. **Joining with local tasks asks whether to merge or discard.** Never
@@ -218,8 +218,8 @@ Numbers in brackets are the section of the build plan a decision came from.
     grown two rows of buttons and a footer beneath it; none of that is what
     someone wrote on the paper. One button sits in the corner — three strokes
     normally, an arrow up and out when something is waiting to go — and opens a
-    panel holding sync, the code and sharing, joining, IMPORT/EXPORT,
-    CLEAR/DELETE and the credit.
+    panel holding sync, the code and sharing, joining, IMPORT/EXPORT, DELETE
+    and the credit. CLEAR was in that list and left it again — see §88.
 
     The arrow replaces the hollow status mark, and is a better sign for the
     same fact: not a health light to be decoded, but an outbox that is not
@@ -499,8 +499,8 @@ Numbers in brackets are the section of the build plan a decision came from.
     hover too, which put a live delete button beside every row a finger passed
     over and left it sitting there after an un-tick, because the pointer had not
     moved away. The cost is that removing an unfinished task now means ticking
-    it first; that is the right order for a sheet where CLEAR sweeps what is
-    done.
+    it first; that is the right order for a sheet where the mark beside the
+    group sweeps what is done.
 
 59. **The click after a drop is swallowed.** A release still fires a click on
     whatever was held, and everything draggable here is a button — so dropping a
@@ -1141,6 +1141,91 @@ relative` rather than a transform, which does not apply to an inline box.
     The sides themselves are still not jagged, and that is right: paper running
     the last few pixels out to a straight drawn line is what a straight drawn
     line means. It is only their ends that the tear now owns.
+
+88. **CLEAR left the menu for the group it sweeps.** It was a button in a panel
+    with a confirm in front of it, which is a long way from the tasks it was
+    about to take — and the confirm was there precisely because the tap was so
+    far from them. The group's own mark does it now: the same scribble that
+    removes a group, doing the other half of the same idea. While there is
+    still something in the group to do it clears what is done; once there is
+    not, it removes the group, which is what it always did.
+
+    So the mark is drawn whenever it has a job and never when it has not,
+    which is the rule a done task's own mark already follows — and it is no
+    longer hidden behind opening the title for renaming. No confirm: the mark
+    says which of the two it is, it is only ever there with something to
+    sweep, and the ten-second undo covers the change of mind, exactly as it
+    does for removing a group.
+
+89. **A run of ticks offers to sweep itself.** Three tasks ticked inside five
+    seconds is somebody at the end of a shop going down the list, and what
+    they want next is those rows gone. The message offers it and never does
+    it — a sheet that cleared itself would be the app deciding — and it is
+    offered once per run rather than once per tick after the third, because
+    the second kind is nagging. The offer clears exactly the tasks in the run,
+    checked against what is still done when it is tapped, so a tick taken back
+    in the meantime is left alone.
+
+90. **A drop leaves a message with a way back; a keyboard move does not.** A
+    move is the one change a finger makes that leaves no trace of where the
+    thing came from. Where it came from is two strings read off the task before
+    it goes, and putting them back is an ordinary move stamped now, not a
+    rewind. Alt+↑/↓ keeps its announcement instead: it is exact, it says where
+    the task went, and a run of them down a list would raise a message a step.
+
+91. **The checkbox gave the first word back.** Its target reached a third again
+    past its own mark so that a finger going for the box and landing on the
+    first word still ticked the task. What that cost was the first word or two,
+    which then belonged to the checkbox: tapping them ticked instead of opening
+    the row, and pressing them could not lift the task at all, because the lift
+    lives on the words and the box was sitting on top of them. Two of the row's
+    three gestures went missing at the one end of the row a finger goes to,
+    which is dearer than the mis-tap it was buying. It is `--touch` across
+    again, and still the full height of the row.
+
+92. **One scribble, drawn once.** Every delete mark was seeded from the thing
+    it would remove, so a sheet of done tasks showed a different scribble on
+    every row — which is the "seeded so it never re-jitters" rule applied to
+    the wrong noun. The seed is the mark's own name now (`SCRIBBLE` in
+    draw/hand), so the mark on a task and the mark on a group header are the
+    same drawing. It is as tall as the checkbox at the other end of the row and
+    narrower than it is tall, because the column it stands in is narrower than
+    the checkbox and the ink must keep clear of the paper's drawn edge — and a
+    scribble made in a tall box comes out an S struck through.
+
+93. **A collapsed group says what is left, not how much is under it.** `[3]`
+    answered the wrong question: a group is folded away because it is dealt
+    with or because it is not yet, and a total says neither. `[1/3]` is what is
+    still to do out of what is hidden, with half counting as still to do,
+    because it is.
+
+94. **A long press on the fold icon folds every group.** The icon is the fold
+    control, so the bigger version of folding belongs to it — and on a long
+    list it is the difference between a sheet and a scroll. It opens them all
+    again when there is nothing left folded, so the gesture always has a way
+    back. Nothing is written that the tap does not write: it is the same local,
+    never-synced record, set for every group at once.
+
+95. **A drop below the last task landed it first.** Below the last row there is
+    no row to hit-test, only the group, and the group counted the row being
+    carried among its own children — so the drop asked for a place one past the
+    end of the list it was going into. Neither neighbour existed at that index,
+    and a key between nothing and nothing is the first key there is. The count
+    now leaves the carried row out, exactly as the row branch beside it always
+    did, and `orderAt` clamps besides: a caller that is one out should be one
+    out, not inverted.
+
+    The same fault drew a landing rule where the row already was: the end of
+    the group came back one higher than home, so the guard that refuses a
+    no-op drop did not recognise it.
+
+96. **The landing rule needed the shift the group's rule already had.** The hit
+    test counts the rows with the carried one taken out, because that is the
+    list it is going back into; the markup counts every row it draws. Below the
+    row's own place the two are one apart, so the rule appeared directly under
+    the row in the hand — an offer to put it back where it already was, beside
+    a drop that would have done something else. `isGroupLanding` had this
+    translation and its own docstring explaining why; `isLanding` now has both.
 
 ## Known limits
 

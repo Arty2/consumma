@@ -423,28 +423,24 @@ test('IMPORT takes plain lines, and shows what it will make of them', async ({ p
 	await expect(page.getByRole('checkbox')).toHaveCount(3);
 });
 
-test('CLEAR asks first, then clears, and the undo still works', async ({ page }) => {
+test('clearing is beside the group now, not in the menu', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
 	await task(page, 'Bread').click();
 
-	await fromMenu(page, 'Clear');
+	// It left the menu with its confirm: a tap in a panel is a long way from
+	// the tasks it is about to take, and the mark on the group is not.
+	await openMenu(page);
+	await expect(
+		page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Clear' })
+	).toHaveCount(0);
+	await page.getByRole('button', { name: 'Close' }).click();
 
-	const confirm = page.getByRole('dialog', { name: 'Clear completed tasks' });
-	await expect(confirm).toBeVisible();
-	await expect(confirm).toContainText('Remove 1 completed task?');
-	await expect(confirm).toContainText('everyone on this list');
-
-	// Cancel changes nothing.
-	await page.getByRole('button', { name: 'Cancel' }).click();
-	await expect(task(page, 'Bread')).toBeVisible();
-
-	await fromMenu(page, 'Clear');
-	await page.getByRole('button', { name: 'Clear', exact: true }).click();
-
+	await page.getByRole('button', { name: 'Clear done tasks' }).click();
 	await expect(task(page, 'Bread')).toHaveCount(0);
+	await expect(task(page, 'Coffee')).toBeVisible();
 
-	// The confirm stops the accident; the undo covers the change of mind.
+	// Nothing asked first, so the undo is what covers a change of mind.
 	await page.getByRole('button', { name: 'UNDO?' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 });
