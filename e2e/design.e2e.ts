@@ -219,7 +219,7 @@ test('works at 320px without scrolling sideways', async ({ page }) => {
 		)
 	).toBe(false);
 
-	for (const label of ['Import', 'Export', 'Leave']) {
+	for (const label of ['Import', 'Export', 'Delete']) {
 		const box = await page
 			.getByRole('dialog', { name: 'Menu' })
 			.getByRole('button', { name: label })
@@ -835,8 +835,10 @@ test('the theme is the device’s, so removing the list does not take it', async
 	await themeButton(page).click();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 
-	await fromMenu(page, 'Leave');
-	await page.getByRole('button', { name: 'Leave', exact: true }).click();
+	// Never synced, so the button is the end of the list rather than a way
+	// out of it — see `menu.delete`.
+	await fromMenu(page, 'Delete');
+	await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
 	await page.reload();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');

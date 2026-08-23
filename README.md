@@ -108,15 +108,20 @@ by the same rule as typing.
 | Where          | Gesture         | What happens                                                    |
 | -------------- | --------------- | --------------------------------------------------------------- |
 | The title      | Tap             | Folds the group                                                 |
-| The title      | Two taps, `F2`  | Opens the name for changing                                     |
+| The title      | Two taps, `F2`  | Opens the name, leaving the group folded as it found it         |
 | The title      | Hold, then drag | Picks the whole group up; everything folds while it is carried  |
-| The `[…]` icon | Tap             | Folds the group, for anyone who would rather aim at it          |
-| The `[…]` icon | Hold            | Folds **every** group — or opens them all, if none is left open |
-| The name field | `Enter`         | Commits, and opens a task at the top of the group               |
+| The `(…)` icon | Tap             | Folds the group, for anyone who would rather aim at it          |
+| The `(…)` icon | Hold            | Folds **every** group — or opens them all, if none is left open |
+| The name field | `Enter`         | Commits — and on an empty group, opens its first task           |
 
-Folded, the icon reads `[1/3]`: what is still to do, out of what is hidden.
-Half done counts as still to do. With nothing in the group done it reads `[3]`,
+Folded, the icon reads `(1/3)`: what is still to do, out of what is hidden.
+Half done counts as still to do. With nothing in the group done it reads `(3)`,
 since both halves of the fraction would be the same number.
+
+Enter on the name commits it. On a group with nothing in it yet it also opens
+the first task, because naming a group and writing the first thing into it is
+one motion; on a group that already has tasks it does not, because somebody
+there came to change the name and is done.
 
 The mark out in the margin has two jobs and is never drawn without one. While
 there is something in the group still to do it clears the finished tasks; once
@@ -130,18 +135,29 @@ on the spot and becomes its first, arriving unnamed.
 
 ### The sheet, and the back of it
 
-| Where         | Gesture                | What happens                                               |
-| ------------- | ---------------------- | ---------------------------------------------------------- |
-| The sheet     | Drag rightwards        | Turns the paper over to the menu — from bare paper         |
-| The menu      | Drag rightwards        | Turns it back, from anywhere on it, buttons included       |
-| Top right     | Tap the burger         | The same turn, without the drag                            |
-| Top right     | Tap the theme mark     | Theme: the opposite of the phone, then following it again  |
-| Top left      | Tap the mark           | Syncs. It is only there when there is something to say     |
-| The list name | Tap                    | Opens the list switcher, once there is a second list       |
-| The list name | Two taps               | Straight to the next list, without opening anything        |
-| A message     | Tap `UNDO?`            | Puts back what the message is about                        |
-| A message     | Throw it up or right   | Dismisses it. Down is the sheet's scroll, left is the turn |
-| A panel       | Drag down, `Esc`, or ✕ | Closes it                                                  |
+| Where          | Gesture                | What happens                                               |
+| -------------- | ---------------------- | ---------------------------------------------------------- |
+| The sheet      | Drag rightwards        | Turns the paper over to the menu — from bare paper         |
+| The menu       | Drag rightwards        | Turns it back, from anywhere on it, buttons included       |
+| Top right      | Tap the burger         | The same turn, without the drag                            |
+| The code field | Tap it while empty     | Pastes the code from the clipboard, if there is one there  |
+| Top right      | Tap the theme mark     | Theme: the opposite of the phone, then following it again  |
+| Top left       | Tap the mark           | Syncs. It is only there when there is something to say     |
+| The list name  | Tap                    | Opens the list switcher, once there is a second list       |
+| The list name  | Two taps               | Straight to the next list, without opening anything        |
+| A message      | Tap `UNDO?`            | Puts back what the message is about                        |
+| A message      | Throw it up or right   | Dismisses it. Down is the sheet's scroll, left is the turn |
+| A panel        | Drag down, `Esc`, or ✕ | Closes it                                                  |
+
+The menu holds one button that takes something away, and it reads LEAVE where
+the list has a code and DELETE where it has not: with a code the list carries
+on without this device and can be come back to, and without one this device is
+the only place it has ever been. Both stop and ask first.
+
+JOIN asks what to do with the tasks already here, and neither answer throws
+anything away. Take them and they go to the list being joined; leave them and
+they stay on the list they are on, which stays on this device beside the one
+arriving. The switcher then shows both.
 
 The paper only ever spins one way, so a swipe rightwards turns it whichever
 side is showing. On the sheet the drag has to start on bare paper, because

@@ -63,8 +63,19 @@ export const en = {
 		 * is lower case and reads as a phrase: "Removed the untitled group."
 		 * Two strings and not one, because a language that inflects would need
 		 * two anyway and English only looks as though it does not.
+		 *
+		 * Unquoted, unlike `named` below, because it is a description and not a
+		 * name — there is nothing here anybody typed to set apart.
 		 */
 		untitledInSentence: 'the untitled group',
+		/*
+		 * A title somebody typed, quoted, wherever it is dropped into a sentence
+		 * the app is saying. Without the quotes a message reads "Removed
+		 * Weekend and 3 done" and the eye has to find where the name stopped —
+		 * and a group called "and" or "done" makes a sentence out of nothing.
+		 * Curly quotes, as everywhere else here.
+		 */
+		named: ({ title }: { title: string }) => `“${title}”`,
 		expand: 'Expand group',
 		collapse: 'Collapse group',
 		/*
@@ -138,7 +149,14 @@ export const en = {
 		neverSynced: 'Only on this device. Sync it to get a code you can share.',
 		import: 'Import',
 		export: 'Export',
+		/*
+		 * One button, two acts. With a code the list carries on without this
+		 * device and can be come back to, which is leaving; without one this
+		 * device is the only place it has ever been, and there is nothing to
+		 * leave it to.
+		 */
 		leave: 'Leave',
+		delete: 'Delete',
 		joinList: 'Join list',
 		code: 'Code',
 		badCode: 'That doesn’t look like a code.',
@@ -146,9 +164,15 @@ export const en = {
 		leaveThem: 'Leave them',
 		cancel: 'Cancel',
 		join: 'Join',
-		/** Joining with tasks already here is never decided silently. */
+		/*
+		 * Joining with tasks already here is never decided silently — and
+		 * leaving them behind leaves them where they are, on the list they are
+		 * on, which stays on this device beside the one being joined. The
+		 * question said "leave them behind" while the app discarded them; the
+		 * words were right and the app was not.
+		 */
 		joinAsk: ({ count }: { count: number }) =>
-			`You have ${count} ${plural(count, 'task', 'tasks')} here. Take them to the other list, or leave them behind?`,
+			`You have ${count} ${plural(count, 'task', 'tasks')} here. Take them to the other list, or leave them on this one and keep both?`,
 		/*
 		 * "Debug" and not "Debug log": it now also outlines every box on the
 		 * page, and a button that does two things cannot be named after one.
@@ -219,7 +243,6 @@ export const en = {
 	import: {
 		title: 'Import',
 		field: 'Markdown to import',
-		preview: 'What will be added',
 		empty: 'Paste a list — one thing per line, or a markdown checklist.',
 		fromClipboard: 'From your clipboard. Edit it here if anything is off.',
 		/*
@@ -241,6 +264,9 @@ export const en = {
 		cancel: 'Cancel',
 		leaveTitle: 'Leave this list',
 		leaveConfirm: 'Leave',
+		/** The same two acts the button is named for — see `menu.delete`. */
+		deleteTitle: 'Delete this list',
+		deleteConfirm: 'Delete',
 		leaveBody: ({ code }: { code: string }) =>
 			`This leaves the list off this phone. Everyone else keeps it. To come back you'll need the code — ${code}. This is the last screen it exists on.`,
 		leaveUnsent: ({ count }: { count: number }) =>
@@ -251,6 +277,6 @@ export const en = {
 		 * nothing.
 		 */
 		leaveBodyNoCode:
-			'This list has never been synced, so it is nowhere but here. Leaving takes all of it with it, and there is no code to come back with.'
+			'This list has never been synced, so it is nowhere but here. Deleting takes all of it with it, and there is no code to come back with.'
 	}
 } as const;

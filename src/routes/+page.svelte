@@ -471,10 +471,16 @@
 {:else if panel === 'import'}
 	<ImportModal initial={pasted} onapply={applyMarkdown} onclose={() => (panel = null)} />
 {:else if panel === 'delete'}
+	<!--
+		Leaving and deleting are two acts wearing one button, and the confirm has
+		to agree with the button that opened it — see `menu.delete`. With a code
+		the list carries on without this device; without one this is the end of
+		it, and the screen may not say "leave" about that.
+	-->
 	<ConfirmModal
-		title={t.confirm.leaveTitle}
+		title={sync.code ? t.confirm.leaveTitle : t.confirm.deleteTitle}
 		seed="delete"
-		confirmLabel={t.confirm.leaveConfirm}
+		confirmLabel={sync.code ? t.confirm.leaveConfirm : t.confirm.deleteConfirm}
 		onconfirm={onDelete}
 		oncancel={() => (panel = null)}
 	>

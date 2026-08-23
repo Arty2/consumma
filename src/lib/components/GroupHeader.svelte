@@ -6,7 +6,7 @@
 	import { handScribble, SCRIBBLE } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
-	import { DOUBLE_TAP_MS, longPress } from '$lib/dnd/longpress';
+	import { longPress } from '$lib/dnd/longpress';
 	import { taken, tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
@@ -112,44 +112,57 @@
 	 */
 	const shown = $derived(!collapsed ? '…' : done > 0 ? `${open}/${count}` : `${count}`);
 
-	let folding: ReturnType<typeof setTimeout> | null = null;
-
 	/*
 	 * A tap folds the group, two taps open its name — the same pair a task row
 	 * offers, so the sheet answers a finger the same way wherever it lands.
 	 *
-	 * Held back rather than optimistic, which is the opposite of what a task
-	 * row does, and deliberately. A row's tap is the tick, the thing people
-	 * came to do, thousands of times; a third of a second of lag on it would
-	 * be the app's whole character. Folding a group is neither frequent nor
-	 * urgent — and taking it back is not a tick reappearing but a whole list
-	 * folding and unfolding under the thumb, which is a much worse flicker
-	 * than the wait it saves.
+	 * Optimistic, exactly as the row beside it is: the tap acts and the second
+	 * one takes it back. It used to be held back for the double-tap window,
+	 * on the reasoning that a whole list folding and unfolding is a worse
+	 * flicker than a third of a second of lag — but the lag is what people
+	 * actually notice, and they notice it most beside the icon two
+	 * millimetres away, which has always answered at once. One control
+	 * answering slower than its twin reads as the app being tired.
 	 *
-	 * Because it waits, it can use the real `dblclick` rather than pairing two
-	 * clicks by their timing, so nothing depends on them arriving as a pair.
+	 * The real `dblclick` still does the second tap, so nothing here depends
+	 * on pairing two clicks by their timing.
 	 *
 	 * A long press on the title picks the group up instead, the way it picks a
 	 * task up. The icon beside the name folds on one tap, for anyone who would
 	 * rather aim at it, and folds the whole sheet on a long press.
 	 */
-	function ontap() {
+	function ontap(event?: MouseEvent) {
 		if (synthetic || editing) return;
 
-		if (folding) clearTimeout(folding);
-		folding = setTimeout(() => {
-			folding = null;
-			ontoggle();
-		}, DOUBLE_TAP_MS);
+		/*
+		 * Only the first click of a pair folds. The second is on its way to
+		 * `dblclick`, which puts the fold back and opens the name — and a
+		 * browser sends both clicks before it, so acting on the second as well
+		 * would fold, unfold and fold again, leaving a group collapsed behind
+		 * the field it had just opened.
+		 *
+		 * `detail` is the browser's own count of the run, which is exact. The
+		 * obvious alternative — was this within `DOUBLE_TAP_MS` of the last one
+		 * — is not: it cannot tell the second click of one pair from the first
+		 * click of the next, and two deliberate double taps a tenth of a second
+		 * apart are a thing a test does routinely and a finger does eventually.
+		 * The row beside this one counts its own taps because it has to climb a
+		 * ladder of them; there is no ladder here, only a pair.
+		 *
+		 * No event at all is the keyboard's way in, which is never a pair.
+		 */
+		if (event && event.detail > 1) return;
+
+		tapped();
+		ontoggle();
 	}
 
 	function onsecondtap() {
 		if (synthetic) return;
 
-		// The fold never happened, so there is nothing to put back.
-		if (folding) clearTimeout(folding);
-		folding = null;
-
+		// The first tap of this pair folded it. Put that back before opening the
+		// name, so a rename leaves the group as it found it.
+		ontoggle();
 		startEditing();
 	}
 
@@ -198,7 +211,19 @@
 			// Committing here rather than through blur, so the row that opens next
 			// is not closed again by the blur that would follow.
 			commit();
-			onaddtask();
+
+			/*
+			 * Enter means "and the next one" on a group with nothing in it yet:
+			 * naming a group and then writing the first thing into it is one
+			 * motion, and it is the only time the next thing is certainly a task.
+			 *
+			 * On a group that already has tasks it means no such thing. Somebody
+			 * there has come to change the name, and Enter is how you say you are
+			 * done with it — opening an empty row underneath put a caret in the
+			 * middle of a list nobody was adding to, and closed it again on the
+			 * next tap anywhere.
+			 */
+			if (count === 0) onaddtask();
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			// The name goes back before the field does: taking a focused field out
@@ -262,17 +287,23 @@
 	</div>
 {:else}
 	<!--
-		Collapsed it reads [1/3] — what is still to do, out of what is hidden.
+		Collapsed it reads (1/3) — what is still to do, out of what is hidden.
 		The bare total answered the wrong question: a group is folded away
 		because it is dealt with or because it is not yet, and how many tasks
 		are under there says neither. Half done counts as still to do, because
 		it is. Nothing done at all and the fraction says nothing either, since
 		both halves are the same number, so it goes back to being a total.
-		Expanded it reads […], the same ellipsis an untitled group and the add
-		row use for "there is more here". Graphe has no brackets and falls back
-		for them, deliberately. Do not swap in characters it does have — the
-		brackets are lifted onto its baseline instead, which is what
-		`.bracket` is for.
+		Expanded it reads (…), the same ellipsis an untitled group and the add
+		row use for "there is more here".
+
+		Round brackets, and Graphe draws them itself: they run from 20 above
+		the baseline to 1 below against its figures' 19 above to 3 above, so
+		they enclose what they hold and need no correcting. Square ones it has
+		none of, so the platform substituted a face that sets them on the true
+		baseline and they sat visibly low around the numbers — and the fix for
+		that was a measured lift, which is a lot of machinery for a character
+		the face has a proper answer to. This is not the markdown checkbox,
+		which keeps its square brackets and its deliberate fallback.
 
 		One tap folds this group and a long press folds every group on the
 		sheet — the icon is the fold control, so more of the gesture belongs to
@@ -293,11 +324,7 @@
 			aria-expanded={!collapsed}
 			aria-label={collapsed ? t.group.expand : t.group.collapse}
 		>
-			<!-- No whitespace anywhere in here: a newline between the brackets and
-				what they hold renders as a space. -->
-			<span aria-hidden="true"
-				><span class="bracket">[</span>{shown}<span class="bracket">]</span></span
-			>
+			<span aria-hidden="true">({shown})</span>
 		</button>
 	{/snippet}
 
@@ -572,27 +599,6 @@
 		font-size: var(--size-task);
 		user-select: none;
 		-webkit-user-select: none;
-	}
-
-	/*
-	 * Graphe has no `[` or `]`, so the platform substitutes something for them —
-	 * Roboto on Android, whatever the browser has elsewhere. A substituted face
-	 * sets its glyphs on the true baseline, and Graphe's are drawn riding high
-	 * above theirs, so the brackets sat visibly low against the figures they
-	 * hold and against the capitals of the title beside them.
-	 *
-	 * The same correction `--cap-lift` and `--num-lift` make, for the same
-	 * reason and in the same direction: a shared baseline is not the same as
-	 * looking level. Measured in a browser against the digits inside the
-	 * brackets, not derived — retune it with the face.
-	 *
-	 * Never fixed by swapping in characters Graphe does have. The brackets are
-	 * the mark, they are what a markdown checkbox is written with, and the
-	 * fallback is deliberate.
-	 */
-	.bracket {
-		position: relative;
-		top: calc(-1 * var(--bracket-lift));
 	}
 
 	.icon {

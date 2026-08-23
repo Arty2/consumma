@@ -258,6 +258,47 @@ test('joining a list finishes, and says so by closing', async ({ page }) => {
 	await expect(page.getByText('1234 5678 9abc')).toBeVisible();
 });
 
+test('joining and leaving the tasks behind keeps both lists', async ({ page }) => {
+	/*
+	 * "Leave them" used to mean discard: the open list was wiped and the joined
+	 * one arrived in its place, so answering a question about a handful of
+	 * tasks threw away the list they were on. The device holds as many lists as
+	 * it likes, so the honest reading of leaving them behind is that they stay
+	 * behind — the joined list arrives beside this one.
+	 */
+	await page.route('**/api/room/**', api);
+	await page.goto('/');
+	await page.evaluate(() => localStorage.clear());
+	await page.reload();
+
+	// A list on the server for the code below to be the address of.
+	await page.keyboard.press('Escape');
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const first = page.getByRole('textbox', { name: 'New task' });
+	await first.fill('Bread');
+	await first.press('Enter');
+	await page.keyboard.press('Escape');
+
+	await openMenu(page);
+	await page.getByRole('textbox', { name: 'Code' }).fill('1234 5678 9abc');
+	await page.getByRole('button', { name: 'Join' }).click();
+	await page.getByRole('button', { name: 'Leave them' }).click();
+
+	// On the joined list, which is empty: nothing was carried over.
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toHaveCount(0);
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
+
+	/*
+	 * And the list Bread is on is still here. It is the switcher appearing at
+	 * all that says so — it earns its place on the page only once there is a
+	 * choice to make.
+	 */
+	const pill = page.locator('.switcher .pill').first();
+	await expect(pill).toBeVisible();
+	await pill.dblclick();
+	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
+});
+
 test('JOIN that cannot reach the list keeps the tasks already here, and says why', async ({
 	page
 }) => {

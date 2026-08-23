@@ -30,6 +30,7 @@
 	import { t } from '$lib/i18n';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
 	import { angleAt, axisAt, commits, leadFor, slideAt, SLACK } from '$lib/turn';
@@ -203,18 +204,48 @@
 		logCopied = text !== '' && (await copy(text));
 	}
 
+	/**
+	 * Joins the code that has been typed in, taking the tasks already here or
+	 * leaving them.
+	 *
+	 * "Leave them" leaves them **where they are**. It used to mean discard: the
+	 * open list was wiped and the joined one arrived in its place, so answering
+	 * a question about a handful of tasks threw away the list they were on. The
+	 * device holds as many lists as it likes, so the honest reading of leaving
+	 * them behind is that they stay behind — the joined list arrives beside
+	 * this one and the switcher shows both.
+	 *
+	 * The new list is made before the pull, because it is the list the pull has
+	 * to land in: `sync.join` writes the code and the document against whatever
+	 * key-set is current. If the code turns out to be wrong or the network is
+	 * gone, the device goes back to the list it was on and the blank one is
+	 * dropped as it is left, having written nothing.
+	 */
 	async function join(keep: boolean) {
 		tapped();
 		error = null;
 		joining = false;
 
+		const back = keep || !hasLocal ? null : lists.createList();
+
 		const outcome = await sync.join(entered, keep);
+		const failed = !outcome || outcome.status !== 'synced';
+
+		/*
+		 * Read before going back, not after. Switching lists re-points sync at
+		 * the other list's key-set and clears what it had to say about this
+		 * attempt, so asking afterwards gets nothing and the panel sits there
+		 * having plainly failed and said nothing about it.
+		 */
+		const said = sync.message;
+		if (failed && back !== null) lists.switchTo(back);
+
 		if (!outcome) {
 			error = t.menu.badCode;
 			return;
 		}
 		if (outcome.status !== 'synced') {
-			error = sync.message;
+			error = said;
 			return;
 		}
 
@@ -448,6 +479,24 @@
 			<ListSwitcher context="menu" onafterselect={close} />
 
 			<!--
+				The panel's sections are told apart by a tear across the paper, the
+				same mark Loose ends is. They are already named by their headings;
+				what was missing was the line saying where one stops.
+
+				Nothing stands above this one now but the switcher, which answers
+				which list this is. Syncing used to: it had the top of the panel to
+				itself, above the tear, and "This list" began underneath with the
+				code. But a sync is the most this-list thing in here — it is this
+				list going to the server and coming back — and having it above the
+				heading meant the panel opened on a sentence about a list it had
+				not yet named.
+			-->
+			<div class="tear"><Perforation seed="menu-list" /></div>
+
+			<h2 class="caps">{t.menu.thisList}</h2>
+			<TextRule text={t.menu.thisList} seed="thislist" centred />
+
+			<!--
 				Two sentences, never one. How much is waiting is what people want to
 				know; whether the list could be reached is a condition, not a failure,
 				and folding it into the same line made "Offline" read like an error.
@@ -482,15 +531,30 @@
 				<p class="error" role="alert">{error}</p>
 			{/if}
 
-			<!--
-				The panel's sections are told apart by a tear across the paper, the
-				same mark Loose ends is. They are already named by their headings;
-				what was missing was the line saying where one stops.
-			-->
-			<div class="tear"><Perforation seed="menu-list" /></div>
-
-			<h2 class="caps">{t.menu.thisList}</h2>
-			<TextRule text={t.menu.thisList} seed="thislist" centred />
+			<div class="pair apart">
+				<button
+					type="button"
+					class="caps boxed"
+					onclick={() => {
+						tapped();
+						onimport();
+					}}
+				>
+					<HandRect seed="btnimport" wobble={1.4} radius={3} />
+					{t.menu.import}
+				</button>
+				<button
+					type="button"
+					class="caps boxed"
+					onclick={() => {
+						tapped();
+						onexport();
+					}}
+				>
+					<HandRect seed="btnexport" wobble={1.4} radius={3} />
+					{t.menu.export}
+				</button>
+			</div>
 
 			{#if sync.code}
 				<p class="code">{formatCode(sync.code)}</p>
@@ -517,37 +581,19 @@
 				<p class="note">{t.menu.neverSynced}</p>
 			{/if}
 
-			<div class="pair apart">
-				<button
-					type="button"
-					class="caps boxed"
-					onclick={() => {
-						tapped();
-						onimport();
-					}}
-				>
-					<HandRect seed="btnimport" wobble={1.4} radius={3} />
-					{t.menu.import}
-				</button>
-				<button
-					type="button"
-					class="caps boxed"
-					onclick={() => {
-						tapped();
-						onexport();
-					}}
-				>
-					<HandRect seed="btnexport" wobble={1.4} radius={3} />
-					{t.menu.export}
-				</button>
-			</div>
-
 			<!--
 				The one thing in here that takes something away, and it stops and
 				asks. CLEAR stood beside it and does not any more: sweeping what is
 				done belongs beside the group it would sweep, on the same mark that
 				removes the group once there is nothing left in it to do. A list is
 				cleared while looking at the list.
+
+				It reads LEAVE where there is a code and DELETE where there is not,
+				because those are two different acts wearing one button. With a code,
+				the list carries on without this device and can be come back to;
+				without one, this device is the only place it has ever been, and the
+				button is the end of it. Directly under the line that says which of
+				the two you are looking at.
 			-->
 			<div class="pair">
 				<button
@@ -559,7 +605,7 @@
 					}}
 				>
 					<HandRect seed="btndelete" wobble={1.4} radius={3} />
-					{t.menu.leave}
+					{sync.code ? t.menu.leave : t.menu.delete}
 				</button>
 			</div>
 

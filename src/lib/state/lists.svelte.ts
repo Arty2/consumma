@@ -148,8 +148,8 @@ export class Lists {
 	 * becomes the legacy entry, keeping its bare keys, before the new one is
 	 * added beside it.
 	 */
-	createList(): void {
-		if (sync.busy) return;
+	createList(): string | null {
+		if (sync.busy) return null;
 
 		if (this.entries.length === 0) {
 			const now = Date.now();
@@ -157,10 +157,21 @@ export class Lists {
 			this.current = this.entries[0].id;
 		}
 
+		/*
+		 * Returned so the caller can put the device back where it found it. JOIN
+		 * needs that: it makes a list to arrive into and then may fail to reach
+		 * the code, and nobody asked to be left standing on a blank sheet. On a
+		 * device that had never had a second list this is the entry minted just
+		 * above, which is why it is read here rather than before the call.
+		 */
+		const left = this.current;
+
 		const now = Date.now();
 		const id = newId();
 		this.entries = [...this.entries, { id, legacy: false, createdAt: now, lastUsedAt: now }];
 		this.switchTo(id);
+
+		return left;
 	}
 
 	/**

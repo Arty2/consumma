@@ -36,6 +36,7 @@ const calls: Record<string, unknown[]> = {
 	'sheet.over': [{ count: 101, max: 100 }],
 	'sheet.movedWithin': [{ position: 2, group: 'Weekend' }],
 	'sheet.movedTo': [{ group: 'Weekend', position: 1 }],
+	'group.named': [{ title: 'Weekend' }],
 	'toast.removed': [{ what: 'Weekend' }],
 	'toast.removedWithDone': [{ what: 'Weekend', count: 3 }],
 	'toast.cleared': [{ count: 4 }],

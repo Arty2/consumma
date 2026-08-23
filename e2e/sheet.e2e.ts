@@ -271,10 +271,10 @@ test('makes a group, collapses it, and remembers that locally', async ({ page })
 	await expect(task(page, 'Bread')).toHaveCount(0);
 	// Nothing in it is done, so both halves of a fraction would be the same
 	// number and it says no more than the total does.
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('(1)');
 
 	await page.reload();
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1]');
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('(1)');
 
 	await page.getByRole('button', { name: 'Expand group' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
@@ -499,7 +499,7 @@ test('the header control collapses and expands, and counts what it hides', async
 	// the tasks are on screen to be counted.
 	const collapse = page.getByRole('button', { name: 'Collapse group' });
 	await expect(collapse).toHaveAttribute('aria-expanded', 'true');
-	await expect(collapse).toHaveText('[…]');
+	await expect(collapse).toHaveText('(…)');
 
 	await collapse.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
@@ -508,13 +508,13 @@ test('the header control collapses and expands, and counts what it hides', async
 	// nothing in there is done, a total is the whole of what there is to say.
 	const expand = page.getByRole('button', { name: 'Expand group' });
 	await expect(expand).toHaveAttribute('aria-expanded', 'false');
-	await expect(expand).toHaveText('[2]');
+	await expect(expand).toHaveText('(2)');
 
 	// Once something is done, the fraction says the thing a total could not.
 	await expand.click();
 	await task(page, 'Bread').click();
 	await page.getByRole('button', { name: 'Collapse group' }).click();
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('[1/2]');
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('(1/2)');
 
 	await expand.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
@@ -887,16 +887,23 @@ test('Backspace on the first task in a group deletes nothing', async ({ page }) 
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
-test('Enter on a group title opens a task inside the group', async ({ page }) => {
-	await addTask(page, 'Bread');
+test('Enter on an empty group’s title opens a task inside it', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const made = page.getByRole('textbox', { name: 'New group' });
+	await made.fill('Market');
+	await made.press('Enter');
 
-	await page.getByRole('button', { name: 'My list' }).dblclick();
+	const market = page.locator('section[data-group]').nth(1);
+	await market.locator('.title').dblclick();
 	const title = page.getByRole('textbox', { name: 'Group title' });
-	await title.fill('Market');
+	await title.fill('Market stall');
 	await title.press('Enter');
 
-	// The name is committed, and the caret has moved into a task at the top.
-	await expect(page.getByRole('button', { name: 'Market' })).toBeVisible();
+	/*
+	 * Naming a group and writing the first thing into it is one motion, and an
+	 * empty group is the only time the next thing is certainly a task.
+	 */
+	await expect(page.getByRole('button', { name: 'Market stall' })).toBeVisible();
 
 	const fresh = page.getByRole('textbox', { name: 'New task' });
 	await expect(fresh).toBeFocused();
@@ -904,11 +911,26 @@ test('Enter on a group title opens a task inside the group', async ({ page }) =>
 	await fresh.press('Enter');
 	await page.keyboard.press('Escape');
 
-	const order = () =>
-		page
-			.getByRole('checkbox')
-			.evaluateAll((boxes) => boxes.map((b) => b.getAttribute('aria-label')));
-	expect(await order()).toStrictEqual(['Milk', 'Bread']);
+	await expect(market.getByRole('checkbox', { name: 'Milk' })).toBeVisible();
+});
+
+test('Enter on a group that has tasks in it only commits the name', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	await page.locator('section[data-group] .title').dblclick();
+	const title = page.getByRole('textbox', { name: 'Group title' });
+	await title.fill('Market');
+	await title.press('Enter');
+
+	/*
+	 * Somebody here has come to change the name, and Enter is how you say you
+	 * are done with it. An empty row opening underneath put a caret in the
+	 * middle of a list nobody was adding to, and closed it again on the next
+	 * tap anywhere.
+	 */
+	await expect(page.getByRole('button', { name: 'Market' })).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveCount(0);
+	await expect(page.getByRole('checkbox')).toHaveCount(1);
 });
 
 test('a double tap sets half, and a single one still just ticks', async ({ page }) => {
@@ -1396,14 +1418,17 @@ test('one tap folds a group, and two open its name', async ({ page }) => {
 	await expect(icon).toHaveAttribute('aria-expanded', 'false');
 	await expect(task(page, 'Bread')).toHaveCount(0);
 
+	// Clear of the tap window, or the next click reads as the second of a pair.
+	await page.waitForTimeout(450);
 	await title.click();
 	await expect(icon).toHaveAttribute('aria-expanded', 'true');
 
 	/*
-	 * The fold is held back for the window rather than done and undone, so two
-	 * taps never fold the group at all — a whole list folding and unfolding
-	 * under the thumb is a far worse flicker than the wait it would save.
+	 * The tap acts at once and the second one takes it back, the same way the
+	 * row beside it works: the fold happens and is put back before the name
+	 * opens, so two taps leave the group exactly as they found it.
 	 */
+	await page.waitForTimeout(450);
 	await title.dblclick();
 	await expect(page.getByRole('textbox', { name: 'Group title' })).toBeVisible();
 	await expect(icon).toHaveAttribute('aria-expanded', 'true');

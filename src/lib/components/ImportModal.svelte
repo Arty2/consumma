@@ -43,11 +43,6 @@
 				? t.import.refusedHtml
 				: t.import.refusedOther
 	);
-
-	/** What each line will become, in the notation it will be exported in. */
-	function marker(state: string): string {
-		return state === 'done' ? '[x]' : state === 'half' ? '[~]' : '[ ]';
-	}
 </script>
 
 <Modal title={t.import.title} seed="import" {onclose}>
@@ -55,11 +50,18 @@
 		What was read, always shown and always editable.
 
 		Opening IMPORT reads the clipboard, so most of the time the list is
-		already here and there is nothing to do but confirm it. It stays on
-		screen rather than being replaced by the preview: a list arriving from
-		somebody else's phone is exactly the thing you want to look at before
-		it lands, and a stray line is fixed here rather than by cancelling,
-		editing elsewhere and starting again.
+		already here and there is nothing to do but confirm it. A list arriving
+		from somebody else's phone is exactly the thing you want to look at
+		before it lands, and a stray line is fixed here rather than by
+		cancelling, editing elsewhere and starting again.
+
+		This box was once shown above a second, read-only one: the parsed list
+		written back out in the notation it would be exported in, on the
+		grounds that a line without a bullet becomes a task and the only honest
+		preview is what the parse made of it. Two boxes of nearly the same
+		text, one of them editable, and the reader has to work out which is
+		which. The count above the buttons says how the parse went — how many
+		tasks, in how many groups — and it says it in a sentence.
 
 		Firefox rejects a clipboard read outright and Safari raises a prompt, so
 		this is also where a list gets pasted by hand — a first-class path
@@ -93,37 +95,6 @@
 				{t.import.add}
 			</button>
 		</div>
-
-		<!--
-			What it will be, not what was pasted. A line without a bullet becomes a
-			task, so the only honest preview is the parsed list read back in the
-			notation it would be exported in.
-
-			Written as text, never as markup: nothing in this app renders HTML.
-		-->
-		<!--
-			Keyed by position, never by what a line says.
-
-			A list repeats itself: two tasks reading the same thing in one group is
-			an ordinary list, not a mistake, and so is a second group with the same
-			name. Keyed by the text, the second of any such pair is a duplicate key
-			— which Svelte throws on, taking the whole preview down with it, so a
-			perfectly good list came back as though it had been refused.
-
-			Position is the honest key here in any case. This is one parse rendered
-			once: nothing reorders, nothing is identified across renders, and the
-			whole block is replaced whenever the text changes.
-		-->
-		<div class="preview" aria-label={t.import.preview}>
-			{#each parsed.groups as group, at (at)}
-				{#if group.title !== ''}
-					<p class="heading">## {group.title}</p>
-				{/if}
-				{#each group.tasks as task, line (line)}
-					<p class="line">- {marker(task.state)} {task.text}</p>
-				{/each}
-			{/each}
-		</div>
 	{/if}
 </Modal>
 
@@ -155,32 +126,6 @@
 		font-family: var(--mono);
 		font-size: calc(var(--size-body) * var(--mono-scale));
 		resize: vertical;
-	}
-
-	/*
-	 * Monospaced would be a second typeface; this is the one hand, small, in a
-	 * box that scrolls rather than pushing the buttons off the panel.
-	 */
-	.preview {
-		max-height: 40vh;
-		overflow-y: auto;
-		padding: 0.75rem;
-		border: 2px dashed var(--ink);
-	}
-
-	.preview p {
-		margin: 0;
-		font-size: var(--size-body);
-		line-height: 1.5;
-		overflow-wrap: anywhere;
-	}
-
-	.preview .heading {
-		margin-top: 0.75rem;
-	}
-
-	.preview .heading:first-child {
-		margin-top: 0;
 	}
 
 	.choices {

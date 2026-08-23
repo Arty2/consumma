@@ -72,7 +72,7 @@
 
 		const count = gone.tasks.length;
 		const what =
-			count === 0 ? label(title) : t.toast.removedWithDone({ what: label(title), count });
+			count === 0 ? named(title) : t.toast.removedWithDone({ what: named(title), count });
 
 		// The confirm stops nothing here — the header only offers it on a finished
 		// group — so the undo is what covers a change of mind.
@@ -318,6 +318,24 @@
 		ui.announce(t.sheet.movedTo({ group: label(next.title), position: position + 1 }));
 	}
 
+	/**
+	 * A group's name as it goes into a message on the screen.
+	 *
+	 * Quoted, because it is the one part of the sentence somebody else wrote:
+	 * "Removed “Weekend” and 3 done" says where the name stops, and "Removed
+	 * Weekend and 3 done" leaves the reader to work it out — a group called
+	 * "and" or "done" makes a sentence out of nothing at all. An untitled group
+	 * has no name to quote and is described instead.
+	 */
+	function named(title: string) {
+		return title === '' ? t.group.untitledInSentence : t.group.named({ title });
+	}
+
+	/**
+	 * And as it goes into one that is read aloud, where a quotation mark is
+	 * either noise or silence depending on the screen reader, and helps nobody
+	 * either way.
+	 */
 	function label(title: string) {
 		return title === '' ? t.group.untitledInSentence : title;
 	}

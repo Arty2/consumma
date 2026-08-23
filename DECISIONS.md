@@ -1263,6 +1263,103 @@ relative` rather than a transform, which does not apply to an inline box.
     is the honest thing to have when the face at the other end is whatever the
     phone happens to own.
 
+98. **Round brackets, which Graphe has.** The fold icon was set in square ones,
+    which it has none of, so a substituted face drew them on the true baseline
+    and they sat low around the figures they enclose. §97 corrected that with a
+    measured lift, which worked and was a lot of machinery for a character the
+    face has a proper answer to: Graphe's `(` runs 20 above the baseline to 1
+    below against its figures' 19 above to 3 above, so it encloses what it
+    holds and needs nothing. The lift and the span it hung on are gone.
+
+    Not the markdown checkbox, which keeps its square brackets and its
+    deliberate fallback: those are what other apps read, and the export has to
+    stay readable by them.
+
+99. **The group title's tap is optimistic after all.** It was held back for the
+    double-tap window (§56 and the note beside it), on the reasoning that a
+    whole list folding and unfolding under the thumb is a worse flicker than a
+    third of a second of lag. The lag is what people actually notice, and they
+    notice it most beside the fold icon two millimetres away, which has always
+    answered at once — one control answering slower than its twin reads as the
+    app being tired.
+
+    So the tap folds, and the second tap puts the fold back before opening the
+    name. Which click is the second is read off `event.detail`, the browser's
+    own count of the run, and never off a timer: a window cannot tell the
+    second click of one pair from the first click of the next, and two
+    deliberate double taps a tenth of a second apart are a thing a test does
+    routinely and a finger does eventually. That is not a hypothetical — it is
+    what the suite did, and the group came out collapsed behind the field it
+    had just opened.
+
+100.  **Enter on a group title only opens a task when the group is empty.**
+      Naming a group and writing the first thing into it is one motion, and an
+      empty group is the only time the next thing is certainly a task. On a
+      group that already has tasks, somebody has come to change the name and
+      Enter is how they say they are done with it; an empty row opening
+      underneath put a caret in the middle of a list nobody was adding to, and
+      closed it again on the next tap anywhere.
+
+101.  **A group's name is quoted where the app says it back.** "Removed Weekend
+      and 3 done" leaves the reader to work out where the name stopped, and a
+      group called "and" or "done" makes a sentence out of nothing. Not in an
+      announcement, where a quotation mark is noise or silence depending on the
+      screen reader, and not around "the untitled group", which is a
+      description rather than a name.
+
+102.  **Joining never throws a list away.** "Leave them" meant discard: the open
+      list was wiped and the joined one arrived in its place, so answering a
+      question about a handful of tasks threw away the list they were on. The
+      device holds as many lists as it likes, so the honest reading of leaving
+      them behind is that they stay behind — the joined list arrives beside this
+      one and the switcher shows both. The question said "leave them behind" the
+      whole time; the words were right and the app was not.
+
+      The new list is made before the pull, because it is the list the pull has
+      to land in. If the code is wrong or the network is gone, the device goes
+      back to the list it was on and the blank one is dropped as it is left,
+      having written nothing — and `sync.message` is read before that switch,
+      because switching re-points sync at the other list's key-set and clears
+      what it had to say about the attempt.
+
+103.  **The code field pastes on a tap.** A code arrives in a message, so it is
+      on the clipboard nine times out of ten and the next move is always the
+      same: long-press, wait for the menu, choose Paste. The field does it
+      itself, on the tap, which is a gesture a browser will allow a clipboard
+      read inside. Only into an empty field — a tap in a field with something
+      in it is a caret being placed — and only when `codeFrom` finds a code,
+      so a clipboard holding a shopping list puts nothing in it. A refused or
+      empty clipboard says nothing: Firefox rejects a read outright and Safari
+      asks first, and the keyboard was there either way.
+
+104.  **LEAVE reads DELETE without a code.** They are two different acts wearing
+      one button. With a code the list carries on without this device and can be
+      come back to, which is leaving; without one this device is the only place
+      it has ever been, and there is nothing to leave it to. The confirm agrees
+      with the button that opened it.
+
+105.  **Sync moved into "This list", and the import preview went.** A sync is
+      the most this-list thing in the panel — it is this list going to the
+      server and coming back — and it had the top to itself above the tear, so
+      the panel opened on a sentence about a list it had not yet named. The
+      section now reads down in the order the acts belong in: what is waiting,
+      SYNC NOW, IMPORT/EXPORT, the code or the note saying there is none, and
+      the button that ends it.
+
+      The import modal had two boxes of nearly the same text, one editable and
+      one not — the parsed list written back out in export notation, on the
+      grounds that a line without a bullet becomes a task and only the parse can
+      say so. The count above the buttons says that in a sentence, and the box
+      that is left is the one you can fix a stray line in.
+
+106.  **The switcher is level with the ✕.** The scroller begins a tear's depth
+      inside the paper, so being flush with the top of it put the pill
+      `--corner-lead` above the ✕ — near enough to read as one row and far
+      enough out to read as a mistake in it. `--corner-y` is `--paper-top +
+--tear + --corner-lead` and the scroller's own top is the first two, so
+      the lead is exactly what was missing. The ✕ does not move: it is placed
+      where every corner control in the app is placed.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

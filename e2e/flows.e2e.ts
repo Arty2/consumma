@@ -314,17 +314,17 @@ test('IMPORT takes a list pasted by hand, when the clipboard cannot be read', as
 	await page.evaluate(() => navigator.clipboard.writeText('Bread\nCoffee\nMilk'));
 	await fromMenu(page, 'Import');
 
-	// No preview yet: there was nothing to read, so it opens on the box.
+	// Nothing was read, so it opens on an empty box and says so.
 	const field = page.getByRole('textbox', { name: 'Markdown to import' });
 	await expect(field).toBeVisible();
-	await expect(page.getByLabel('What will be added')).toHaveCount(0);
+	await expect(field).toHaveValue('');
+	await expect(page.getByText(/Add \d+ task/)).toHaveCount(0);
 
 	await field.focus();
 	await page.keyboard.press('Control+V');
 
 	// A real paste reaches the same parse a clipboard read would have.
 	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
-	await expect(page.getByLabel('What will be added')).toContainText('- [ ] Bread');
 
 	await page.getByRole('button', { name: 'Add', exact: true }).click();
 	await expect(page.getByRole('checkbox')).toHaveCount(3);
@@ -364,11 +364,8 @@ test('IMPORT takes a list that repeats itself, in a task and in a heading', asyn
 
 	await fromMenu(page, 'Import');
 
-	// The preview reads every line, including the ones that say the same thing.
-	// This is the assertion that would have failed: the whole block went down
-	// with the duplicate key and there was nothing on screen at all.
+	// The parse reads every line, including the ones that say the same thing.
 	await expect(page.getByText('Add 4 tasks in 2 groups?')).toBeVisible();
-	await expect(page.getByLabel('What will be added')).toContainText('- [x] Milk');
 
 	/*
 	 * What lands is deduplicated, which is a separate and deliberate rule —
@@ -401,23 +398,27 @@ test('IMPORT refuses a data file and a web page, and says which', async ({ page,
 	await expect(page.getByRole('checkbox')).toHaveCount(1);
 });
 
-test('IMPORT takes plain lines, and shows what it will make of them', async ({ page, context }) => {
+test('IMPORT takes plain lines, and counts what it will make of them', async ({
+	page,
+	context
+}) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 	// A list as most people have one: lines in a note, no bullets anywhere.
 	await page.evaluate(() => navigator.clipboard.writeText('Bread\nCoffee\nMilk'));
 	await fromMenu(page, 'Import');
 
-	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
-
 	/*
-	 * The preview is what it will become rather than what was pasted — a line
-	 * with no bullet becomes a task, and the only honest way to say so is to
-	 * read the parsed list back.
+	 * A line with no bullet becomes a task, and the count is how the parse says
+	 * so. There was a second box under this one for a while, showing the parsed
+	 * list written back out in export notation — two boxes of nearly the same
+	 * text, one of them editable, with nothing on screen saying which was
+	 * which. What was pasted is on screen already, and it can be edited.
 	 */
-	const preview = page.getByLabel('What will be added');
-	await expect(preview).toContainText('- [ ] Bread');
-	await expect(preview).toContainText('- [ ] Milk');
+	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'Markdown to import' })).toHaveValue(
+		'Bread\nCoffee\nMilk'
+	);
 
 	await page.getByRole('button', { name: 'Add', exact: true }).click();
 	await expect(page.getByRole('checkbox')).toHaveCount(3);
