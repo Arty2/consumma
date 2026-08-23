@@ -1540,6 +1540,43 @@ test('Backspace at the very start joins the task onto the one above', async ({ p
 	expect(await joined.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(5);
 });
 
+test('a row still being typed joins onto the one above too', async ({ page }) => {
+	/*
+	 * On the sheet a draft and a task are the same thing — one line of writing
+	 * with a box beside it — so a key that worked on the row above and not on
+	 * the one under the finger read as the app having lost its place. The only
+	 * difference is that a draft leaves without anything being deleted.
+	 */
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	await field.fill('Bread');
+	await field.press('Enter');
+
+	// Written into the row that stayed open, and never committed.
+	await page.keyboard.type('Milk');
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
+	await field.press('Backspace');
+
+	await expect(page.getByRole('checkbox')).toHaveCount(1);
+	await expect(task(page, 'BreadMilk')).toBeVisible();
+
+	const joined = page.getByRole('textbox').first();
+	await expect(joined).toBeFocused();
+	expect(await joined.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(5);
+});
+
+test('a row being typed with nothing above it keeps what is in it', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	await field.fill('Milk');
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
+	await field.press('Backspace');
+
+	// Nowhere for it to go, so the key does nothing — and nothing is lost.
+	await expect(field).toHaveValue('Milk');
+	await expect(page.getByRole('checkbox')).toHaveCount(0);
+});
+
 test('a join that would not fit does not happen at all', async ({ page }) => {
 	// A row that filled up and spilled cannot be poured back into the row it
 	// came from, and dropping the overflow to make it fit would lose writing.

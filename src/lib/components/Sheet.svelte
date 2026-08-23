@@ -226,8 +226,14 @@
 	}
 
 	/**
-	 * Backspace at the very start of a task that still has something in it: the
-	 * two become one, and the caret waits at the seam.
+	 * Backspace at the very start of a row that still has something in it: it
+	 * joins onto the end of the one above, and the caret waits at the seam.
+	 *
+	 * A row being typed answers to this as well as a committed task does. On the
+	 * sheet they are the same thing — one line of writing with a box beside it —
+	 * and a key that works on the row above and not on the one under the finger
+	 * reads as the app having lost its place. The only difference is that a
+	 * draft has nothing to delete afterwards.
 	 *
 	 * Quietly, with no message. Nothing was taken away — the words are all still
 	 * on the sheet, a line higher — so a toast saying "Deleted." would be a lie
@@ -238,7 +244,7 @@
 	 * cannot be poured back into the row it came from, and silently dropping
 	 * the overflow to make it fit would lose writing.
 	 */
-	function join(groupId: string, index: number, taskId: string, text: string): boolean {
+	function join(groupId: string, index: number, text: string, taskId?: string): boolean {
 		const above = sheet.groups.find((group) => group.id === groupId)?.tasks[index - 1];
 		if (!above) return false;
 
@@ -246,7 +252,9 @@
 		if (seam + length(text) > LIMITS.taskText) return false;
 
 		sheet.editTask(above.id, above.text + text);
-		sheet.deleteTask(taskId);
+		// A row still being typed has no task of its own to take away; it simply
+		// closes, which the row itself does on its way out.
+		if (taskId) sheet.deleteTask(taskId);
 
 		inserting = null;
 		opening = { id: above.id, at: seam };
@@ -503,6 +511,7 @@
 								onadd={(text) => insert(group.id, taskIndex, text)}
 								onclose={() => (inserting = null)}
 								onback={() => back(group.id, taskIndex)}
+								onjoin={(text) => join(group.id, taskIndex, text)}
 							/>
 						{/if}
 
@@ -534,7 +543,7 @@
 									atStart: next?.atStart
 								})}
 							onback={() => back(group.id, taskIndex, task.id)}
-							onjoin={(text) => join(group.id, taskIndex, task.id, text)}
+							onjoin={(text) => join(group.id, taskIndex, text, task.id)}
 							onopened={() => (opening = null)}
 							onmove={(direction) => move(groupIndex, taskIndex, direction)}
 							ondrop={(target) => drop(task.id, target)}
@@ -560,6 +569,7 @@
 							onadd={(text) => insert(group.id, group.tasks.length, text)}
 							onclose={() => (inserting = null)}
 							onback={() => back(group.id, group.tasks.length)}
+							onjoin={(text) => join(group.id, group.tasks.length, text)}
 						/>
 					{/if}
 
@@ -576,6 +586,7 @@
 							{lone}
 							onadd={(text) => sheet.addTask(group.id, text) !== null}
 							onback={() => back(group.id, group.tasks.length)}
+							onjoin={(text) => join(group.id, group.tasks.length, text)}
 						/>
 					{/if}
 				</ul>

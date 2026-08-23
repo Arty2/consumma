@@ -33,6 +33,12 @@
 		onclose?: () => void;
 		/** Backspace on an empty row: it closes, and the task above opens. */
 		onback?: () => void;
+		/**
+		 * Backspace at the very start of a row with something written in it: the
+		 * writing joins onto the end of the task above and this row closes.
+		 * Answers false when the two will not fit, and then nothing happens.
+		 */
+		onjoin?: (text: string) => boolean;
 	};
 
 	let {
@@ -44,7 +50,8 @@
 		atStart = false,
 		lone = false,
 		onclose,
-		onback
+		onback,
+		onjoin
 	}: Props = $props();
 
 	const SIZE = 22;
@@ -175,6 +182,40 @@
 		});
 	}
 
+	/**
+	 * Backspace with nothing to delete in front of the caret — the same two
+	 * lengths a task row answers to, because on the sheet this is the same
+	 * thing: one line of writing with a box beside it.
+	 *
+	 * Nothing in the row at all: it closes and the caret carries back to the end
+	 * of the task above. Something in it and the caret at its very start: the
+	 * writing joins onto that task instead, and the row closes having never
+	 * become one of its own. A draft is the one row that can leave without
+	 * anything being deleted.
+	 */
+	function onbackspace(event: KeyboardEvent) {
+		const field = event.currentTarget as HTMLTextAreaElement;
+
+		if (draft === '') {
+			event.preventDefault();
+			byTap = false;
+			onclose?.();
+			onback?.();
+			return;
+		}
+
+		if (field.selectionStart !== 0 || field.selectionEnd !== 0) return;
+
+		event.preventDefault();
+		if (!onjoin?.(draft)) return;
+
+		// Emptied before it closes, or the blur on the way out commits the very
+		// words that have just gone into the row above.
+		draft = '';
+		byTap = false;
+		onclose?.();
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
@@ -184,17 +225,8 @@
 			draft = '';
 			byTap = false;
 			onclose?.();
-		} else if (event.key === 'Backspace' && draft === '') {
-			/*
-			 * The other half of Enter. Enter leaves a task and opens a fresh row
-			 * beneath it; backspace on that row, with nothing in it left to
-			 * delete, closes it again and carries the caret back to the end of
-			 * the task above.
-			 */
-			event.preventDefault();
-			byTap = false;
-			onclose?.();
-			onback?.();
+		} else if (event.key === 'Backspace') {
+			onbackspace(event);
 		}
 	}
 </script>

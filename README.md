@@ -107,6 +107,10 @@ by the same rule as typing. A row that ran out of room is the one exception to
 where the caret lands: it is still being typed at its end, so the caret stays
 behind what came down rather than in front of it.
 
+A row still being typed answers to all of this the same way a committed task
+does — on the sheet they are the same thing, one line of writing with a box
+beside it — except that it leaves without anything being deleted.
+
 A join happens only if the two will fit in one task — a row that filled up and
 spilled cannot be poured back into the row it came from, and then the key does
 nothing at all. Joining takes nothing away, so there is no message and no undo:

@@ -1411,6 +1411,15 @@ relative` rather than a transform, which does not apply to an inline box.
       puts the caret at the head of the new line. The two cases are told apart
       at the call site rather than guessed at from the payload.
 
+      A row still being typed answers to the join too, which it did not at
+      first: the key was written on the task row and the draft row was left
+      with only its emptied-out case. On the sheet the two are the same thing —
+      one line of writing with a box beside it — so a key that worked on the
+      row above and not on the one under the finger read as the app having lost
+      its place. The only real difference is that a draft leaves without
+      anything being deleted, which is why the join takes the task to remove as
+      an optional argument rather than assuming there is one.
+
 109.  **An open add row's box takes the ink once something is written in it.**
       Empty, the row is still an offer, and its box is drawn as faintly as the
       ellipsis it replaced. The moment there is writing the row is a task — it
