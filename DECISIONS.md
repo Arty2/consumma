@@ -1444,6 +1444,26 @@ relative` rather than a transform, which does not apply to an inline box.
       the weight of the line changes, which is the difference between a thing
       offered and a thing there.
 
+110.  **A lift is put down when the node holding it leaves.** The action's
+      cleanup released its own capture and cleared its own timer, and left the
+      shared drag exactly as it was. A node can go with a finger still on it —
+      a group title swaps itself for its edit field, a row changes which element
+      it draws — and once it has, no pointerup, pointercancel or
+      lostpointercapture will ever reach those handlers again.
+
+      Because the lift is one shared state rather than a flag on the row, what
+      that left behind was not a stalled drag on one title: it was every group
+      folded shut, a dashed outline round a name, and nothing anywhere on the
+      sheet able to clear either. `destroy` resets the drag when this node was
+      the one holding it, and `lostpointercapture` covers the other half — the
+      browser taking the pointer away while the node stays.
+
+      `stop()` clears `lifted` before releasing a capture rather than after,
+      which is load-bearing: releasing fires `lostpointercapture` there and
+      then, and a handler that could not tell that from a real interruption
+      would reset the drag between `stop()` and the drop it was about to
+      deliver, and no drop would ever land again.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

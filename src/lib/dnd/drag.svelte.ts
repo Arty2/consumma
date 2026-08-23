@@ -261,11 +261,18 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 		if (scrolling !== null) cancelAnimationFrame(scrolling);
 		scrolling = null;
 
+		/*
+		 * Cleared before the release below rather than after it. Letting a
+		 * capture go fires `lostpointercapture` there and then, and the handler
+		 * for that has to be able to tell our own tidying up — where a drop is
+		 * still to be delivered — from the browser taking the pointer away.
+		 */
+		lifted = false;
+
 		if (pointerId !== null && node.hasPointerCapture(pointerId)) {
 			node.releasePointerCapture(pointerId);
 		}
 		pointerId = null;
-		lifted = false;
 	}
 
 	function onclick(event: MouseEvent) {
@@ -339,21 +346,53 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 		drag.reset();
 	}
 
+	/**
+	 * The pointer was taken away rather than let go of.
+	 *
+	 * A capture can end without a `pointerup` ever arriving here — the browser
+	 * hands the gesture to something else, or the OS interrupts it — and then
+	 * nothing else would ever put the drag down. Guarded on `lifted`, which
+	 * `stop` clears before it releases a capture of its own, so this never
+	 * fires in the middle of delivering a drop.
+	 */
+	function onlost() {
+		if (!lifted) return;
+		stop();
+		drag.reset();
+	}
+
 	node.addEventListener('click', onclick, { capture: true });
 	node.addEventListener('pointerdown', onpointerdown);
 	node.addEventListener('pointermove', onpointermove);
 	node.addEventListener('pointerup', onpointerup);
 	node.addEventListener('pointercancel', oncancel);
+	node.addEventListener('lostpointercapture', onlost);
 	node.addEventListener('touchmove', ontouchmove, { passive: false });
 
 	return () => {
+		/*
+		 * Put the shared drag down if this node was the one holding it.
+		 *
+		 * The node can leave the document with a finger still on it — a group
+		 * title swapped for its own edit field, a row that changes which
+		 * element it draws, a list switched out from under the gesture — and
+		 * once it has, no pointerup, pointercancel or lostpointercapture will
+		 * ever reach these handlers again. The lift is a single shared state, so
+		 * what is left behind is not a stalled drag on one row: it is every
+		 * group folded shut and a dashed outline round a title, for good, with
+		 * nothing on the sheet able to clear it.
+		 */
+		const held = lifted;
 		stop();
+		if (held) drag.reset();
+
 		if (settle) clearTimeout(settle);
 		node.removeEventListener('click', onclick, { capture: true });
 		node.removeEventListener('pointerdown', onpointerdown);
 		node.removeEventListener('pointermove', onpointermove);
 		node.removeEventListener('pointerup', onpointerup);
 		node.removeEventListener('pointercancel', oncancel);
+		node.removeEventListener('lostpointercapture', onlost);
 		node.removeEventListener('touchmove', ontouchmove);
 	};
 }

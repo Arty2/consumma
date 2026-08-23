@@ -630,6 +630,37 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	await expect(page.getByRole('status').filter({ hasText: /Removed/ })).toBeVisible();
 });
 
+test('a lift interrupted by the row leaving does not stick', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const title = page.locator('section[data-group] .title');
+	const box = (await title.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(650);
+	await page.mouse.move(box.x + box.width / 2, box.y + 60, { steps: 4 });
+
+	// Carried, so everything is folded shut and the title is drawn lifted.
+	await expect(page.locator('.lifted')).toHaveCount(1);
+	await expect(page.locator('.tasks')).toHaveCount(0);
+
+	/*
+	 * The node leaves the document with the pointer still down. F2 is only the
+	 * shortest way to make that happen — the title swaps itself for its own
+	 * edit field — and the fault was never the key: once the element is gone,
+	 * no pointerup, pointercancel or lostpointercapture reaches its handlers
+	 * again, and the lift is a single shared state. What was left behind was
+	 * every group folded shut and a dashed outline round a title, for good.
+	 */
+	await page.keyboard.press('F2');
+	await page.mouse.up();
+
+	await expect(page.locator('.lifted')).toHaveCount(0);
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.tasks')).toHaveCount(1);
+	await expect(task(page, 'Bread')).toBeVisible();
+});
+
 test('a long press on a group title picks the whole group up', async ({ page }) => {
 	await addTask(page, 'Bread');
 
