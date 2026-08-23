@@ -93,15 +93,27 @@ placed.
 
 ### While a row is open
 
-| Gesture     | What happens                                                         |
-| ----------- | -------------------------------------------------------------------- |
-| `Enter`     | Cuts the task at the caret and carries the rest to a new row beneath |
-| `Backspace` | On an emptied row: the row goes, caret to the end of the one above   |
-| `Escape`    | Discards and closes                                                  |
-| Overflow    | At 200 characters the row fills up and the rest starts the next one  |
+| Gesture                     | What happens                                                              |
+| --------------------------- | ------------------------------------------------------------------------- |
+| `Enter`                     | Cuts the task at the caret; the rest goes to a new row, caret at its head |
+| `Enter` at the start        | The writing goes down a row and an empty one opens above it               |
+| `Backspace` at the start    | Joins the task onto the end of the one above, caret at the seam           |
+| `Backspace` on an empty row | The row goes, caret to the end of the one above                           |
+| `Escape`                    | Discards and closes                                                       |
+| Overflow                    | At 200 characters the row fills up and the rest starts the next one       |
 
 Nothing is ever refused mid-sentence. A word travels whole, and a paste spills
-by the same rule as typing.
+by the same rule as typing. A row that ran out of room is the one exception to
+where the caret lands: it is still being typed at its end, so the caret stays
+behind what came down rather than in front of it.
+
+A join happens only if the two will fit in one task — a row that filled up and
+spilled cannot be poured back into the row it came from, and then the key does
+nothing at all. Joining takes nothing away, so there is no message and no undo:
+the words are all still on the sheet, a line higher.
+
+An open row's checkbox is drawn faintly while the row is empty, and in full ink
+the moment there is something written in it.
 
 ### A group
 

@@ -23,19 +23,34 @@
 		groupId: string;
 		/** How this group writes its numbers, so this row writes them the same way. */
 		style: Style | null;
-		/** Asked for by the sheet: open this row's editor, caret at the end. */
+		/** Asked for by the sheet: open this row's editor. */
 		open: boolean;
+		/** And put the caret here rather than at the end — see `onjoin`. */
+		openAt: number | null;
 		onstate: (state: State) => void;
 		onedit: (text: string) => void;
 		ondelete: () => void;
 		/**
-		 * Enter leaves the task and opens a fresh one directly beneath it — and
-		 * so does running past the row's limit, which hands the new row what
-		 * would not fit.
+		 * Enter leaves the task and opens a fresh row — and so does running past
+		 * the row's limit, which hands the new row what would not fit.
+		 *
+		 * `carried` is what comes down with it. `above` puts the fresh row on
+		 * the other side, which is where a caret at the very start of a task
+		 * asks for it. `atStart` leaves the caret at the front of what was
+		 * carried rather than behind it: Enter in the middle of a line puts the
+		 * caret at the head of the new line, where a row that has simply run out
+		 * of room is still being typed at the end.
 		 */
-		onsplit: (carried?: string) => void;
+		onsplit: (next?: { carried?: string; above?: boolean; atStart?: boolean }) => void;
 		/** Backspace on an emptied row: it goes, and the one above opens. */
 		onback: () => void;
+		/**
+		 * Backspace at the very start of a row that still has something in it:
+		 * the two tasks become one. Answers false when they will not fit, and
+		 * then nothing happens at all — which is what backspace at the start of
+		 * anything does when there is nowhere for it to go.
+		 */
+		onjoin: (text: string) => boolean;
 		onopened: () => void;
 		onmove: (direction: -1 | 1) => void;
 		ondrop: (target: DropTarget) => void;
@@ -47,11 +62,13 @@
 		groupId,
 		style,
 		open,
+		openAt,
 		onstate,
 		onedit,
 		ondelete,
 		onsplit,
 		onback,
+		onjoin,
 		onopened,
 		onmove,
 		ondrop,
@@ -301,10 +318,14 @@
 		});
 	}
 
-	// Asked for from outside — the row beneath was backspaced away.
+	/*
+	 * Asked for from outside — the row beneath was backspaced away, or joined
+	 * onto the end of this one, and `openAt` is then the seam rather than the
+	 * end of the words.
+	 */
 	$effect(() => {
 		if (!open || editing) return;
-		startEditing();
+		startEditing(openAt);
 		onopened();
 	});
 
@@ -333,7 +354,9 @@
 
 		draft = over.head;
 		commit();
-		onsplit(over.tail);
+		// Still being typed, so the caret goes behind what came down rather than
+		// in front of it: the next character belongs after the last one.
+		onsplit({ carried: over.tail });
 	}
 
 	/**
@@ -353,11 +376,32 @@
 	 * beneath, which is what Enter has always done here.
 	 */
 	function onsplitHere(field: HTMLTextAreaElement) {
+		/*
+		 * A caret truly at the start, and not a selection that merely begins
+		 * there. Double-tapping a word selects it, which is somebody about to
+		 * replace it — nothing like asking for a line above it — and both come
+		 * back from `splitAt` with an empty head.
+		 */
+		const atStart = field.selectionStart === 0 && field.selectionEnd === 0;
 		const { head, tail } = splitAt(draft, field.selectionStart, field.selectionEnd);
 
+		/*
+		 * Nothing behind the caret: the fresh row opens *above* this one instead,
+		 * and the task keeps every character it had.
+		 *
+		 * Which is what Enter at the start of a line does anywhere else — the
+		 * writing goes down a line and an empty one opens over it, with the
+		 * caret. It used to open the empty row underneath, which is the same
+		 * two rows in the other order and reads as the task staying put while
+		 * something appears below it.
+		 *
+		 * Nothing moves in the document, either. The task is not rewritten and
+		 * not restamped: an empty draft is simply drawn before it, which is a
+		 * thing only a draft can be, since a task may not be empty.
+		 */
 		if (head.trim() === '') {
 			commit();
-			onsplit();
+			onsplit(atStart ? { above: true } : undefined);
 			return;
 		}
 
@@ -365,7 +409,7 @@
 		// Commit first: the blur handler would otherwise fire after the new row
 		// is asked for and close it again.
 		commit();
-		onsplit(tail === '' ? undefined : tail);
+		onsplit({ carried: tail === '' ? undefined : tail, atStart: true });
 	}
 
 	function onkeydown(event: KeyboardEvent) {
@@ -382,13 +426,43 @@
 			 */
 			draft = task.text;
 			editing = false;
-		} else if (event.key === 'Backspace' && draft === '') {
-			// The other half of Enter: nothing left to delete in the row, so the
-			// row goes and the caret carries on at the end of the one above.
+		} else if (event.key === 'Backspace') {
+			onbackspace(event);
+		}
+	}
+
+	/**
+	 * Backspace with nothing to delete in front of the caret.
+	 *
+	 * Two ways for that to be true, and they are the same idea at two lengths.
+	 * An emptied row has nothing left at all: it goes, and the caret carries on
+	 * at the end of the task above. A row with the caret at its very start has
+	 * nothing *behind* the caret: the row joins onto the end of the one above
+	 * and the caret waits at the seam, which is what backspace does at the
+	 * start of a line in anything else that takes writing.
+	 *
+	 * The join is refused, and the key left to do nothing, when the two would
+	 * not fit in one task — a row that filled up and spilled cannot be poured
+	 * back into the row it came from.
+	 */
+	function onbackspace(event: KeyboardEvent) {
+		const field = event.currentTarget as HTMLTextAreaElement;
+
+		if (draft === '') {
 			event.preventDefault();
 			editing = false;
 			onback();
+			return;
 		}
+
+		if (field.selectionStart !== 0 || field.selectionEnd !== 0) return;
+
+		event.preventDefault();
+		if (!onjoin(draft)) return;
+
+		// The row is about to go; the field must not commit on its way out.
+		draft = task.text;
+		editing = false;
 	}
 
 	/*

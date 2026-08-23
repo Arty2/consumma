@@ -1475,15 +1475,18 @@ test('Enter carries what is in front of the caret down to a new task', async ({ 
 	// The row above kept what was behind the caret; the rest came down with it,
 	// already in the row below and ready to be added to.
 	await expect(task(page, 'Bread')).toBeVisible();
-	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('and butter');
+	const fresh = page.getByRole('textbox', { name: 'New task' });
+	await expect(fresh).toHaveValue('and butter');
 
-	await page.getByRole('textbox', { name: 'New task' }).press('Enter');
+	// With the caret at the head of what came down, which is where the line was
+	// cut — a row that has merely run out of room is still typed at its end.
+	expect(await fresh.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(0);
+
+	await fresh.press('Enter');
 	await expect(task(page, 'and butter')).toBeVisible();
 });
 
-test('Enter at the very start leaves the task whole', async ({ page }) => {
-	// The head would be empty, and a task may not be — so nothing is pushed
-	// down and an empty row opens beneath, which is what Enter always did.
+test('Enter at the very start opens the empty row above, with the caret', async ({ page }) => {
 	await addTask(page, 'Bread');
 
 	await page.getByRole('button', { name: 'Bread', exact: true }).click();
@@ -1491,8 +1494,65 @@ test('Enter at the very start leaves the task whole', async ({ page }) => {
 	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
 	await field.press('Enter');
 
+	/*
+	 * The writing goes down a line and an empty one opens over it, with the
+	 * caret — which is what Enter at the start of a line does anywhere else.
+	 * The empty row used to open underneath, which is the same two rows in the
+	 * other order and reads as the task staying put while something appears
+	 * below it.
+	 */
+	const fresh = page.getByRole('textbox', { name: 'New task' });
+	await expect(fresh).toBeFocused();
+	await expect(fresh).toHaveValue('');
 	await expect(task(page, 'Bread')).toBeVisible();
-	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveValue('');
+
+	// Above it, and nothing in the document moved to put it there.
+	const rows = await page.evaluate(() =>
+		[...document.querySelectorAll('.tasks li')]
+			.map((li) =>
+				li.querySelector('textarea')
+					? '<draft>'
+					: (li.querySelector('[role=checkbox]')?.getAttribute('aria-label') ?? '')
+			)
+			.filter(Boolean)
+	);
+	expect(rows).toStrictEqual(['<draft>', 'Bread']);
+});
+
+test('Backspace at the very start joins the task onto the one above', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Milk');
+
+	await page.getByRole('button', { name: 'Milk', exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
+	await field.press('Backspace');
+
+	// The two become one, and no message: nothing was taken away, the words are
+	// all still on the sheet a line higher.
+	await expect(page.getByRole('checkbox')).toHaveCount(1);
+	await expect(task(page, 'BreadMilk')).toBeVisible();
+	await expect(page.getByRole('status').filter({ hasText: /deleted/i })).toHaveCount(0);
+
+	// And the caret waits at the seam, where the join happened.
+	const joined = page.getByRole('textbox').first();
+	await expect(joined).toBeFocused();
+	expect(await joined.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(5);
+});
+
+test('a join that would not fit does not happen at all', async ({ page }) => {
+	// A row that filled up and spilled cannot be poured back into the row it
+	// came from, and dropping the overflow to make it fit would lose writing.
+	await addTask(page, 'x'.repeat(150));
+	await addTask(page, 'y'.repeat(100));
+
+	await page.getByRole('button', { name: 'y'.repeat(100), exact: true }).click();
+	const field = page.getByRole('textbox').first();
+	await field.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(0, 0));
+	await field.press('Backspace');
+
+	await expect(page.getByRole('checkbox')).toHaveCount(2);
+	await expect(field).toHaveValue('y'.repeat(100));
 });
 
 test('the count of what is left appears late, and under the checkbox', async ({ page }) => {

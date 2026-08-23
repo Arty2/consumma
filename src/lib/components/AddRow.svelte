@@ -22,6 +22,12 @@
 		 * limit starts with the rest of the sentence already in it.
 		 */
 		initial?: string;
+		/**
+		 * Where the caret lands in what came down. At the front for a row Enter
+		 * cut open — that is the head of the new line — and behind it for a row
+		 * that ran out of space, which is still being typed at the end.
+		 */
+		atStart?: boolean;
 		/** The only row on the sheet — see the note on `.ghost` below. */
 		lone?: boolean;
 		onclose?: () => void;
@@ -35,6 +41,7 @@
 		disabled = false,
 		opened = false,
 		initial = '',
+		atStart = false,
 		lone = false,
 		onclose,
 		onback
@@ -60,14 +67,30 @@
 	/** Whether the box is drawn at all, rather than kept back. */
 	const shown = $derived(open || lone);
 
-	// Placed already open rather than tapped: take the caret with it, and put it
-	// at the end — a row opened by a spill already has the rest of the sentence
-	// in it, and the next character belongs after it.
+	/**
+	 * And whether it is drawn in the ink.
+	 *
+	 * An open row with nothing in it is still an offer, and it is drawn as
+	 * faintly as the ellipsis it replaced. The moment there is something
+	 * written the row is a task — it will be one as soon as the finger leaves
+	 * — so its box stops being a suggestion and becomes the box that task is
+	 * getting. Nothing moves; only the weight of the line changes, which is
+	 * the difference between a thing offered and a thing there.
+	 */
+	const written = $derived(draft.trim() !== '');
+
+	/*
+	 * Placed already open rather than tapped: take the caret with it, and put it
+	 * where the row was cut. Behind what came down by default — a row opened by
+	 * a spill has the rest of a sentence in it and is still being typed — and in
+	 * front of it where Enter made the cut, which is the head of the new line.
+	 */
 	$effect(() => {
 		if (!opened) return;
 		queueMicrotask(() => {
 			input?.focus();
-			input?.setSelectionRange(draft.length, draft.length);
+			const at = atStart ? 0 : draft.length;
+			input?.setSelectionRange(at, at);
 		});
 	});
 
@@ -189,7 +212,7 @@
 	-->
 	<button class="box" type="button" tabindex="-1" aria-hidden="true" {disabled} onclick={start}>
 		<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE}>
-			<path d={box} class="drawn" class:ghost={!shown} class:shown />
+			<path d={box} class="drawn" class:ghost={!shown} class:shown class:written />
 		</svg>
 	</button>
 
@@ -281,6 +304,15 @@
 	 */
 	.shown {
 		opacity: var(--faint);
+	}
+
+	/*
+	 * And full ink once there is something written in the row beside it. After
+	 * `.shown` rather than before it: the two are the same specificity, so
+	 * source order is what decides which wins on a row that is both.
+	 */
+	.written {
+		opacity: 1;
 	}
 
 	.text {

@@ -1384,6 +1384,41 @@ relative` rather than a transform, which does not apply to an inline box.
       restores the wrong shape: in the case that found it, the other list was
       still on the device and no longer reachable from the switcher.
 
+108.  **Enter and Backspace at the very start are each other's inverse now.**
+      Enter at the start used to leave the task whole and open an empty row
+      _beneath_ it, on the grounds that the head would be empty and a task may
+      not be. That is the same two rows in the other order, and it reads as the
+      task staying put while something appears below it — where every other
+      place that takes writing puts the line down and opens an empty one above
+      it, with the caret. So the empty row opens above, and the document is not
+      touched at all: nothing is rewritten and nothing is restamped, because a
+      draft is the only row that may be empty and drawing one before the task
+      is the whole of the change.
+
+      Backspace at the start is the other direction: the task joins onto the end
+      of the one above and the caret waits at the seam. Quietly — nothing was
+      taken away, the words are a line higher, and a "Deleted." toast would be a
+      lie about the one thing it is there to report — and refused outright when
+      the two will not fit in one task, since dropping the overflow to make them
+      fit would lose writing. Both read `selectionStart === selectionEnd === 0`
+      rather than an empty head from `splitAt`: double-tapping a word selects
+      it, which is somebody about to replace it, and that arrives looking
+      identical.
+
+      The caret after a cut also moved. It sat behind what came down, which is
+      right for a row that ran out of room and is still being typed at its end,
+      and wrong for a cut somebody asked for — Enter in the middle of a line
+      puts the caret at the head of the new line. The two cases are told apart
+      at the call site rather than guessed at from the payload.
+
+109.  **An open add row's box takes the ink once something is written in it.**
+      Empty, the row is still an offer, and its box is drawn as faintly as the
+      ellipsis it replaced. The moment there is writing the row is a task — it
+      becomes one as soon as the finger leaves — so the box stops being a
+      suggestion and becomes the box that task is getting. Nothing moves; only
+      the weight of the line changes, which is the difference between a thing
+      offered and a thing there.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

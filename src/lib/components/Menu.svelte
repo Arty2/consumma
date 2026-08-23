@@ -592,10 +592,13 @@
 				because those are two different acts wearing one button. With a code,
 				the list carries on without this device and can be come back to;
 				without one, this device is the only place it has ever been, and the
-				button is the end of it. Directly under the line that says which of
-				the two you are looking at.
+				button is the end of it. Under the line that says which of the two
+				you are looking at, and held off it: everything above is something
+				you do *to* the list, and this is the one that ends it. The room is
+				the only thing setting it apart, since a tear would say this is
+				another section and it is not — it is the last thing in this one.
 			-->
-			<div class="pair">
+			<div class="pair apart">
 				<button
 					type="button"
 					class="caps boxed"

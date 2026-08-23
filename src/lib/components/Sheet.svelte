@@ -5,6 +5,7 @@
 	import TextRule from './TextRule.svelte';
 	import { figures } from '$lib/doc/amount';
 	import { langOf } from '$lib/doc/lang';
+	import { length } from '$lib/doc/clean';
 	import { LIMITS } from '$lib/doc/limits';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
@@ -26,14 +27,19 @@
 	 * one at the top of the group. There is never more than one, because there
 	 * is only one caret.
 	 */
-	let inserting = $state<{ groupId: string; index: number; carried?: string } | null>(null);
+	let inserting = $state<{
+		groupId: string;
+		index: number;
+		carried?: string;
+		atStart?: boolean;
+	} | null>(null);
 
 	/**
 	 * Which task's editor to open, when the caret is coming back up from a row
 	 * that was backspaced away. Cleared as soon as the row reports it opened, so
 	 * the same row can be reached again the next time.
 	 */
-	let opening = $state<string | null>(null);
+	let opening = $state<{ id: string; at: number | null } | null>(null);
 
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
 
@@ -216,7 +222,35 @@
 		}
 
 		inserting = null;
-		opening = above?.id ?? null;
+		opening = above ? { id: above.id, at: null } : null;
+	}
+
+	/**
+	 * Backspace at the very start of a task that still has something in it: the
+	 * two become one, and the caret waits at the seam.
+	 *
+	 * Quietly, with no message. Nothing was taken away — the words are all still
+	 * on the sheet, a line higher — so a toast saying "Deleted." would be a lie
+	 * about the one thing it is there to report. The row above simply grew.
+	 *
+	 * Refused, and then the key does nothing at all, when the two will not fit
+	 * in one task. That is the honest answer: a row that filled up and spilled
+	 * cannot be poured back into the row it came from, and silently dropping
+	 * the overflow to make it fit would lose writing.
+	 */
+	function join(groupId: string, index: number, taskId: string, text: string): boolean {
+		const above = sheet.groups.find((group) => group.id === groupId)?.tasks[index - 1];
+		if (!above) return false;
+
+		const seam = length(above.text);
+		if (seam + length(text) > LIMITS.taskText) return false;
+
+		sheet.editTask(above.id, above.text + text);
+		sheet.deleteTask(taskId);
+
+		inserting = null;
+		opening = { id: above.id, at: seam };
+		return true;
 	}
 
 	/**
@@ -465,6 +499,7 @@
 								disabled={!sheet.canAddTask}
 								opened
 								initial={inserting.carried ?? ''}
+								atStart={inserting.atStart ?? false}
 								onadd={(text) => insert(group.id, taskIndex, text)}
 								onclose={() => (inserting = null)}
 								onback={() => back(group.id, taskIndex)}
@@ -483,14 +518,23 @@
 							{task}
 							groupId={group.id}
 							style={fig.style}
-							open={opening === task.id}
+							open={opening?.id === task.id}
+							openAt={opening?.id === task.id ? opening.at : null}
 							onstate={(state) => setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
-							onsplit={(carried) =>
+							onsplit={(next) =>
 								group.synthetic ||
-								(inserting = { groupId: group.id, index: taskIndex + 1, carried })}
+								(inserting = {
+									groupId: group.id,
+									// Above this row where the caret was at its very start, and
+									// under it everywhere else.
+									index: taskIndex + (next?.above ? 0 : 1),
+									carried: next?.carried,
+									atStart: next?.atStart
+								})}
 							onback={() => back(group.id, taskIndex, task.id)}
+							onjoin={(text) => join(group.id, taskIndex, task.id, text)}
 							onopened={() => (opening = null)}
 							onmove={(direction) => move(groupIndex, taskIndex, direction)}
 							ondrop={(target) => drop(task.id, target)}
@@ -512,6 +556,7 @@
 							disabled={!sheet.canAddTask}
 							opened
 							initial={inserting.carried ?? ''}
+							atStart={inserting.atStart ?? false}
 							onadd={(text) => insert(group.id, group.tasks.length, text)}
 							onclose={() => (inserting = null)}
 							onback={() => back(group.id, group.tasks.length)}
