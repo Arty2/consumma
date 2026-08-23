@@ -887,6 +887,42 @@ test('Backspace on the first task in a group deletes nothing', async ({ page }) 
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
+test('Enter on the row that makes a group opens its first task', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const made = page.getByRole('textbox', { name: 'New group' });
+	await made.fill('Market');
+	await made.press('Enter');
+
+	/*
+	 * A group that has just been made is certainly empty, so the next thing is
+	 * certainly a task — the same rule Enter on an existing empty group's title
+	 * follows, and by far the commoner way to reach an empty group, since
+	 * making one is what empties it. This row used to commit by blurring
+	 * itself, and a blur has no way to say Enter was what did it.
+	 */
+	const fresh = page.getByRole('textbox', { name: 'New task' });
+	await expect(fresh).toBeFocused();
+
+	await fresh.fill('Leeks');
+	await fresh.press('Enter');
+	await page.keyboard.press('Escape');
+
+	const market = page.locator('section[data-group]').nth(1);
+	await expect(market.getByRole('checkbox', { name: 'Leeks' })).toBeVisible();
+});
+
+test('tapping away from that row makes the group and nothing else', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	await page.getByRole('textbox', { name: 'New group' }).fill('Market');
+
+	// Only Enter means "and the next one". A tap somewhere else is somebody
+	// leaving the field, and it must not open a row they did not ask for.
+	await page.locator('main').click({ position: { x: 200, y: 420 } });
+
+	await expect(page.getByRole('button', { name: 'Market' })).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'New task' })).toHaveCount(0);
+});
+
 test('Enter on an empty group’s title opens a task inside it', async ({ page }) => {
 	await page.getByRole('button', { name: 'Add a group' }).click();
 	const made = page.getByRole('textbox', { name: 'New group' });

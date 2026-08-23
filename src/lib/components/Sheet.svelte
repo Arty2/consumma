@@ -407,17 +407,36 @@
 		return title === '' ? t.group.untitledInSentence : title;
 	}
 
-	function addGroup() {
+	/**
+	 * The row that makes a group, committed.
+	 *
+	 * `andOpen` is Enter rather than a tap somewhere else: a group that has just
+	 * been made is certainly empty, so the next thing is certainly a task, and
+	 * naming it and writing the first thing into it is one motion. It is the
+	 * same rule Enter on an existing empty group's title follows — and this is
+	 * the commoner way to reach an empty group by far, since making one is what
+	 * empties it.
+	 */
+	function addGroup(andOpen = false) {
 		const title = newGroupDraft.trim();
 		newGroupDraft = '';
 		newGroupOpen = false;
-		if (title !== '') sheet.addGroup(title);
+		if (title === '') return;
+
+		const id = sheet.addGroup(title);
+		if (andOpen && id !== null) inserting = { groupId: id, index: 0 };
 	}
 
 	function onNewGroupKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			(event.currentTarget as HTMLInputElement).blur();
+			/*
+			 * Committed here rather than by blurring the field, which is what this
+			 * used to do: the blur runs `addGroup` with nothing to add and closes
+			 * the row that has just opened. The same reason a group title commits
+			 * in its own keydown.
+			 */
+			addGroup(true);
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			newGroupDraft = '';
@@ -452,7 +471,7 @@
 				aria-label={t.group.new}
 				autofocus
 				bind:value={newGroupDraft}
-				onblur={addGroup}
+				onblur={() => addGroup()}
 				onkeydown={onNewGroupKeydown}
 			/>
 		{:else}

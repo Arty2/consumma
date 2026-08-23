@@ -1292,13 +1292,21 @@ relative` rather than a transform, which does not apply to an inline box.
     what the suite did, and the group came out collapsed behind the field it
     had just opened.
 
-100.  **Enter on a group title only opens a task when the group is empty.**
-      Naming a group and writing the first thing into it is one motion, and an
-      empty group is the only time the next thing is certainly a task. On a
-      group that already has tasks, somebody has come to change the name and
-      Enter is how they say they are done with it; an empty row opening
-      underneath put a caret in the middle of a list nobody was adding to, and
-      closed it again on the next tap anywhere.
+100.  **Enter on a group title only opens a task when the group is empty**, and
+      the row that makes a group counts. Naming a group and writing the first
+      thing into it is one motion, and an empty group is the only time the next
+      thing is certainly a task. On a group that already has tasks, somebody
+      has come to change the name and Enter is how they say they are done with
+      it; an empty row opening underneath put a caret in the middle of a list
+      nobody was adding to, and closed it again on the next tap anywhere.
+
+      The row that makes a group was left out at first, and it is the commoner
+      way to reach an empty group by far — making one is what empties it. It
+      committed by blurring its own field, and a blur cannot say whether Enter
+      caused it, so it now commits in the keydown like every other row here.
+      Tapping away still only makes the group: Enter alone means "and the next
+      one", which is also why the blur handler has to be `() => addGroup()`
+      rather than `addGroup`, or the event lands in the argument that decides.
 
 101.  **A group's name is quoted where the app says it back.** "Removed Weekend
       and 3 done" leaves the reader to work out where the name stopped, and a

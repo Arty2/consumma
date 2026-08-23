@@ -121,14 +121,15 @@ the moment there is something written in it.
 
 ### A group
 
-| Where          | Gesture         | What happens                                                    |
-| -------------- | --------------- | --------------------------------------------------------------- |
-| The title      | Tap             | Folds the group                                                 |
-| The title      | Two taps, `F2`  | Opens the name, leaving the group folded as it found it         |
-| The title      | Hold, then drag | Picks the whole group up; everything folds while it is carried  |
-| The `(…)` icon | Tap             | Folds the group, for anyone who would rather aim at it          |
-| The `(…)` icon | Hold            | Folds **every** group — or opens them all, if none is left open |
-| The name field | `Enter`         | Commits — and on an empty group, opens its first task           |
+| Where             | Gesture         | What happens                                                    |
+| ----------------- | --------------- | --------------------------------------------------------------- |
+| The title         | Tap             | Folds the group                                                 |
+| The title         | Two taps, `F2`  | Opens the name, leaving the group folded as it found it         |
+| The title         | Hold, then drag | Picks the whole group up; everything folds while it is carried  |
+| The `(…)` icon    | Tap             | Folds the group, for anyone who would rather aim at it          |
+| The `(…)` icon    | Hold            | Folds **every** group — or opens them all, if none is left open |
+| The name field    | `Enter`         | Commits — and on an empty group, opens its first task           |
+| The new-group `…` | `Enter`         | Makes the group and opens its first task                        |
 
 Folded, the icon reads `(1/3)`: what is still to do, out of what is hidden.
 Half done counts as still to do. With nothing in the group done it reads `(3)`,
@@ -147,8 +148,10 @@ undo. It is only offered with the group in hand — while the name is open, or
 while the group is folded — so a list being read does not grow a column of
 live deletes down its side.
 
-The `…` under the last group makes a new one. A task dragged onto it makes one
-on the spot and becomes its first, arriving unnamed.
+The `…` under the last group makes a new one, and Enter there opens its first
+task straight away — a group just made is certainly empty. Tapping away
+instead just makes the group. A task dragged onto that row makes one on the
+spot and becomes its first, arriving unnamed.
 
 ### The sheet, and the back of it
 
