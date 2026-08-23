@@ -29,6 +29,15 @@
 		synthetic: boolean;
 		/** What the group's unfinished tasks come to, or nothing to total. */
 		total: string | null;
+		/**
+		 * Asked for by the sheet: open the name for changing, caret at the end.
+		 * `open` is taken — it is how many tasks in here are still to do.
+		 *
+		 * Backspace on the empty row Enter put inside this group comes back here,
+		 * because the name is what opened it — see `back` in Sheet.
+		 */
+		naming: boolean;
+		onnamed: () => void;
 		ontoggle: () => void;
 		/** A long press on the fold icon takes the whole sheet with it. */
 		onfoldall: () => void;
@@ -51,6 +60,8 @@
 		finished,
 		synthetic,
 		total,
+		naming,
+		onnamed,
 		ontoggle,
 		onfoldall,
 		onrename,
@@ -62,6 +73,7 @@
 
 	let editing = $state(false);
 	let draft = $state('');
+	let field = $state<HTMLTextAreaElement | null>(null);
 	/** Set for the length of the pop, so the group leaves rather than vanishes. */
 	let going = $state(false);
 
@@ -196,6 +208,25 @@
 		draft = title;
 		editing = true;
 	}
+
+	/*
+	 * Asked for from outside — the empty row inside this group was backspaced
+	 * away, and the name is where it came from.
+	 *
+	 * The caret goes to the end of the name rather than wherever autofocus
+	 * leaves it: the writing carries on where it stopped, which is the same
+	 * thing backspacing out of a row into the task above does.
+	 */
+	$effect(() => {
+		if (!naming || editing || synthetic) return;
+
+		startEditing();
+		queueMicrotask(() => {
+			field?.focus();
+			field?.setSelectionRange(draft.length, draft.length);
+		});
+		onnamed();
+	});
 
 	function commit() {
 		editing = false;
@@ -340,6 +371,7 @@
 				class="title caps"
 				rows="1"
 				lang={langOf(draft)}
+				bind:this={field}
 				bind:value={draft}
 				use:grow={draft}
 				maxlength={LIMITS.groupTitle}

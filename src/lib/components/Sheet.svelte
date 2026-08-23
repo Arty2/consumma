@@ -41,6 +41,13 @@
 	 */
 	let opening = $state<{ id: string; at: number | null } | null>(null);
 
+	/**
+	 * Which group's name to open, when the caret is coming back up out of the
+	 * row the name itself opened. Cleared as soon as the header reports it, the
+	 * same way `opening` is.
+	 */
+	let openingGroup = $state<string | null>(null);
+
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
 
 	/*
@@ -222,7 +229,25 @@
 		}
 
 		inserting = null;
-		opening = above ? { id: above.id, at: null } : null;
+
+		if (above) {
+			opening = { id: above.id, at: null };
+			return;
+		}
+
+		/*
+		 * Nothing above it in the group, so the caret goes up to the group's own
+		 * name — which is where the row came from. Enter on an empty group's
+		 * title opens the first task inside it; backspacing out of that row is
+		 * the same motion in reverse, and it used to close the row and leave the
+		 * caret nowhere at all, one keystroke into naming a list.
+		 *
+		 * Only for a row still being typed. A real first task emptied to nothing
+		 * has already been refused above: deleting it would take the caret
+		 * somewhere no task is, and the task itself with it.
+		 */
+		opening = null;
+		openingGroup = groupId;
 	}
 
 	/**
@@ -489,6 +514,8 @@
 				finished={group.tasks.every((task) => task.state === 'done')}
 				synthetic={group.synthetic}
 				total={fig.total}
+				naming={openingGroup === group.id}
+				onnamed={() => (openingGroup = null)}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
 				onfoldall={foldAll}
 				onrename={(title) => sheet.renameGroup(group.id, title)}

@@ -1420,6 +1420,14 @@ relative` rather than a transform, which does not apply to an inline box.
       anything being deleted, which is why the join takes the task to remove as
       an optional argument rather than assuming there is one.
 
+      And a row with no task above it goes up to the group's own name, rather
+      than closing and leaving the caret nowhere. Enter on an empty group's
+      title is what puts that row there (§100); backspacing out of it is the
+      same motion in reverse, and stopping dead one keystroke into naming a
+      list is not an answer. Only for a row still being typed — a real first
+      task emptied to nothing is already refused, because deleting it would
+      take the caret somewhere no task is and the task with it.
+
 109.  **An open add row's box takes the ink once something is written in it.**
       Empty, the row is still an offer, and its box is drawn as faintly as the
       ellipsis it replaced. The moment there is writing the row is a task — it

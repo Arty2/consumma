@@ -93,14 +93,14 @@ placed.
 
 ### While a row is open
 
-| Gesture                     | What happens                                                              |
-| --------------------------- | ------------------------------------------------------------------------- |
-| `Enter`                     | Cuts the task at the caret; the rest goes to a new row, caret at its head |
-| `Enter` at the start        | The writing goes down a row and an empty one opens above it               |
-| `Backspace` at the start    | Joins the task onto the end of the one above, caret at the seam           |
-| `Backspace` on an empty row | The row goes, caret to the end of the one above                           |
-| `Escape`                    | Discards and closes                                                       |
-| Overflow                    | At 200 characters the row fills up and the rest starts the next one       |
+| Gesture                     | What happens                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------- |
+| `Enter`                     | Cuts the task at the caret; the rest goes to a new row, caret at its head                      |
+| `Enter` at the start        | The writing goes down a row and an empty one opens above it                                    |
+| `Backspace` at the start    | Joins the task onto the end of the one above, caret at the seam                                |
+| `Backspace` on an empty row | The row goes, caret to the end of the one above — or to the group's name, if it opened the row |
+| `Escape`                    | Discards and closes                                                                            |
+| Overflow                    | At 200 characters the row fills up and the rest starts the next one                            |
 
 Nothing is ever refused mid-sentence. A word travels whole, and a paste spills
 by the same rule as typing. A row that ran out of room is the one exception to
@@ -137,7 +137,8 @@ since both halves of the fraction would be the same number.
 Enter on the name commits it. On a group with nothing in it yet it also opens
 the first task, because naming a group and writing the first thing into it is
 one motion; on a group that already has tasks it does not, because somebody
-there came to change the name and is done.
+there came to change the name and is done. Backspace on that empty first row
+goes back to the name, which is where it came from.
 
 The mark out in the margin has two jobs and is never drawn without one. While
 there is something in the group still to do it clears the finished tasks; once

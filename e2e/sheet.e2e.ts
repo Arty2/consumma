@@ -914,6 +914,47 @@ test('Enter on an empty group’s title opens a task inside it', async ({ page }
 	await expect(market.getByRole('checkbox', { name: 'Milk' })).toBeVisible();
 });
 
+test('Backspace out of that first row goes back to the name', async ({ page }) => {
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const made = page.getByRole('textbox', { name: 'New group' });
+	await made.fill('Market');
+	await made.press('Enter');
+
+	await page.locator('section[data-group]').nth(1).locator('.title').dblclick();
+	await page.getByRole('textbox', { name: 'Group title' }).press('Enter');
+
+	const fresh = page.getByRole('textbox', { name: 'New task' });
+	await expect(fresh).toBeFocused();
+
+	/*
+	 * The name is where this row came from, so it is where the caret goes back
+	 * to — the same motion in reverse. It used to close the row and leave the
+	 * caret nowhere at all, one keystroke into naming a list.
+	 */
+	await fresh.press('Backspace');
+
+	const title = page.getByRole('textbox', { name: 'Group title' });
+	await expect(title).toBeFocused();
+	await expect(title).toHaveValue('Market');
+	// At the end of it, so the writing carries on where it stopped.
+	expect(await title.evaluate((el: HTMLTextAreaElement) => el.selectionStart)).toBe(6);
+});
+
+test('Backspace out of a row with a task above it goes to the task', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	// The row the add row left open, backspaced with nothing in it: the task
+	// above wins, and the group's name is not reached for.
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const fresh = page.getByRole('textbox', { name: 'New task' });
+	await fresh.press('Backspace');
+
+	const above = page.getByRole('textbox').first();
+	await expect(above).toBeFocused();
+	await expect(above).toHaveValue('Bread');
+	await expect(page.getByRole('textbox', { name: 'Group title' })).toHaveCount(0);
+});
+
 test('Enter on a group that has tasks in it only commits the name', async ({ page }) => {
 	await addTask(page, 'Bread');
 
