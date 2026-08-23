@@ -152,7 +152,9 @@ on the spot and becomes its first, arriving unnamed.
 The menu holds one button that takes something away, and it reads LEAVE where
 the list has a code and DELETE where it has not: with a code the list carries
 on without this device and can be come back to, and without one this device is
-the only place it has ever been. Both stop and ask first.
+the only place it has ever been. Both stop and ask first, and both leave the
+same ten-second `UNDO?` everything else here does — the list comes back with
+its code, its folded groups and its place in the switcher.
 
 JOIN asks what to do with the tasks already here, and neither answer throws
 anything away. Take them and they go to the list being joined; leave them and
@@ -170,8 +172,8 @@ those three. It is only ever an offer — nothing sweeps the sheet by itself —
 and it is made once per run rather than once per tick after the third.
 
 A message with `UNDO?` on it stands for ten seconds after anything that takes
-something away — a deleted task, a cleared group, a removed group — and after
-a move made with a finger, which is the one change that leaves no trace of
+something away — a deleted task, a cleared group, a removed group, a list left
+or deleted — and after a move made with a finger, which is the one change that leaves no trace of
 where the thing came from. A move made with `Alt+↑/↓` says where the task went
 instead: it is exact, and a run of them would raise a message a step.
 

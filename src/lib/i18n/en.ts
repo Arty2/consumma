@@ -124,6 +124,12 @@ export const en = {
 		addedSkipped: ({ count, skipped }: { count: number; skipped: number }) =>
 			`Added ${count}, skipped ${skipped} already there.`,
 		left: 'Left this device.',
+		/*
+		 * The other half of the button that says LEAVE or DELETE. A list with no
+		 * code was nowhere but here, so it was not left anywhere — it is gone,
+		 * and the message may not soften that.
+		 */
+		deletedList: 'Deleted this list.',
 		synced: 'Synced.',
 		undo: 'UNDO?',
 		/*

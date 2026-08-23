@@ -15,6 +15,23 @@ import { ui } from './ui.svelte';
  * 0 or 1 purely by reading. It is only materialized the moment a second list
  * actually comes into being, in `createList()`.
  */
+/** A list that has just gone from this device, and everything it was. */
+export type Gone = {
+	/**
+	 * The whole index as it stood, or null on a device that never had one.
+	 *
+	 * The whole of it, and not just the row that went: removing a list also
+	 * rewrites what is left, and the rewrite can take the index away
+	 * altogether — one list remaining under the bare keys needs no index at
+	 * all, so `#persist` drops it. Putting one row back into whatever that
+	 * left behind restores the wrong shape, and the other list stops being
+	 * reachable. This is the state, not the difference.
+	 */
+	index: { entries: ListEntry[]; current: string | null } | null;
+	/** The gone list's five keys, exactly as they were stored. */
+	values: Record<string, string>;
+};
+
 export class Lists {
 	entries: ListEntry[] = $state([]);
 	current: string | null = $state(null);
@@ -175,16 +192,20 @@ export class Lists {
 	}
 
 	/**
-	 * DELETE, across lists. `sync.forget()` already wipes whatever key-set is
-	 * active and reloads it blank — this only decides what happens next: land
-	 * on whichever remaining list was used most recently, or, once none are
-	 * left, put the device back to a true zero-trace state under the bare
-	 * keys, exactly as one that has never remembered more than one list.
+	 * LEAVE and DELETE, across lists. `sync.forget()` already wipes whatever
+	 * key-set is active and reloads it blank — this only decides what happens
+	 * next: land on whichever remaining list was used most recently, or, once
+	 * none are left, put the device back to a true zero-trace state under the
+	 * bare keys, exactly as one that has never remembered more than one list.
+	 *
+	 * Returns what went, so the toast can offer it back.
 	 */
-	deleteCurrent(): void {
+	deleteCurrent(): Gone | null {
+		const gone = this.#capture();
+
 		sync.forget();
 
-		if (this.entries.length === 0) return;
+		if (this.entries.length === 0) return gone;
 
 		const deletedId = this.current;
 		const remaining = this.entries.filter((entry) => entry.id !== deletedId);
@@ -198,11 +219,84 @@ export class Lists {
 			sheet.switchTo(keys);
 			sync.switchTo(keys);
 			ui.switchTo(keys);
-			return;
+			return gone;
 		}
 
 		const survivor = [...remaining].sort((a, b) => b.lastUsedAt - a.lastUsedAt)[0];
 		this.switchTo(survivor.id);
+		return gone;
+	}
+
+	/**
+	 * Everything about the list that is about to go, read off the device as the
+	 * strings it is stored as.
+	 *
+	 * Not the parsed document: this is a copy of the five keys the list lives
+	 * under, so putting it back is writing them back. The whole of what is lost
+	 * is here — leaving touches nothing on the server, and never did — and its
+	 * row in the index goes with it, so the switcher gets the list back with the
+	 * name and the dates it had rather than as something newly made.
+	 */
+	#capture(): Gone | null {
+		const entry = this.entries.find((candidate) => candidate.id === this.current) ?? null;
+		if (this.entries.length > 0 && entry === null) return null;
+
+		const keys = keysFor(entry === null || entry.legacy ? null : entry.id);
+		const values: Record<string, string> = {};
+
+		for (const key of [keys.doc, keys.code, keys.version, keys.synced, keys.collapsed]) {
+			const value = read(key);
+			if (value !== null) values[key] = value;
+		}
+
+		const index =
+			this.entries.length > 0 ? { entries: [...this.entries], current: this.current } : null;
+
+		return { index, values };
+	}
+
+	/**
+	 * Undo for the above, and the only undo in the app that is an undelete
+	 * rather than a change stamped forward.
+	 *
+	 * Everywhere else that rule holds because a device that already synced the
+	 * deletion would otherwise win the next merge and re-delete everything.
+	 * Nothing here ever reached a merge: leaving is local, the server was never
+	 * told, and there is no stamp to move. So this is the same bytes going back
+	 * under the same keys, which is what makes it exact.
+	 */
+	restore(gone: Gone): void {
+		for (const [key, value] of Object.entries(gone.values)) write(key, value);
+
+		const index = gone.index;
+		const open =
+			index === null ? null : (index.entries.find((entry) => entry.id === index.current) ?? null);
+
+		// Read before `#persist`, which may take the index away again and empty
+		// what it was read from.
+		const keys = keysFor(open === null || open.legacy ? null : open.id);
+
+		if (index !== null) {
+			this.entries = index.entries;
+			this.current = index.current;
+
+			/*
+			 * One legacy entry and nothing else is a device that never had an
+			 * index, so this takes it away again — which is exactly the shape
+			 * this device had a moment ago.
+			 */
+			this.#persist();
+		}
+
+		/*
+		 * Pointed at the keys here rather than through `switchTo`, which refuses
+		 * to move to the list it is already on — and after a delete that is
+		 * precisely where it may be, holding a blank sheet under those very
+		 * keys.
+		 */
+		sheet.switchTo(keys);
+		sync.switchTo(keys);
+		ui.switchTo(keys);
 	}
 
 	/**

@@ -1360,6 +1360,30 @@ relative` rather than a transform, which does not apply to an inline box.
       the lead is exactly what was missing. The ✕ does not move: it is placed
       where every corner control in the app is placed.
 
+107.  **Leaving has an undo, like everything else that takes something away.**
+      It was the one change that offered nothing afterwards, on the reasoning
+      that the confirm in front of it was enough. A confirm stops the accident;
+      it does nothing for the change of mind, which is what an undo is for —
+      and the tap that ends a list is exactly the tap somebody regrets a second
+      later. §1 said DELETE removes the list from this device only, which is
+      what makes this possible: nothing left the device, the server was never
+      told, and what went is five keys' worth of strings this device wrote
+      itself.
+
+      So it is the one undo in the app that is an undelete rather than a change
+      stamped forward. The forward rule exists because a device that already
+      synced a deletion would otherwise win the next merge and re-delete
+      everything; nothing here ever reached a merge, so the same bytes go back
+      under the same keys and the list returns with its code, its folded groups
+      and its place in the switcher.
+
+      What is captured is the **whole index**, not the row that went. Removing a
+      list rewrites what is left, and the rewrite can take the index away
+      altogether — one list remaining under the bare keys needs none, so
+      `#persist` drops it. Putting one row back into whatever that left behind
+      restores the wrong shape: in the case that found it, the other list was
+      still on the device and no longer reachable from the switcher.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

@@ -357,10 +357,40 @@
 		);
 	}
 
+	/**
+	 * LEAVE, and DELETE where there is no code — and a way back from either.
+	 *
+	 * This is the most destructive thing in the app and it was the one change
+	 * that offered nothing afterwards, on the reasoning that the confirm in
+	 * front of it was enough. A confirm stops the accident; it does nothing for
+	 * the change of mind, which is what an undo is for, and every other removal
+	 * here has one. Nothing about it is unrecoverable either: leaving is local,
+	 * the server was never told, and what went is five keys' worth of strings
+	 * this device wrote itself.
+	 *
+	 * Read which act it was before doing it — the code is gone by the time the
+	 * message is written.
+	 */
 	function onDelete() {
 		panel = null;
-		lists.deleteCurrent();
-		ui.say(t.toast.left);
+
+		const wasShared = sync.code !== null;
+		const gone = lists.deleteCurrent();
+		const said = wasShared ? t.toast.left : t.toast.deletedList;
+
+		if (!gone) {
+			ui.say(said);
+			return;
+		}
+
+		ui.say(said, {
+			label: t.toast.undo,
+			run: () => {
+				lists.restore(gone);
+				// The change is undone, so the message describing it goes at once.
+				ui.dismiss(true);
+			}
+		});
 	}
 </script>
 

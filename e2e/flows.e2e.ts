@@ -481,6 +481,32 @@ test('LEAVE shows the code one last time, then wipes only this device', async ({
 	expect(code).toMatch(/^[0-9a-f]{12}$/);
 });
 
+test('leaving offers the list back, code and all', async ({ page }) => {
+	await withCode(page);
+	await addTask(page, 'Bread');
+
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+	/*
+	 * The confirm stops the accident and the undo covers the change of mind,
+	 * which is the arrangement every other removal here has. Nothing about
+	 * this one is beyond recovery: leaving is local, the server was never
+	 * told, and what went is five keys' worth of strings this device wrote.
+	 */
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+	await expect(task(page, 'Bread')).toBeVisible();
+
+	// The code with it, or the list has come back as a different list.
+	expect(await page.evaluate(() => localStorage.getItem('consumma:code'))).toMatch(
+		/^[0-9a-f]{12}$/
+	);
+
+	await page.reload();
+	await expect(task(page, 'Bread')).toBeVisible();
+});
+
 test('joining with tasks already here asks rather than deciding', async ({ page }) => {
 	await addTask(page, 'Bread');
 
