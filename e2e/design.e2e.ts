@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { fromMenu, openMenu } from './menu';
+import { fromMenu, openMenu, turnOnDebug } from './menu';
 
 /*
  * M2's acceptance, as far as a browser can check it: two colours and nothing
@@ -157,8 +157,13 @@ test('debug draws every box, and only when it is asked to', async ({ page }) => 
 	expect(await outlined()).toBe(0);
 	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBeUndefined();
 
+	/*
+	 * A press on the burger rather than a button on the panel: the switch is not
+	 * there until it is on, because it is a tool for whoever is building the app
+	 * rather than a state the app has.
+	 */
+	await turnOnDebug(page);
 	await openMenu(page);
-	await page.getByRole('button', { name: 'Debug: Off' }).click();
 
 	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBe('on');
 	expect(await outlined()).toBeGreaterThan(10);
@@ -167,6 +172,32 @@ test('debug draws every box, and only when it is asked to', async ({ page }) => 
 	await page.getByRole('button', { name: 'Debug: On' }).click();
 	expect(await page.evaluate(() => document.documentElement.dataset.debug)).toBeUndefined();
 	expect(await outlined()).toBe(0);
+});
+
+test('the debug switch is not on the panel until it is on', async ({ page }) => {
+	/*
+	 * It is a tool for whoever is building the app rather than a state the app
+	 * has, and a switch for it sitting on the panel says the opposite — it is
+	 * the one thing in there that is not about this list. A press on the burger
+	 * is the way in, so it is known to whoever needs it and to nobody else.
+	 */
+	await openMenu(page);
+	await expect(page.getByRole('button', { name: /^Debug/ })).toHaveCount(0);
+	await page.keyboard.press('Escape');
+
+	await turnOnDebug(page);
+
+	// The press swallows the tap that would have opened the menu, so the panel
+	// is still shut — the same swallow a drop uses.
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toHaveCount(0);
+
+	await openMenu(page);
+	await expect(page.getByRole('button', { name: 'Debug: On' })).toBeVisible();
+
+	// And the button is how it goes off again, which takes the section with it.
+	await page.getByRole('button', { name: 'Debug: On' }).click();
+	await expect(page.getByRole('button', { name: /^Debug/ })).toHaveCount(0);
+	await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
 });
 
 test('one handwritten face, served from our origin, and only one', async ({ page }) => {
@@ -526,6 +557,12 @@ test('the credit names the version, the project and both authors', async ({ page
 	await expect(credit).toContainText(`v${version}`);
 	await expect(credit).toContainText('heracl.es/consumma');
 
+	// The two authors are held together by a hard space, so a narrow screen can
+	// never break the line between them and leave one of them hanging alone.
+	expect(await credit.locator('.dedication').evaluate((el) => el.textContent)).toContain(
+		'and\u00a0Claude'
+	);
+
 	const dedication = credit.getByText('Dialectic Acheropoieton', { exact: false });
 	await expect(dedication).toHaveCSS('font-style', 'italic');
 
@@ -549,10 +586,10 @@ test('the menu is told apart by tears, and they are the same mark as Loose ends'
 }) => {
 	await openMenu(page);
 
-	// One before each of the two headings, one above the debug toggle
-	// (which has no heading of its own), and one above the credit.
+	// One before each of the two headings and one above the credit. The debug
+	// section has a fourth, and is not here at all until it is switched on.
 	const tears = page.getByRole('dialog', { name: 'Menu' }).locator('.tear svg path');
-	await expect(tears).toHaveCount(4);
+	await expect(tears).toHaveCount(3);
 
 	// Drawn and dashed, at the weight everything else here is drawn at.
 	for (const dash of await tears.evaluateAll((paths) =>
@@ -600,6 +637,10 @@ test('every underline in the app is drawn, not a CSS decoration', async ({ page 
 });
 
 test('every button in the menu is boxed, and no two boxes are alike', async ({ page }) => {
+	// With the debug switch on, so its buttons are among the ones checked —
+	// they are buttons in the menu like any other, they are simply not there
+	// until it is on.
+	await turnOnDebug(page);
 	await openMenu(page);
 
 	const menu = page.locator('[role="dialog"]');

@@ -186,7 +186,11 @@ export const en = {
 		debug: ({ on }: { on: boolean }) => `Debug: ${on ? 'On' : 'Off'}`,
 		debugLog: 'Debug log',
 		credit: 'Dialectic Acheropoieton',
-		creditOf: 'of Heracles Papatheodorou and Claude',
+		/*
+		 * A hard space before the last name, so the two authors are never split
+		 * across a line break with one of them left hanging alone.
+		 */
+		creditOf: 'of Heracles Papatheodorou and\u00a0Claude',
 		creditHome: 'heracl.es/consumma'
 	},
 

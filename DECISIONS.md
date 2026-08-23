@@ -1490,6 +1490,30 @@ relative` rather than a transform, which does not apply to an inline box.
       checkbox's press is its only one. Two lengths where one would do is a
       thing to be able to justify twice over.
 
+112.  **The debug switch is not on the panel until it is on.** It is a tool for
+      whoever is building the app rather than a state the app has — §12.14's
+      "no chrome" is about exactly this — and a switch for it sitting in the
+      menu says the opposite: it is the one thing in there that is not about
+      this list, and it was the first thing under the last tear where anybody
+      scrolling would meet it.
+
+      A long press on the burger turns it on, because the switch lives in the
+      menu and that is the menu. The press swallows the tap that would have
+      opened the panel, the same swallow a drop uses, and `longPress` buzzes on
+      the threshold itself — which is the whole of what says the press landed,
+      since the panel is not open to show it. The button stays where it was,
+      because something has to turn it off again, and it is only ever seen by
+      somebody who has just turned it on.
+
+      Nothing else changed: the log, what it keeps, and the fact that turning it
+      off clears it are all as they were.
+
+113.  **The two authors are held together by a hard space.** A line break
+      between "and" and the last name leaves one of them hanging alone at the
+      start of a line, which is the one place on the sheet where the typography
+      is the point. Written as `\u00a0` in the catalogue rather than as an
+      invisible character in the source.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

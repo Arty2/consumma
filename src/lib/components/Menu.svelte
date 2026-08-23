@@ -663,39 +663,51 @@
 			{/if}
 
 			<!--
+				Not here at all until it is on.
+				
+				Debug is a tool for whoever is building the app rather than a state
+				the app has, and a switch for it sitting on the panel says the
+				opposite — it is the one thing in here that is not about this list.
+				A long press on the burger is what turns it on, so the way in is
+				known to whoever needs it and to nobody else. The button stays,
+				because something has to turn it off again, and it is only ever
+				seen by someone who has just turned it on.
+
 				No heading of its own — just the tear every other section gets,
 				marking off what every sync and join attempt actually did, on this
 				device only, kept only while this is on. No console to open on a
 				phone; Copy is how it leaves.
 			-->
-			<div class="tear"><Perforation seed="menu-debug" /></div>
+			{#if diagnostics.enabled}
+				<div class="tear"><Perforation seed="menu-debug" /></div>
 
-			<div class="pair debug">
-				<button
-					type="button"
-					class="caps boxed"
-					onclick={() => {
-						tapped();
-						diagnostics.toggle();
-					}}
-				>
-					<HandRect seed="btndebug" wobble={1.4} radius={3} />
-					{t.menu.debug({ on: diagnostics.enabled })}
-				</button>
-				{#if diagnostics.enabled && diagnostics.entries.length > 0}
-					<button type="button" class="caps boxed" onclick={onCopyLog}>
-						<HandRect seed="btncopylog" wobble={1.4} radius={3} />
-						{logCopied ? t.menu.copied : t.menu.copy}
+				<div class="pair debug">
+					<button
+						type="button"
+						class="caps boxed"
+						onclick={() => {
+							tapped();
+							diagnostics.toggle();
+						}}
+					>
+						<HandRect seed="btndebug" wobble={1.4} radius={3} />
+						{t.menu.debug({ on: diagnostics.enabled })}
 					</button>
-				{/if}
-			</div>
-
-			{#if diagnostics.enabled && diagnostics.entries.length > 0}
-				<div class="log" role="log" aria-label={t.menu.debugLog}>
-					{#each diagnostics.entries as entry, i (i)}
-						<p class="entry">{entry}</p>
-					{/each}
+					{#if diagnostics.entries.length > 0}
+						<button type="button" class="caps boxed" onclick={onCopyLog}>
+							<HandRect seed="btncopylog" wobble={1.4} radius={3} />
+							{logCopied ? t.menu.copied : t.menu.copy}
+						</button>
+					{/if}
 				</div>
+
+				{#if diagnostics.entries.length > 0}
+					<div class="log" role="log" aria-label={t.menu.debugLog}>
+						{#each diagnostics.entries as entry, i (i)}
+							<p class="entry">{entry}</p>
+						{/each}
+					</div>
+				{/if}
 			{/if}
 
 			<footer class="credit">

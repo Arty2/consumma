@@ -166,6 +166,7 @@ spot and becomes its first, arriving unnamed.
 | The sheet      | Drag rightwards        | Turns the paper over to the menu — from bare paper         |
 | The menu       | Drag rightwards        | Turns it back, from anywhere on it, buttons included       |
 | Top right      | Tap the burger         | The same turn, without the drag                            |
+| Top right      | Hold the burger        | Turns the debug switch on and off — see below              |
 | The code field | Tap it while empty     | Pastes the code from the clipboard, if there is one there  |
 | Top right      | Tap the theme mark     | Theme: the opposite of the phone, then following it again  |
 | Top left       | Tap the mark           | Syncs. It is only there when there is something to say     |
@@ -202,6 +203,13 @@ something away — a deleted task, a cleared group, a removed group, a list left
 or deleted — and after a move made with a finger, which is the one change that leaves no trace of
 where the thing came from. A move made with `Alt+↑/↓` says where the task went
 instead: it is exact, and a run of them would raise a message a step.
+
+The menu holds one thing that is not about the list: a debug switch, which
+outlines every box on the page in red and keeps a log of what each sync
+attempt did. It is not on the panel at all until it is on — holding the burger
+is what turns it on, with a buzz to say the press landed, and the button it
+puts there is what turns it off again. Nothing about it syncs or leaves the
+device.
 
 ### What the sheet reads
 

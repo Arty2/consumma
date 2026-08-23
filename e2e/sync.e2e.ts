@@ -1,5 +1,5 @@
 import { expect, test, type Page, type Route } from '@playwright/test';
-import { openMenu } from './menu';
+import { openMenu, turnOnDebug } from './menu';
 import {
 	RoomStore,
 	isRoomId,
@@ -376,11 +376,18 @@ test('the debug log is off by default, and shows what a sync attempt did once tu
 
 	await openMenu(page);
 
-	// Off by default: no log, no way to copy one.
+	/*
+	 * Off by default, and not on the panel at all while it is: debug is a tool
+	 * for whoever is building the app rather than a state the app has, so a
+	 * press on the burger is what turns it on and there is nothing to find
+	 * otherwise.
+	 */
 	await expect(page.locator('[role="log"][aria-label="Debug log"]')).toHaveCount(0);
 	await expect(page.getByRole('button', { name: 'Copy', exact: true })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: /^Debug/ })).toHaveCount(0);
 
-	await page.getByRole('button', { name: 'Debug: Off' }).click();
+	await turnOnDebug(page);
+	await openMenu(page);
 	await expect(page.getByRole('button', { name: 'Debug: On' })).toBeVisible();
 
 	// Nothing has happened yet, so there is nothing to show or copy.
@@ -397,15 +404,17 @@ test('the debug log is off by default, and shows what a sync attempt did once tu
 	// carries its own "Copy" button — the debug log's is the later one.
 	await page.getByRole('button', { name: 'Copy', exact: true }).last().click();
 
-	// Turning it off clears what was kept, the same as every other thing here
-	// that takes something away.
+	/*
+	 * Turning it off clears what was kept, the same as every other thing here
+	 * that takes something away — and takes the switch with it, since the whole
+	 * section goes when it is off.
+	 */
 	await page.getByRole('button', { name: 'Debug: On' }).click();
-	await expect(page.getByRole('button', { name: 'Debug: Off' })).toBeVisible();
+	await expect(page.getByRole('button', { name: /^Debug/ })).toHaveCount(0);
 	await expect(log).toHaveCount(0);
 
-	// And the choice itself — on or off — survives a reload.
-	await page.getByRole('button', { name: 'Debug: Off' }).click();
-	await page.keyboard.press('Escape');
+	// And the choice itself survives a reload.
+	await turnOnDebug(page);
 	await page.reload();
 	await openMenu(page);
 	await expect(page.getByRole('button', { name: 'Debug: On' })).toBeVisible();
@@ -417,9 +426,7 @@ test('the debug log shows what a push actually sent, and its result', async ({ p
 	await page.evaluate(() => localStorage.clear());
 	await page.reload();
 
-	await openMenu(page);
-	await page.getByRole('button', { name: 'Debug: Off' }).click();
-	await page.keyboard.press('Escape');
+	await turnOnDebug(page);
 
 	await addTask(page, 'Bread');
 	await openMenu(page);

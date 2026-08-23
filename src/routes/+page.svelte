@@ -470,7 +470,7 @@
 			<ListSwitcher />
 			<div class="controls">
 				<ThemeButton />
-				<MenuButton onopen={openMenu} />
+				<MenuButton onopen={openMenu} ondebug={() => diagnostics.toggle()} />
 			</div>
 		</div>
 		<!--
