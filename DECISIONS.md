@@ -1464,6 +1464,32 @@ relative` rather than a transform, which does not apply to an inline box.
       would reset the drag between `stop()` and the drop it was about to
       deliver, and no drop would ever land again.
 
+111.  **The group title's press has two lengths in it.** Renaming was two taps
+      and nothing else, which is a gesture you have to be told about — where a
+      press is what a finger tries on anything it suspects of holding more. So
+      holding briefly opens the name and holding on picks the group up, with a
+      buzz at each threshold: the first says a release now will open the name,
+      the second says the group is in hand. Twice the shorter press, so the two
+      are told apart by feel rather than by counting.
+
+      It answers on the release rather than at the threshold, and it has to.
+      Nothing at a threshold can know whether the finger is going to stay down
+      — and opening the name swaps the title for its own edit field, which
+      takes the node out of the document, so a press that fired there would
+      leave the longer one nothing to fire on. The buzz is what stands in for
+      knowing.
+
+      The click that follows either stage is swallowed, the same way the click
+      after a drop already was, or the group folds underneath what the press
+      has just done. It is armed before the hooks run rather than after,
+      because the shorter press can take the node — and the listener that does
+      the swallowing — out of the document.
+
+      No other control has two presses. Everything else lifts at
+      `LONG_PRESS_MS`, and can: a task's other gestures are taps, and the
+      checkbox's press is its only one. Two lengths where one would do is a
+      thing to be able to justify twice over.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

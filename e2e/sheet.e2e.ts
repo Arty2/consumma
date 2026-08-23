@@ -17,6 +17,14 @@ async function addTask(page: Page, text: string, groupIndex = 0) {
 	await page.keyboard.press('Escape');
 }
 
+/**
+ * Long enough to pick a group up.
+ *
+ * A group title has two presses in it — the shorter one opens the name — so it
+ * waits twice as long as a task does. See LIFT_MS in src/lib/dnd/longpress.ts.
+ */
+const CARRY_MS = 1100;
+
 function task(page: Page, text: string) {
 	return page.getByRole('checkbox', { name: text });
 }
@@ -637,7 +645,7 @@ test('a lift interrupted by the row leaving does not stick', async ({ page }) =>
 	const box = (await title.boundingBox())!;
 	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 	await page.mouse.down();
-	await page.waitForTimeout(650);
+	await page.waitForTimeout(CARRY_MS);
 	await page.mouse.move(box.x + box.width / 2, box.y + 60, { steps: 4 });
 
 	// Carried, so everything is folded shut and the title is drawn lifted.
@@ -661,6 +669,43 @@ test('a lift interrupted by the row leaving does not stick', async ({ page }) =>
 	await expect(task(page, 'Bread')).toBeVisible();
 });
 
+test('holding a group title briefly opens its name', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const title = page.locator('section[data-group] .title');
+	const box = (await title.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+
+	/*
+	 * Past the first threshold and let go before the second. Two taps was the
+	 * only way to a rename, and two taps is a gesture you have to be told
+	 * about, where a press is what a finger tries on anything it suspects of
+	 * holding more.
+	 */
+	await page.waitForTimeout(650);
+	await page.mouse.up();
+
+	await expect(page.getByRole('textbox', { name: 'Group title' })).toBeVisible();
+
+	// And the tap that follows the press does not fold the group underneath it.
+	await expect(page.locator('.tasks')).toHaveCount(1);
+});
+
+test('a press too short for either does nothing but fold', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const title = page.locator('section[data-group] .title');
+	const box = (await title.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(250);
+	await page.mouse.up();
+
+	await expect(page.getByRole('textbox', { name: 'Group title' })).toHaveCount(0);
+	await expect(page.locator('.tasks')).toHaveCount(0);
+});
+
 test('a long press on a group title picks the whole group up', async ({ page }) => {
 	await addTask(page, 'Bread');
 
@@ -677,7 +722,7 @@ test('a long press on a group title picks the whole group up', async ({ page }) 
 
 	expect(await order()).toStrictEqual(['My list', 'Market']);
 
-	// Held, not tapped: a tap would open the name for editing.
+	// Held past both thresholds: holding briefly would open the name instead.
 	const title = page.getByRole('button', { name: 'Market' });
 	const from = (await title.boundingBox())!;
 	const to = (await page.getByRole('button', { name: 'My list' }).boundingBox())!;
@@ -712,7 +757,7 @@ test('dropping a task does not open it for editing', async ({ page }) => {
 
 	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
 	await page.mouse.down();
-	await page.waitForTimeout(600);
+	await page.waitForTimeout(CARRY_MS);
 	await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 12 });
 	await page.mouse.up();
 
@@ -1101,7 +1146,7 @@ test('carrying a group folds them all shut, and unfolds them after', async ({ pa
 
 	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
 	await page.mouse.down();
-	await page.waitForTimeout(600);
+	await page.waitForTimeout(CARRY_MS);
 
 	/*
 	 * Everything folds while one is being carried, so the whole list is a
@@ -1887,7 +1932,7 @@ test('the rule a carried group is dropped on is drawn where it will land', async
 
 	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
 	await page.mouse.down();
-	await page.waitForTimeout(600);
+	await page.waitForTimeout(CARRY_MS);
 
 	// Everything folds while one is carried, so the titles are all there is.
 	const deli = page.getByRole('button', { name: 'Deli' });

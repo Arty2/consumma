@@ -121,15 +121,21 @@ the moment there is something written in it.
 
 ### A group
 
-| Where             | Gesture         | What happens                                                    |
-| ----------------- | --------------- | --------------------------------------------------------------- |
-| The title         | Tap             | Folds the group                                                 |
-| The title         | Two taps, `F2`  | Opens the name, leaving the group folded as it found it         |
-| The title         | Hold, then drag | Picks the whole group up; everything folds while it is carried  |
-| The `(…)` icon    | Tap             | Folds the group, for anyone who would rather aim at it          |
-| The `(…)` icon    | Hold            | Folds **every** group — or opens them all, if none is left open |
-| The name field    | `Enter`         | Commits — and on an empty group, opens its first task           |
-| The new-group `…` | `Enter`         | Makes the group and opens its first task                        |
+| Where             | Gesture        | What happens                                                    |
+| ----------------- | -------------- | --------------------------------------------------------------- |
+| The title         | Tap            | Folds the group                                                 |
+| The title         | Two taps, `F2` | Opens the name, leaving the group folded as it found it         |
+| The title         | Hold briefly   | Opens the name too — a buzz says when to let go                 |
+| The title         | Hold on        | Picks the whole group up; everything folds while it is carried  |
+| The `(…)` icon    | Tap            | Folds the group, for anyone who would rather aim at it          |
+| The `(…)` icon    | Hold           | Folds **every** group — or opens them all, if none is left open |
+| The name field    | `Enter`        | Commits — and on an empty group, opens its first task           |
+| The new-group `…` | `Enter`        | Makes the group and opens its first task                        |
+
+The title's press has two lengths in it, and a buzz at each: hold it and let
+go at the first to open the name, or keep holding through the second to carry
+the group. Nothing else on the sheet works that way — a task lifts at the
+first — because nothing else has two things worth reaching by holding.
 
 Folded, the icon reads `(1/3)`: what is still to do, out of what is hidden.
 Half done counts as still to do. With nothing in the group done it reads `(3)`,

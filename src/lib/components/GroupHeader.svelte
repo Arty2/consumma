@@ -139,9 +139,12 @@
 	 * The real `dblclick` still does the second tap, so nothing here depends
 	 * on pairing two clicks by their timing.
 	 *
-	 * A long press on the title picks the group up instead, the way it picks a
-	 * task up. The icon beside the name folds on one tap, for anyone who would
-	 * rather aim at it, and folds the whole sheet on a long press.
+	 * Holding the title opens the name too, and holding it longer picks the
+	 * group up. Two taps was the only way to a rename, and two taps is a
+	 * gesture you have to be told about, where a press is the thing a finger
+	 * tries on anything it suspects of holding more. The icon beside the name
+	 * folds on one tap, for anyone who would rather aim at it, and folds the
+	 * whole sheet on a long press.
 	 */
 	function ontap(event?: MouseEvent) {
 		if (synthetic || editing) return;
@@ -389,10 +392,12 @@
 				markup — the gap the eye reads is margin on the icon, not a text
 				node.
 
-				One tap folds the group, two open the name for changing, and a long
-				press picks the group up — the same gesture that lifts a task, on
-				the same kind of row. The icon still folds on one tap, for anyone
-				who would rather aim at it, and folds every group on a press.
+				One tap folds the group and two open the name for changing. So does
+				holding it briefly — two taps is a gesture you have to be told
+				about — and holding it longer picks the group up, the same
+				gesture that lifts a task, on the same kind of row. The icon
+				still folds on one tap, for anyone who would rather aim at it,
+				and folds every group on a press.
 			-->
 			<!--
 				A span with a role rather than a real <button>: Chromium keeps a
@@ -420,8 +425,12 @@
 							ontap();
 						}
 					}}
-					use:dragGroup={{ groupId: seed, enabled: !synthetic, onDrop: onreorder }}
-					>{title === '' ? '…' : title}</span
+					use:dragGroup={{
+						groupId: seed,
+						enabled: !synthetic,
+						onEdit: startEditing,
+						onDrop: onreorder
+					}}>{title === '' ? '…' : title}</span
 				>{@render foldIcon()}
 			</span>
 		{/if}

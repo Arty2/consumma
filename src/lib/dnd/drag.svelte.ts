@@ -1,5 +1,5 @@
 import type { Action } from 'svelte/action';
-import { buzz, LONG_PRESS_MS } from './longpress';
+import { buzz, LIFT_MS, LONG_PRESS_MS } from './longpress';
 
 /**
  * Long-press the row text and drag. No handle.
@@ -214,6 +214,16 @@ function targetAt(x: number, y: number, movingId: string): DropTarget | null {
 type Hooks = {
 	/** False refuses the gesture outright: Loose ends cannot be moved. */
 	enabled: () => boolean;
+	/**
+	 * The shorter of two presses, for a control that has two in it.
+	 *
+	 * Given, the press becomes two stages: this one at `LONG_PRESS_MS`, and the
+	 * lift at `LIFT_MS`. It answers a release between the two rather than firing
+	 * at the threshold itself, because nothing at the threshold can know whether
+	 * the finger is going to stay down — the buzz there is what says a release
+	 * now will do this rather than that.
+	 */
+	press?: () => void;
 	lift: (x: number, y: number) => void;
 	move: (x: number, y: number) => void;
 	drop: () => void;
@@ -223,13 +233,16 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let start: { x: number; y: number } | null = null;
 	let lifted = false;
+	/** Past the shorter of two presses, and not yet past the longer. */
+	let held = false;
 	let pointerId: number | null = null;
 	let scrolling: number | null = null;
 	let edge = 0;
 	/*
-	 * A release after a drag still fires a click on whatever was held, and what
+	 * A release after a press still fires a click on whatever was held, and what
 	 * was held is a button — so dropping a task opened its editor, and dropping
-	 * a group opened its name. The click after a drop is swallowed.
+	 * a group opened its name, and a press that opens a group's name would fold
+	 * the group underneath it. The click after either is swallowed.
 	 */
 	let dropped = false;
 	let settle: ReturnType<typeof setTimeout> | null = null;
@@ -268,6 +281,7 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 		 * still to be delivered — from the browser taking the pointer away.
 		 */
 		lifted = false;
+		held = false;
 
 		if (pointerId !== null && node.hasPointerCapture(pointerId)) {
 			node.releasePointerCapture(pointerId);
@@ -288,17 +302,35 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 		if (!hooks().enabled()) return;
 
 		dropped = false;
+		held = false;
 
 		start = { x: event.clientX, y: event.clientY };
 		pointerId = event.pointerId;
 
-		timer = setTimeout(() => {
+		function lift() {
 			timer = null;
 			lifted = true;
 			buzz();
 
 			if (pointerId !== null) node.setPointerCapture(pointerId);
 			hooks().lift(event.clientX, event.clientY);
+		}
+
+		/*
+		 * One press or two. With a `press` hook the threshold below is only the
+		 * first of them: it buzzes to say the gesture has stopped being a tap,
+		 * and the lift waits the rest of the way to `LIFT_MS`. Letting go in
+		 * between is what the shorter press means, and `onpointerup` answers it.
+		 */
+		timer = setTimeout(() => {
+			if (!hooks().press) {
+				lift();
+				return;
+			}
+
+			held = true;
+			buzz();
+			timer = setTimeout(lift, LIFT_MS - LONG_PRESS_MS);
 		}, LONG_PRESS_MS);
 	}
 
@@ -325,19 +357,25 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 
 	function onpointerup() {
 		const moved = lifted;
+		// Past the shorter press and let go before the longer one: the release is
+		// what the shorter press means.
+		const briefly = held && !lifted;
+
+		/*
+		 * Armed before the hooks run, not after. The shorter press can take the
+		 * node out of the document — a group title swaps itself for its own edit
+		 * field — and the listener that swallows the click would go with it.
+		 */
+		dropped = moved || briefly;
+		if (settle) clearTimeout(settle);
+		settle = dropped ? setTimeout(() => (dropped = false), 400) : null;
+
 		stop();
 
 		if (moved) hooks().drop();
-		drag.reset();
+		else if (briefly) hooks().press?.();
 
-		/*
-		 * Armed for the click that is about to arrive, and disarmed shortly after
-		 * in case none does — a touch that produces no click must not leave the
-		 * next real tap to be swallowed.
-		 */
-		dropped = moved;
-		if (settle) clearTimeout(settle);
-		settle = moved ? setTimeout(() => (dropped = false), 400) : null;
+		drag.reset();
 	}
 
 	/** A scroll won the race, or the gesture was interrupted. Put it back. */
@@ -471,6 +509,8 @@ export type GroupDragOptions = {
 	groupId: string;
 	/** Loose ends is assembled on read and cannot be moved. */
 	enabled: boolean;
+	/** The shorter press: it opens the name rather than picking the group up. */
+	onEdit: () => void;
 	onDrop: (index: number) => void;
 };
 
@@ -508,7 +548,15 @@ function groupHomeOf(groupId: string): number | null {
 	return at === -1 ? null : at;
 }
 
-/** The same long press that lifts a row, lifting the whole group instead. */
+/**
+ * The same press that lifts a row, in two stages on a group's name: the
+ * shorter one opens it for changing and the longer one picks the group up.
+ *
+ * A group title had a press already and wanted a second. Renaming was two taps
+ * and nothing else, which is a gesture you have to be told about — where a
+ * press is the thing a finger tries on anything it suspects of holding more.
+ * So holding briefly opens the name, and holding on carries the group.
+ */
 export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) => {
 	let options = initial;
 
@@ -520,6 +568,7 @@ export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) 
 
 	const destroy = pressDrag(node, () => ({
 		enabled: () => options.enabled,
+		press: () => options.onEdit(),
 		lift(_x, y) {
 			drag.groupId = options.groupId;
 			drag.groupFrom = groupHomeOf(options.groupId);
