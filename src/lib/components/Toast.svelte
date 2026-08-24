@@ -1,7 +1,6 @@
 <script lang="ts">
 	import HandRect from './HandRect.svelte';
 	import { taken } from '$lib/feel';
-	import { t } from '$lib/i18n';
 	import { ui } from '$lib/state/ui.svelte';
 
 	/*
@@ -149,8 +148,10 @@
 	>
 		<HandRect seed="toast" wobble={2} />
 		<span class="caps">{ui.toast.text}</span>
-		{#if ui.toast.undo}
-			<button type="button" class="caps" onclick={ui.toast.undo}>{t.toast.undo}</button>
+		{#if ui.toast.action}
+			<button type="button" class="caps" onclick={ui.toast.action.run}
+				>{ui.toast.action.label}</button
+			>
 		{/if}
 	</div>
 {/if}
@@ -204,6 +205,14 @@
 		width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x));
 		min-height: var(--touch);
 		padding: 0.5rem 1rem;
+		/*
+		 * Nothing here is text to keep. It is a note laid over the sheet for ten
+		 * seconds, and it is dragged by hand — a press that starts on the words
+		 * of a message being thrown out selected them instead, and left the
+		 * phone's selection handles standing over the paper afterwards.
+		 */
+		user-select: none;
+		-webkit-user-select: none;
 		/* Over the sheet it covers, and under the panel, which is 10. */
 		z-index: 5;
 		/*

@@ -63,18 +63,29 @@ export const en = {
 		 * is lower case and reads as a phrase: "Removed the untitled group."
 		 * Two strings and not one, because a language that inflects would need
 		 * two anyway and English only looks as though it does not.
+		 *
+		 * Unquoted, unlike `named` below, because it is a description and not a
+		 * name — there is nothing here anybody typed to set apart.
 		 */
 		untitledInSentence: 'the untitled group',
+		/*
+		 * A title somebody typed, quoted, wherever it is dropped into a sentence
+		 * the app is saying. Without the quotes a message reads "Removed
+		 * Weekend and 3 done" and the eye has to find where the name stopped —
+		 * and a group called "and" or "done" makes a sentence out of nothing.
+		 * Curly quotes, as everywhere else here.
+		 */
+		named: ({ title }: { title: string }) => `“${title}”`,
 		expand: 'Expand group',
 		collapse: 'Collapse group',
 		/*
-		 * Two of each: the accessible name says what the button is for, and the
-		 * tooltip says why it is not available. A disabled control that says only
-		 * "Delete group" leaves the reason to be guessed at.
+		 * One mark in the gutter, two things to call it. It removes the group
+		 * once every task in it is done, and until then it clears the ones that
+		 * are — so what it is named has to say which of the two a tap would do.
+		 * It is not offered at all when it would do neither.
 		 */
 		delete: 'Delete group',
-		deleteBlocked: 'Delete group — finish its tasks first',
-		deleteBlockedHint: 'Finish its tasks first'
+		clear: 'Clear done tasks'
 	},
 
 	sheet: {
@@ -84,7 +95,10 @@ export const en = {
 		movedWithin: ({ position, group }: { position: number; group: string }) =>
 			`Moved to position ${position} in ${group}.`,
 		movedTo: ({ group, position }: { group: string; position: number }) =>
-			`Moved to ${group}, position ${position}.`
+			`Moved to ${group}, position ${position}.`,
+		/** A long press on any one fold icon takes every group with it. */
+		foldedAll: 'Every group folded.',
+		unfoldedAll: 'Every group opened.'
 	},
 
 	toast: {
@@ -94,6 +108,15 @@ export const en = {
 		removedWithDone: ({ what, count }: { what: string; count: number }) =>
 			`${what} and ${count} done`,
 		cleared: ({ count }: { count: number }) => `Cleared ${count}.`,
+		/** A move is the one change a finger makes that it cannot see undone. */
+		moved: 'Moved.',
+		/*
+		 * A run of ticks, and the offer to sweep it. Not "UNDO?": the run is not
+		 * a mistake to be taken back, it is work finished with, and what the
+		 * message offers is to put it away.
+		 */
+		doneRun: ({ count }: { count: number }) => `${count} ${plural(count, 'thing', 'things')} done.`,
+		clear: 'CLEAR?',
 		copied: ({ count }: { count: number }) => `Copied ${count} ${plural(count, 'task', 'tasks')}.`,
 		nothingToCopy: 'Nothing to copy yet.',
 		couldNotCopy: 'Couldn’t copy.',
@@ -101,6 +124,12 @@ export const en = {
 		addedSkipped: ({ count, skipped }: { count: number; skipped: number }) =>
 			`Added ${count}, skipped ${skipped} already there.`,
 		left: 'Left this device.',
+		/*
+		 * The other half of the button that says LEAVE or DELETE. A list with no
+		 * code was nowhere but here, so it was not left anywhere — it is gone,
+		 * and the message may not soften that.
+		 */
+		deletedList: 'Deleted this list.',
 		synced: 'Synced.',
 		undo: 'UNDO?',
 		/*
@@ -126,8 +155,14 @@ export const en = {
 		neverSynced: 'Only on this device. Sync it to get a code you can share.',
 		import: 'Import',
 		export: 'Export',
-		clear: 'Clear',
+		/*
+		 * One button, two acts. With a code the list carries on without this
+		 * device and can be come back to, which is leaving; without one this
+		 * device is the only place it has ever been, and there is nothing to
+		 * leave it to.
+		 */
 		leave: 'Leave',
+		delete: 'Delete',
 		joinList: 'Join list',
 		code: 'Code',
 		badCode: 'That doesn’t look like a code.',
@@ -135,9 +170,15 @@ export const en = {
 		leaveThem: 'Leave them',
 		cancel: 'Cancel',
 		join: 'Join',
-		/** Joining with tasks already here is never decided silently. */
+		/*
+		 * Joining with tasks already here is never decided silently — and
+		 * leaving them behind leaves them where they are, on the list they are
+		 * on, which stays on this device beside the one being joined. The
+		 * question said "leave them behind" while the app discarded them; the
+		 * words were right and the app was not.
+		 */
 		joinAsk: ({ count }: { count: number }) =>
-			`You have ${count} ${plural(count, 'task', 'tasks')} here. Take them to the other list, or leave them behind?`,
+			`You have ${count} ${plural(count, 'task', 'tasks')} here. Take them to the other list, or leave them on this one and keep both?`,
 		/*
 		 * "Debug" and not "Debug log": it now also outlines every box on the
 		 * page, and a button that does two things cannot be named after one.
@@ -145,7 +186,11 @@ export const en = {
 		debug: ({ on }: { on: boolean }) => `Debug: ${on ? 'On' : 'Off'}`,
 		debugLog: 'Debug log',
 		credit: 'Dialectic Acheropoieton',
-		creditOf: 'of Heracles Papatheodorou and Claude',
+		/*
+		 * A hard space before the last name, so the two authors are never split
+		 * across a line break with one of them left hanging alone.
+		 */
+		creditOf: 'of Heracles Papatheodorou and\u00a0Claude',
 		creditHome: 'heracl.es/consumma'
 	},
 
@@ -208,7 +253,6 @@ export const en = {
 	import: {
 		title: 'Import',
 		field: 'Markdown to import',
-		preview: 'What will be added',
 		empty: 'Paste a list — one thing per line, or a markdown checklist.',
 		fromClipboard: 'From your clipboard. Edit it here if anything is off.',
 		/*
@@ -228,12 +272,11 @@ export const en = {
 
 	confirm: {
 		cancel: 'Cancel',
-		clearTitle: 'Clear completed tasks',
-		clearConfirm: 'Clear',
-		clearBody: ({ count }: { count: number }) =>
-			`Remove ${count} completed ${plural(count, 'task', 'tasks')}? They go for everyone on this list, the next time you sync.`,
 		leaveTitle: 'Leave this list',
 		leaveConfirm: 'Leave',
+		/** The same two acts the button is named for — see `menu.delete`. */
+		deleteTitle: 'Delete this list',
+		deleteConfirm: 'Delete',
 		leaveBody: ({ code }: { code: string }) =>
 			`This leaves the list off this phone. Everyone else keeps it. To come back you'll need the code — ${code}. This is the last screen it exists on.`,
 		leaveUnsent: ({ count }: { count: number }) =>
@@ -244,6 +287,6 @@ export const en = {
 		 * nothing.
 		 */
 		leaveBodyNoCode:
-			'This list has never been synced, so it is nowhere but here. Leaving takes all of it with it, and there is no code to come back with.'
+			'This list has never been synced, so it is nowhere but here. Deleting takes all of it with it, and there is no code to come back with.'
 	}
 } as const;

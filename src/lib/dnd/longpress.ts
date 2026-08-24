@@ -14,6 +14,23 @@ export type LongPressOptions = {
 export const LONG_PRESS_MS = 450;
 
 /**
+ * And how long a press has to be held to pick something up, where the control
+ * has two presses in it.
+ *
+ * Only the group title does. Everything else lifts at `LONG_PRESS_MS`, and it
+ * can, because nothing else it could mean is reached by holding: a task's other
+ * gestures are taps, and the checkbox's press is its only one.
+ *
+ * A group title had a press already — one that lifts the whole group — and
+ * wanted a second, because opening the name by tapping twice is a gesture you
+ * have to know is there. So the shorter press opens the name and the longer one
+ * carries the group, with a buzz at each threshold: the first says a release
+ * now will open the name, the second says the group is in hand. Twice the
+ * shorter press, so the two are told apart by feel rather than by counting.
+ */
+export const LIFT_MS = LONG_PRESS_MS * 2;
+
+/**
  * How long a second tap has to arrive within to be a second tap.
  *
  * Long enough to be one, short enough not to catch two separate decisions. It

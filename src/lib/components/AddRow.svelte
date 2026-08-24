@@ -22,11 +22,23 @@
 		 * limit starts with the rest of the sentence already in it.
 		 */
 		initial?: string;
+		/**
+		 * Where the caret lands in what came down. At the front for a row Enter
+		 * cut open — that is the head of the new line — and behind it for a row
+		 * that ran out of space, which is still being typed at the end.
+		 */
+		atStart?: boolean;
 		/** The only row on the sheet — see the note on `.ghost` below. */
 		lone?: boolean;
 		onclose?: () => void;
 		/** Backspace on an empty row: it closes, and the task above opens. */
 		onback?: () => void;
+		/**
+		 * Backspace at the very start of a row with something written in it: the
+		 * writing joins onto the end of the task above and this row closes.
+		 * Answers false when the two will not fit, and then nothing happens.
+		 */
+		onjoin?: (text: string) => boolean;
 	};
 
 	let {
@@ -35,9 +47,11 @@
 		disabled = false,
 		opened = false,
 		initial = '',
+		atStart = false,
 		lone = false,
 		onclose,
-		onback
+		onback,
+		onjoin
 	}: Props = $props();
 
 	const SIZE = 22;
@@ -60,14 +74,30 @@
 	/** Whether the box is drawn at all, rather than kept back. */
 	const shown = $derived(open || lone);
 
-	// Placed already open rather than tapped: take the caret with it, and put it
-	// at the end — a row opened by a spill already has the rest of the sentence
-	// in it, and the next character belongs after it.
+	/**
+	 * And whether it is drawn in the ink.
+	 *
+	 * An open row with nothing in it is still an offer, and it is drawn as
+	 * faintly as the ellipsis it replaced. The moment there is something
+	 * written the row is a task — it will be one as soon as the finger leaves
+	 * — so its box stops being a suggestion and becomes the box that task is
+	 * getting. Nothing moves; only the weight of the line changes, which is
+	 * the difference between a thing offered and a thing there.
+	 */
+	const written = $derived(draft.trim() !== '');
+
+	/*
+	 * Placed already open rather than tapped: take the caret with it, and put it
+	 * where the row was cut. Behind what came down by default — a row opened by
+	 * a spill has the rest of a sentence in it and is still being typed — and in
+	 * front of it where Enter made the cut, which is the head of the new line.
+	 */
 	$effect(() => {
 		if (!opened) return;
 		queueMicrotask(() => {
 			input?.focus();
-			input?.setSelectionRange(draft.length, draft.length);
+			const at = atStart ? 0 : draft.length;
+			input?.setSelectionRange(at, at);
 		});
 	});
 
@@ -152,6 +182,40 @@
 		});
 	}
 
+	/**
+	 * Backspace with nothing to delete in front of the caret — the same two
+	 * lengths a task row answers to, because on the sheet this is the same
+	 * thing: one line of writing with a box beside it.
+	 *
+	 * Nothing in the row at all: it closes and the caret carries back to the end
+	 * of the task above. Something in it and the caret at its very start: the
+	 * writing joins onto that task instead, and the row closes having never
+	 * become one of its own. A draft is the one row that can leave without
+	 * anything being deleted.
+	 */
+	function onbackspace(event: KeyboardEvent) {
+		const field = event.currentTarget as HTMLTextAreaElement;
+
+		if (draft === '') {
+			event.preventDefault();
+			byTap = false;
+			onclose?.();
+			onback?.();
+			return;
+		}
+
+		if (field.selectionStart !== 0 || field.selectionEnd !== 0) return;
+
+		event.preventDefault();
+		if (!onjoin?.(draft)) return;
+
+		// Emptied before it closes, or the blur on the way out commits the very
+		// words that have just gone into the row above.
+		draft = '';
+		byTap = false;
+		onclose?.();
+	}
+
 	function onkeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
@@ -161,17 +225,8 @@
 			draft = '';
 			byTap = false;
 			onclose?.();
-		} else if (event.key === 'Backspace' && draft === '') {
-			/*
-			 * The other half of Enter. Enter leaves a task and opens a fresh row
-			 * beneath it; backspace on that row, with nothing in it left to
-			 * delete, closes it again and carries the caret back to the end of
-			 * the task above.
-			 */
-			event.preventDefault();
-			byTap = false;
-			onclose?.();
-			onback?.();
+		} else if (event.key === 'Backspace') {
+			onbackspace(event);
 		}
 	}
 </script>
@@ -189,7 +244,7 @@
 	-->
 	<button class="box" type="button" tabindex="-1" aria-hidden="true" {disabled} onclick={start}>
 		<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE}>
-			<path d={box} class="drawn" class:ghost={!shown} class:shown />
+			<path d={box} class="drawn" class:ghost={!shown} class:shown class:written />
 		</svg>
 	</button>
 
@@ -239,7 +294,7 @@
 		left: 0;
 		top: 0;
 		bottom: 0;
-		width: calc(var(--touch) * 1.3);
+		width: var(--touch);
 
 		display: inline-flex;
 		align-items: flex-start;
@@ -281,6 +336,15 @@
 	 */
 	.shown {
 		opacity: var(--faint);
+	}
+
+	/*
+	 * And full ink once there is something written in the row beside it. After
+	 * `.shown` rather than before it: the two are the same specificity, so
+	 * source order is what decides which wins on a row that is both.
+	 */
+	.written {
+		opacity: 1;
 	}
 
 	.text {

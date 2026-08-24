@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { paste } from '$lib/clipboard';
 	import { CODE_LENGTH, codeFrom } from '$lib/crypto/derive';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
@@ -20,6 +21,34 @@
 	type Props = { value: string; label: string };
 
 	let { value = $bindable(), label }: Props = $props();
+
+	/**
+	 * Tapping the empty field reaches for the clipboard itself.
+	 *
+	 * A code arrives in a message, so it is on the clipboard nine times out of
+	 * ten and the next move is always the same: long-press, wait for the menu,
+	 * choose Paste. The field can simply do it. Read on the tap, which is the
+	 * gesture a browser will allow a clipboard read inside, and only into an
+	 * empty field — a tap in a field with something in it is a caret being
+	 * placed, and overwriting what somebody has half typed is worse than doing
+	 * nothing.
+	 *
+	 * `codeFrom` is what decides, exactly as it does for a real paste: a bare
+	 * code, or an invitation with the link taken out of it. Anything else and
+	 * the field is left alone, so a clipboard holding a shopping list does not
+	 * put rubbish in it. A refused or empty clipboard is not an error either —
+	 * Firefox rejects a read outright, Safari asks first — so nothing is said
+	 * and the keyboard is there to type into, which it was anyway.
+	 */
+	async function ontap() {
+		if (value !== '') return;
+
+		const text = await paste();
+		if (!text) return;
+
+		const code = codeFrom(text);
+		if (code) value = code;
+	}
 
 	/* Twelve of these plus their gaps have to fit a 320px screen. */
 	const CELL = 19;
@@ -80,6 +109,7 @@
 		spellcheck="false"
 		maxlength={CODE_LENGTH + 2}
 		bind:value
+		onclick={ontap}
 		{onpaste}
 	/>
 

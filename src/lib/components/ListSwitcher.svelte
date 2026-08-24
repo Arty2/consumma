@@ -375,11 +375,19 @@
 	 */
 	.switcher.menu {
 		/*
-		 * Flush with the top of the scroller, which is the panel's own torn
-		 * edge: the padding holding that tear is what puts this a tear's depth
-		 * inside the paper, so it is not offset again here.
+		 * Level with the ✕ across the panel from it, which is the whole of why
+		 * this number exists.
+		 *
+		 * The scroller already begins a tear's depth inside the paper, so being
+		 * flush with the top of it put the pill `--corner-lead` above the ✕ —
+		 * near enough to read as one row and far enough out to read as a
+		 * mistake in it. `--corner-y` is `--paper-top + --tear + --corner-lead`
+		 * and the scroller's own top is the first two of those, so the lead is
+		 * exactly what is missing. Both boxes are `--touch` tall, so levelling
+		 * their tops levels their middles. The ✕ does not move: it is placed
+		 * where every corner control in the app is placed.
 		 */
-		margin-top: 0;
+		margin-top: var(--corner-lead);
 		margin-bottom: 1.5rem;
 		/*
 		 * Left, against the panel's own centred prose. It answers which list

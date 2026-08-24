@@ -5,11 +5,14 @@
 	import TextRule from './TextRule.svelte';
 	import { figures } from '$lib/doc/amount';
 	import { langOf } from '$lib/doc/lang';
+	import { length } from '$lib/doc/clean';
 	import { LIMITS } from '$lib/doc/limits';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, NEW_GROUP, type DropTarget } from '$lib/dnd/drag.svelte';
+	import type { State, Task } from '$lib/doc/types';
 	import { t } from '$lib/i18n';
+	import { Burst } from '$lib/state/burst';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
@@ -24,14 +27,26 @@
 	 * one at the top of the group. There is never more than one, because there
 	 * is only one caret.
 	 */
-	let inserting = $state<{ groupId: string; index: number; carried?: string } | null>(null);
+	let inserting = $state<{
+		groupId: string;
+		index: number;
+		carried?: string;
+		atStart?: boolean;
+	} | null>(null);
 
 	/**
 	 * Which task's editor to open, when the caret is coming back up from a row
 	 * that was backspaced away. Cleared as soon as the row reports it opened, so
 	 * the same row can be reached again the next time.
 	 */
-	let opening = $state<string | null>(null);
+	let opening = $state<{ id: string; at: number | null } | null>(null);
+
+	/**
+	 * Which group's name to open, when the caret is coming back up out of the
+	 * row the name itself opened. Cleared as soon as the header reports it, the
+	 * same way `opening` is.
+	 */
+	let openingGroup = $state<string | null>(null);
 
 	const overLimit = $derived(sheet.taskCount > LIMITS.tasks);
 
@@ -70,15 +85,108 @@
 
 		const count = gone.tasks.length;
 		const what =
-			count === 0 ? label(title) : t.toast.removedWithDone({ what: label(title), count });
+			count === 0 ? named(title) : t.toast.removedWithDone({ what: named(title), count });
 
 		// The confirm stops nothing here — the header only offers it on a finished
 		// group — so the undo is what covers a change of mind.
-		ui.say(t.toast.removed({ what }), () => {
-			sheet.restoreGroup(gone);
-			// The change is undone, so the message describing it goes at once.
-			ui.dismiss(true);
+		ui.say(
+			t.toast.removed({ what }),
+			undoing(() => sheet.restoreGroup(gone))
+		);
+	}
+
+	/**
+	 * The same mark on a group that still has something left to do: what is
+	 * finished with goes, and the group stays.
+	 *
+	 * No confirm. The mark is only ever drawn where it has something to sweep,
+	 * the sweep is named on the button, and the ten-second undo is what covers a
+	 * change of mind — which is exactly how removing a group already works two
+	 * lines up. CLEAR asked first because it lived in a menu, where a tap is a
+	 * long way from the tasks it was about to take.
+	 */
+	function clearGroup(tasks: readonly Task[]) {
+		const done = tasks.filter((task) => task.state === 'done').map((task) => task.id);
+		const cleared = sheet.clearDone(done);
+		if (cleared.length === 0) return;
+
+		ui.say(
+			t.toast.cleared({ count: cleared.length }),
+			undoing(() => sheet.restore(cleared))
+		);
+	}
+
+	/**
+	 * A message with a way back, which is nearly every message that follows a
+	 * change here. Written once because the undo always ends the same way: the
+	 * change is undone, so the message describing it goes at once rather than
+	 * sliding out over the change it was about.
+	 */
+	function undoing(run: () => void) {
+		return {
+			label: t.toast.undo,
+			run: () => {
+				run();
+				ui.dismiss(true);
+			}
+		};
+	}
+
+	/*
+	 * A run of ticks, watched in one place because every way of ticking a task
+	 * comes through here — the checkbox, the ladder on the words, and the
+	 * keyboard.
+	 */
+	const burst = new Burst();
+
+	function setState(id: string, state: State) {
+		sheet.setState(id, state);
+
+		if (state !== 'done') {
+			burst.forget();
+			return;
+		}
+
+		const run = burst.note(id, performance.now());
+		if (!run) return;
+
+		/*
+		 * Offered, never done: this is the app noticing what is going on and
+		 * putting the tidying up within reach, and a message that swept three
+		 * rows off the sheet by itself would be the app deciding.
+		 */
+		ui.say(t.toast.doneRun({ count: run.length }), {
+			label: t.toast.clear,
+			run: () => {
+				const cleared = sheet.clearDone(run);
+				if (cleared.length === 0) {
+					ui.dismiss(true);
+					return;
+				}
+
+				ui.say(
+					t.toast.cleared({ count: cleared.length }),
+					undoing(() => sheet.restore(cleared))
+				);
+			}
 		});
+	}
+
+	/**
+	 * A long press on any one fold icon folds the sheet — or opens it again,
+	 * when there is nothing left folded to see the point of.
+	 *
+	 * Loose ends is not among them: it is a perforation rather than a heading,
+	 * has no fold control of its own, and what is under it was never filed
+	 * anywhere on purpose.
+	 */
+	function foldAll() {
+		const ids = sheet.groups.filter((group) => !group.synthetic).map((group) => group.id);
+		if (ids.length === 0) return;
+
+		const shut = ids.every((id) => ui.isCollapsed(id));
+		ui.foldAll(ids);
+		ui.announce(shut ? t.sheet.unfoldedAll : t.sheet.foldedAll);
 	}
 
 	/**
@@ -97,11 +205,10 @@
 		const entry = sheet.deleteTask(id);
 		if (!entry) return;
 
-		ui.say(t.toast.deleted, () => {
-			sheet.restore([entry]);
-			// The change is undone, so the message describing it goes at once.
-			ui.dismiss(true);
-		});
+		ui.say(
+			t.toast.deleted,
+			undoing(() => sheet.restore([entry]))
+		);
 	}
 
 	/**
@@ -122,11 +229,83 @@
 		}
 
 		inserting = null;
-		opening = above?.id ?? null;
+
+		if (above) {
+			opening = { id: above.id, at: null };
+			return;
+		}
+
+		/*
+		 * Nothing above it in the group, so the caret goes up to the group's own
+		 * name — which is where the row came from. Enter on an empty group's
+		 * title opens the first task inside it; backspacing out of that row is
+		 * the same motion in reverse, and it used to close the row and leave the
+		 * caret nowhere at all, one keystroke into naming a list.
+		 *
+		 * Only for a row still being typed. A real first task emptied to nothing
+		 * has already been refused above: deleting it would take the caret
+		 * somewhere no task is, and the task itself with it.
+		 */
+		opening = null;
+		openingGroup = groupId;
 	}
 
-	/** Where a drag let go. The neighbours are never restamped. */
+	/**
+	 * Backspace at the very start of a row that still has something in it: it
+	 * joins onto the end of the one above, and the caret waits at the seam.
+	 *
+	 * A row being typed answers to this as well as a committed task does. On the
+	 * sheet they are the same thing — one line of writing with a box beside it —
+	 * and a key that works on the row above and not on the one under the finger
+	 * reads as the app having lost its place. The only difference is that a
+	 * draft has nothing to delete afterwards.
+	 *
+	 * Quietly, with no message. Nothing was taken away — the words are all still
+	 * on the sheet, a line higher — so a toast saying "Deleted." would be a lie
+	 * about the one thing it is there to report. The row above simply grew.
+	 *
+	 * Refused, and then the key does nothing at all, when the two will not fit
+	 * in one task. That is the honest answer: a row that filled up and spilled
+	 * cannot be poured back into the row it came from, and silently dropping
+	 * the overflow to make it fit would lose writing.
+	 */
+	function join(groupId: string, index: number, text: string, taskId?: string): boolean {
+		const above = sheet.groups.find((group) => group.id === groupId)?.tasks[index - 1];
+		if (!above) return false;
+
+		const seam = length(above.text);
+		if (seam + length(text) > LIMITS.taskText) return false;
+
+		sheet.editTask(above.id, above.text + text);
+		// A row still being typed has no task of its own to take away; it simply
+		// closes, which the row itself does on its way out.
+		if (taskId) sheet.deleteTask(taskId);
+
+		inserting = null;
+		opening = { id: above.id, at: seam };
+		return true;
+	}
+
+	/**
+	 * Where a drag let go. The neighbours are never restamped.
+	 *
+	 * A drop is the one change a finger makes that leaves no trace of where the
+	 * thing came from, so it is the one that most wants taking back — and where
+	 * it came from is two strings, read off the task before it moves. Putting
+	 * the old key back is an ordinary move stamped now, not a rewind, so the
+	 * merge sees what it always sees.
+	 *
+	 * The keyboard's own move (`move`, below) says where the task went instead
+	 * of offering this. It is announced because it cannot be seen, it is exact,
+	 * and a run of Alt+↓ down a list would raise a message a step.
+	 */
 	function drop(taskId: string, target: DropTarget) {
+		const was = sheet.doc.tasks[taskId];
+		if (!was) return;
+
+		const home = { groupId: was.groupId, order: was.order };
+		const back = () => sheet.moveTask(taskId, home.groupId, home.order);
+
 		/*
 		 * Let go on the row that offers a new group: the group is made on the
 		 * spot and the task is its first. It arrives unnamed, showing the same
@@ -145,6 +324,16 @@
 
 			sheet.moveTask(taskId, id, sheet.orderAt(id, 0, taskId));
 			ui.announce(t.sheet.movedToNewGroup);
+
+			// The group was made by the drop, so undoing the drop unmakes it —
+			// after the task is out of it, or it would go with the group.
+			ui.say(
+				t.toast.moved,
+				undoing(() => {
+					back();
+					sheet.deleteGroup(id);
+				})
+			);
 			return;
 		}
 
@@ -152,6 +341,20 @@
 		if (sheet.groups.find((g) => g.id === target.groupId)?.synthetic) return;
 
 		sheet.moveTask(taskId, target.groupId, sheet.orderAt(target.groupId, target.index, taskId));
+		ui.say(t.toast.moved, undoing(back));
+	}
+
+	/** The same, for a whole group carried among its siblings. */
+	function reorder(id: string, index: number) {
+		const was = sheet.doc.groups[id];
+		if (!was) return;
+
+		const order = was.order;
+		sheet.moveGroup(id, sheet.groupOrderAt(index, id));
+		ui.say(
+			t.toast.moved,
+			undoing(() => sheet.moveGroup(id, order))
+		);
 	}
 
 	/**
@@ -182,21 +385,58 @@
 		ui.announce(t.sheet.movedTo({ group: label(next.title), position: position + 1 }));
 	}
 
+	/**
+	 * A group's name as it goes into a message on the screen.
+	 *
+	 * Quoted, because it is the one part of the sentence somebody else wrote:
+	 * "Removed “Weekend” and 3 done" says where the name stops, and "Removed
+	 * Weekend and 3 done" leaves the reader to work it out — a group called
+	 * "and" or "done" makes a sentence out of nothing at all. An untitled group
+	 * has no name to quote and is described instead.
+	 */
+	function named(title: string) {
+		return title === '' ? t.group.untitledInSentence : t.group.named({ title });
+	}
+
+	/**
+	 * And as it goes into one that is read aloud, where a quotation mark is
+	 * either noise or silence depending on the screen reader, and helps nobody
+	 * either way.
+	 */
 	function label(title: string) {
 		return title === '' ? t.group.untitledInSentence : title;
 	}
 
-	function addGroup() {
+	/**
+	 * The row that makes a group, committed.
+	 *
+	 * `andOpen` is Enter rather than a tap somewhere else: a group that has just
+	 * been made is certainly empty, so the next thing is certainly a task, and
+	 * naming it and writing the first thing into it is one motion. It is the
+	 * same rule Enter on an existing empty group's title follows — and this is
+	 * the commoner way to reach an empty group by far, since making one is what
+	 * empties it.
+	 */
+	function addGroup(andOpen = false) {
 		const title = newGroupDraft.trim();
 		newGroupDraft = '';
 		newGroupOpen = false;
-		if (title !== '') sheet.addGroup(title);
+		if (title === '') return;
+
+		const id = sheet.addGroup(title);
+		if (andOpen && id !== null) inserting = { groupId: id, index: 0 };
 	}
 
 	function onNewGroupKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter') {
 			event.preventDefault();
-			(event.currentTarget as HTMLInputElement).blur();
+			/*
+			 * Committed here rather than by blurring the field, which is what this
+			 * used to do: the blur runs `addGroup` with nothing to add and closes
+			 * the row that has just opened. The same reason a group title commits
+			 * in its own keydown.
+			 */
+			addGroup(true);
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			newGroupDraft = '';
@@ -231,7 +471,7 @@
 				aria-label={t.group.new}
 				autofocus
 				bind:value={newGroupDraft}
-				onblur={addGroup}
+				onblur={() => addGroup()}
 				onkeydown={onNewGroupKeydown}
 			/>
 		{:else}
@@ -288,14 +528,20 @@
 				seed={group.id}
 				collapsed={folded || ui.isCollapsed(group.id)}
 				count={group.tasks.length}
+				open={group.tasks.filter((task) => task.state !== 'done').length}
+				done={group.tasks.filter((task) => task.state === 'done').length}
 				finished={group.tasks.every((task) => task.state === 'done')}
 				synthetic={group.synthetic}
 				total={fig.total}
+				naming={openingGroup === group.id}
+				onnamed={() => (openingGroup = null)}
 				ontoggle={() => ui.toggleCollapsed(group.id)}
+				onfoldall={foldAll}
 				onrename={(title) => sheet.renameGroup(group.id, title)}
 				ondelete={() => removeGroup(group.id, group.title)}
+				onclear={() => clearGroup(group.tasks)}
 				onaddtask={() => (inserting = { groupId: group.id, index: 0 })}
-				onreorder={(index) => sheet.moveGroup(group.id, sheet.groupOrderAt(index, group.id))}
+				onreorder={(index) => reorder(group.id, index)}
 			/>
 
 			{#if !folded && !ui.isCollapsed(group.id)}
@@ -307,9 +553,11 @@
 								disabled={!sheet.canAddTask}
 								opened
 								initial={inserting.carried ?? ''}
+								atStart={inserting.atStart ?? false}
 								onadd={(text) => insert(group.id, taskIndex, text)}
 								onclose={() => (inserting = null)}
 								onback={() => back(group.id, taskIndex)}
+								onjoin={(text) => join(group.id, taskIndex, text)}
 							/>
 						{/if}
 
@@ -325,14 +573,23 @@
 							{task}
 							groupId={group.id}
 							style={fig.style}
-							open={opening === task.id}
-							onstate={(state) => sheet.setState(task.id, state)}
+							open={opening?.id === task.id}
+							openAt={opening?.id === task.id ? opening.at : null}
+							onstate={(state) => setState(task.id, state)}
 							onedit={(text) => sheet.editTask(task.id, text)}
 							ondelete={() => remove(task.id)}
-							onsplit={(carried) =>
+							onsplit={(next) =>
 								group.synthetic ||
-								(inserting = { groupId: group.id, index: taskIndex + 1, carried })}
+								(inserting = {
+									groupId: group.id,
+									// Above this row where the caret was at its very start, and
+									// under it everywhere else.
+									index: taskIndex + (next?.above ? 0 : 1),
+									carried: next?.carried,
+									atStart: next?.atStart
+								})}
 							onback={() => back(group.id, taskIndex, task.id)}
+							onjoin={(text) => join(group.id, taskIndex, text, task.id)}
 							onopened={() => (opening = null)}
 							onmove={(direction) => move(groupIndex, taskIndex, direction)}
 							ondrop={(target) => drop(task.id, target)}
@@ -354,9 +611,11 @@
 							disabled={!sheet.canAddTask}
 							opened
 							initial={inserting.carried ?? ''}
+							atStart={inserting.atStart ?? false}
 							onadd={(text) => insert(group.id, group.tasks.length, text)}
 							onclose={() => (inserting = null)}
 							onback={() => back(group.id, group.tasks.length)}
+							onjoin={(text) => join(group.id, group.tasks.length, text)}
 						/>
 					{/if}
 
@@ -373,6 +632,7 @@
 							{lone}
 							onadd={(text) => sheet.addTask(group.id, text) !== null}
 							onback={() => back(group.id, group.tasks.length)}
+							onjoin={(text) => join(group.id, group.tasks.length, text)}
 						/>
 					{/if}
 				</ul>

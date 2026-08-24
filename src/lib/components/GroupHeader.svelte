@@ -3,10 +3,10 @@
 	import Perforation from './Perforation.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { LIMITS } from '$lib/doc/limits';
-	import { handScribble } from '$lib/draw/hand';
+	import { handScribble, SCRIBBLE } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
-	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
+	import { longPress } from '$lib/dnd/longpress';
 	import { taken, tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
@@ -16,6 +16,10 @@
 		seed: string;
 		collapsed: boolean;
 		count: number;
+		/** How many of them are still to do — half counts as still to do. */
+		open: number;
+		/** How many are done, which is what the mark would clear. */
+		done: number;
 		/** Whether every task in the group is done, so the group can go. */
 		finished: boolean;
 		/**
@@ -25,9 +29,22 @@
 		synthetic: boolean;
 		/** What the group's unfinished tasks come to, or nothing to total. */
 		total: string | null;
+		/**
+		 * Asked for by the sheet: open the name for changing, caret at the end.
+		 * `open` is taken — it is how many tasks in here are still to do.
+		 *
+		 * Backspace on the empty row Enter put inside this group comes back here,
+		 * because the name is what opened it — see `back` in Sheet.
+		 */
+		naming: boolean;
+		onnamed: () => void;
 		ontoggle: () => void;
+		/** A long press on the fold icon takes the whole sheet with it. */
+		onfoldall: () => void;
 		onrename: (title: string) => void;
 		ondelete: () => void;
+		/** The same mark, on a group that still has something left to do. */
+		onclear: () => void;
 		/** Enter leaves the name and opens a task at the top of the group. */
 		onaddtask: () => void;
 		onreorder: (index: number) => void;
@@ -38,67 +55,155 @@
 		seed,
 		collapsed,
 		count,
+		open,
+		done,
 		finished,
 		synthetic,
 		total,
+		naming,
+		onnamed,
 		ontoggle,
+		onfoldall,
 		onrename,
 		ondelete,
+		onclear,
 		onaddtask,
 		onreorder
 	}: Props = $props();
 
 	let editing = $state(false);
 	let draft = $state('');
+	let field = $state<HTMLTextAreaElement | null>(null);
 	/** Set for the length of the pop, so the group leaves rather than vanishes. */
 	let going = $state(false);
 
 	const lifted = $derived(drag.isLiftedGroup(seed));
 
-	/* The same mark, the same size, as the one on every done task below it. */
-	const MARK = 11;
+	/*
+	 * Literally the same mark as the one on every done task below it — one
+	 * drawing from one seed, not a second scribble at the same size. See
+	 * SCRIBBLE in draw/hand.
+	 */
+	const scribble = handScribble(SCRIBBLE.w, SCRIBBLE.h, {
+		seed: seedFrom(SCRIBBLE.seed),
+		wobble: 0.7
+	});
 
-	const scribble = $derived(handScribble(MARK, { seed: seedFrom(`del${seed}`), wobble: 0.8 }));
+	/**
+	 * What the mark in the gutter would do, or nothing at all.
+	 *
+	 * A group with everything done can go, tasks and all — that is what the mark
+	 * has always meant here. A group with something still to do cannot, but its
+	 * finished tasks can, and that is the same gesture on the same mark: get rid
+	 * of what is finished with. Which of the two it is, is not a mode anybody
+	 * sets; it is a reading of the group.
+	 *
+	 * Nothing done and something still to do means it would do neither, and then
+	 * it is not drawn at all — the rule a task's own mark follows.
+	 */
+	const job = $derived(finished ? 'delete' : done > 0 ? 'clear' : null);
 
-	let folding: ReturnType<typeof setTimeout> | null = null;
+	/**
+	 * And whether it is offered at all, which is a separate question.
+	 *
+	 * Two states put a group in hand rather than in a list: its name is open, or
+	 * it is folded away. Both are somebody attending to this group and not to
+	 * what is on the sheet — and it is there that a way to get rid of it belongs.
+	 * Drawn on every expanded group with a done task in it, the sheet grows a
+	 * column of live deletes down a list somebody is only reading.
+	 */
+	const mark = $derived(editing || collapsed ? job : null);
+
+	/**
+	 * What the icon holds between its brackets.
+	 *
+	 * Folded, the fraction — unless nothing in the group is done, when both
+	 * halves of it are the same number and it says no more than the total does.
+	 * Open, the ellipsis that means "there is more here" everywhere else on the
+	 * sheet.
+	 */
+	const shown = $derived(!collapsed ? '…' : done > 0 ? `${open}/${count}` : `${count}`);
 
 	/*
 	 * A tap folds the group, two taps open its name — the same pair a task row
 	 * offers, so the sheet answers a finger the same way wherever it lands.
 	 *
-	 * Held back rather than optimistic, which is the opposite of what a task
-	 * row does, and deliberately. A row's tap is the tick, the thing people
-	 * came to do, thousands of times; a third of a second of lag on it would
-	 * be the app's whole character. Folding a group is neither frequent nor
-	 * urgent — and taking it back is not a tick reappearing but a whole list
-	 * folding and unfolding under the thumb, which is a much worse flicker
-	 * than the wait it saves.
+	 * Optimistic, exactly as the row beside it is: the tap acts and the second
+	 * one takes it back. It used to be held back for the double-tap window,
+	 * on the reasoning that a whole list folding and unfolding is a worse
+	 * flicker than a third of a second of lag — but the lag is what people
+	 * actually notice, and they notice it most beside the icon two
+	 * millimetres away, which has always answered at once. One control
+	 * answering slower than its twin reads as the app being tired.
 	 *
-	 * Because it waits, it can use the real `dblclick` rather than pairing two
-	 * clicks by their timing, so nothing depends on them arriving as a pair.
+	 * The real `dblclick` still does the second tap, so nothing here depends
+	 * on pairing two clicks by their timing.
 	 *
-	 * A long press on the title picks the group up instead, the way it picks a
-	 * task up. The icon beside the name still folds on one tap and does nothing
-	 * else, for anyone who would rather aim at it.
+	 * Holding the title opens the name too, and holding it longer picks the
+	 * group up. Two taps was the only way to a rename, and two taps is a
+	 * gesture you have to be told about, where a press is the thing a finger
+	 * tries on anything it suspects of holding more. The icon beside the name
+	 * folds on one tap, for anyone who would rather aim at it, and folds the
+	 * whole sheet on a long press.
 	 */
-	function ontap() {
+	function ontap(event?: MouseEvent) {
 		if (synthetic || editing) return;
 
-		if (folding) clearTimeout(folding);
-		folding = setTimeout(() => {
-			folding = null;
-			ontoggle();
-		}, DOUBLE_TAP_MS);
+		/*
+		 * Only the first click of a pair folds. The second is on its way to
+		 * `dblclick`, which puts the fold back and opens the name — and a
+		 * browser sends both clicks before it, so acting on the second as well
+		 * would fold, unfold and fold again, leaving a group collapsed behind
+		 * the field it had just opened.
+		 *
+		 * `detail` is the browser's own count of the run, which is exact. The
+		 * obvious alternative — was this within `DOUBLE_TAP_MS` of the last one
+		 * — is not: it cannot tell the second click of one pair from the first
+		 * click of the next, and two deliberate double taps a tenth of a second
+		 * apart are a thing a test does routinely and a finger does eventually.
+		 * The row beside this one counts its own taps because it has to climb a
+		 * ladder of them; there is no ladder here, only a pair.
+		 *
+		 * No event at all is the keyboard's way in, which is never a pair.
+		 */
+		if (event && event.detail > 1) return;
+
+		tapped();
+		ontoggle();
 	}
 
 	function onsecondtap() {
 		if (synthetic) return;
 
-		// The fold never happened, so there is nothing to put back.
-		if (folding) clearTimeout(folding);
-		folding = null;
-
+		// The first tap of this pair folded it. Put that back before opening the
+		// name, so a rename leaves the group as it found it.
+		ontoggle();
 		startEditing();
+	}
+
+	/**
+	 * Set by a long press and eaten by the click that follows it.
+	 *
+	 * The icon stays a real button, because that is also how a keyboard folds a
+	 * group — and a button releases a click whether or not the finger was held.
+	 * The same swallow the drag does after a drop, for the same reason: the
+	 * press has already done something, and the tap must not undo it.
+	 */
+	let pressed = false;
+
+	function foldAll() {
+		pressed = true;
+		onfoldall();
+	}
+
+	function fold() {
+		if (pressed) {
+			pressed = false;
+			return;
+		}
+
+		tapped();
+		ontoggle();
 	}
 
 	function startEditing() {
@@ -106,6 +211,25 @@
 		draft = title;
 		editing = true;
 	}
+
+	/*
+	 * Asked for from outside — the empty row inside this group was backspaced
+	 * away, and the name is where it came from.
+	 *
+	 * The caret goes to the end of the name rather than wherever autofocus
+	 * leaves it: the writing carries on where it stopped, which is the same
+	 * thing backspacing out of a row into the task above does.
+	 */
+	$effect(() => {
+		if (!naming || editing || synthetic) return;
+
+		startEditing();
+		queueMicrotask(() => {
+			field?.focus();
+			field?.setSelectionRange(draft.length, draft.length);
+		});
+		onnamed();
+	});
 
 	function commit() {
 		editing = false;
@@ -121,7 +245,19 @@
 			// Committing here rather than through blur, so the row that opens next
 			// is not closed again by the blur that would follow.
 			commit();
-			onaddtask();
+
+			/*
+			 * Enter means "and the next one" on a group with nothing in it yet:
+			 * naming a group and then writing the first thing into it is one
+			 * motion, and it is the only time the next thing is certainly a task.
+			 *
+			 * On a group that already has tasks it means no such thing. Somebody
+			 * there has come to change the name, and Enter is how you say you are
+			 * done with it — opening an empty row underneath put a caret in the
+			 * middle of a list nobody was adding to, and closed it again on the
+			 * next tap anywhere.
+			 */
+			if (count === 0) onaddtask();
 		} else if (event.key === 'Escape') {
 			event.preventDefault();
 			// The name goes back before the field does: taking a focused field out
@@ -138,10 +274,19 @@
 	 */
 	const POP_MS = 180;
 
-	function remove() {
-		if (!finished) return;
-		editing = false;
+	/** The mark in the gutter, doing whichever of its two jobs this group asks. */
+	function strike() {
+		if (mark === null) return;
 		taken();
+
+		if (mark === 'clear') {
+			// The group stays exactly where it is; only what is finished with
+			// leaves it, so there is nothing here to pop.
+			onclear();
+			return;
+		}
+
+		editing = false;
 
 		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			ondelete();
@@ -176,10 +321,27 @@
 	</div>
 {:else}
 	<!--
-		Collapsed it reads [3] — what is hidden, and how much. Expanded it reads
-		[…], the same ellipsis an untitled group and the add row use for "there
-		is more here". Graphe has no brackets and falls back for them,
-		deliberately. Do not swap in characters it does have.
+		Collapsed it reads (1/3) — what is still to do, out of what is hidden.
+		The bare total answered the wrong question: a group is folded away
+		because it is dealt with or because it is not yet, and how many tasks
+		are under there says neither. Half done counts as still to do, because
+		it is. Nothing done at all and the fraction says nothing either, since
+		both halves are the same number, so it goes back to being a total.
+		Expanded it reads (…), the same ellipsis an untitled group and the add
+		row use for "there is more here".
+
+		Round brackets, and Graphe draws them itself: they run from 20 above
+		the baseline to 1 below against its figures' 19 above to 3 above, so
+		they enclose what they hold and need no correcting. Square ones it has
+		none of, so the platform substituted a face that sets them on the true
+		baseline and they sat visibly low around the numbers — and the fix for
+		that was a measured lift, which is a lot of machinery for a character
+		the face has a proper answer to. This is not the markdown checkbox,
+		which keeps its square brackets and its deliberate fallback.
+
+		One tap folds this group and a long press folds every group on the
+		sheet — the icon is the fold control, so more of the gesture belongs to
+		it. The press is what makes a long list navigable; the tap is unchanged.
 
 		The mousedown guard matters while editing — a mousedown on the icon
 		there must not steal focus from the field, or the blur it causes
@@ -190,15 +352,13 @@
 		<button
 			class="icon"
 			type="button"
-			onclick={() => {
-				tapped();
-				ontoggle();
-			}}
+			onclick={fold}
 			onmousedown={(event) => event.preventDefault()}
+			use:longPress={{ onpress: foldAll }}
 			aria-expanded={!collapsed}
 			aria-label={collapsed ? t.group.expand : t.group.collapse}
 		>
-			<span aria-hidden="true">{collapsed ? `[${count}]` : '[…]'}</span>
+			<span aria-hidden="true">({shown})</span>
 		</button>
 	{/snippet}
 
@@ -214,6 +374,7 @@
 				class="title caps"
 				rows="1"
 				lang={langOf(draft)}
+				bind:this={field}
 				bind:value={draft}
 				use:grow={draft}
 				maxlength={LIMITS.groupTitle}
@@ -231,10 +392,12 @@
 				markup — the gap the eye reads is margin on the icon, not a text
 				node.
 
-				One tap folds the group, two open the name for changing, and a long
-				press picks the group up — the same gesture that lifts a task, on
-				the same kind of row. The icon still folds on one tap and does
-				nothing else, for anyone who would rather aim at it.
+				One tap folds the group and two open the name for changing. So does
+				holding it briefly — two taps is a gesture you have to be told
+				about — and holding it longer picks the group up, the same
+				gesture that lifts a task, on the same kind of row. The icon
+				still folds on one tap, for anyone who would rather aim at it,
+				and folds every group on a press.
 			-->
 			<!--
 				A span with a role rather than a real <button>: Chromium keeps a
@@ -262,8 +425,12 @@
 							ontap();
 						}
 					}}
-					use:dragGroup={{ groupId: seed, enabled: !synthetic, onDrop: onreorder }}
-					>{title === '' ? '…' : title}</span
+					use:dragGroup={{
+						groupId: seed,
+						enabled: !synthetic,
+						onEdit: startEditing,
+						onDrop: onreorder
+					}}>{title === '' ? '…' : title}</span
 				>{@render foldIcon()}
 			</span>
 		{/if}
@@ -277,23 +444,31 @@
 			<span class="num total">{total}</span>
 		{/if}
 
-		{#if editing}
+		{#if mark !== null}
 			<!--
-				The way to get rid of the group, offered only while its name is being
-				edited — and out in the gutter, in the same column as the mark on every
-				done task below it. Deleting is one thing and it happens in one place.
+				Out in the gutter, in the same column as the mark on every done task
+				below it, and the same drawing: getting rid of what is finished with
+				is one gesture and it is made in one place.
+
+				It used to appear only while the name was being edited, and only ever
+				deleted. Now it is there whenever it has something to do — which is
+				what a done task's own mark does — and it clears the group's finished
+				tasks while there is still something left to do, then removes the
+				whole group once there is not.
 			-->
 			<button
 				class="remove"
-				class:nothing={!finished}
 				type="button"
-				disabled={!finished}
-				onclick={remove}
+				onclick={strike}
 				onmousedown={(event) => event.preventDefault()}
-				aria-label={finished ? t.group.delete : t.group.deleteBlocked}
-				title={finished ? t.group.delete : t.group.deleteBlockedHint}
+				aria-label={mark === 'delete' ? t.group.delete : t.group.clear}
 			>
-				<svg viewBox="0 0 {MARK} {MARK}" width={MARK} height={MARK} aria-hidden="true">
+				<svg
+					viewBox="0 0 {SCRIBBLE.w} {SCRIBBLE.h}"
+					width={SCRIBBLE.w}
+					height={SCRIBBLE.h}
+					aria-hidden="true"
+				>
 					<path d={scribble} class="drawn" />
 				</svg>
 			</button>
@@ -513,11 +688,5 @@
 	 */
 	.remove svg {
 		translate: calc(-1 * var(--mark-step)) 0;
-	}
-
-	/* Drawn, but not offered: the group still has something in it to do. */
-	.remove.nothing {
-		opacity: var(--faint);
-		cursor: default;
 	}
 </style>

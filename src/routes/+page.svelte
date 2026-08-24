@@ -30,8 +30,9 @@
 
 	/*
 	 * Nothing sits on the page but the sheet and the buttons in its corners.
-	 * Syncing, sharing, importing, clearing and the credit all live behind the
+	 * Syncing, sharing, importing, leaving and the credit all live behind the
 	 * one that opens the menu — the paper carries only what someone wrote on it.
+	 * Clearing is not among them: it belongs beside the group it sweeps.
 	 *
 	 * The theme sits beside it rather than inside it, because it is the one
 	 * setting whose result is the screen itself: a control for how the sheet
@@ -41,7 +42,7 @@
 	 * a keyboard trap, and returning to a menu buried under a confirm is not a
 	 * step anyone wants.
 	 */
-	type Panel = 'menu' | 'import' | 'clear' | 'delete' | null;
+	type Panel = 'menu' | 'import' | 'delete' | null;
 	let panel = $state<Panel>(null);
 	let pasted = $state<string | null>(null);
 
@@ -356,23 +357,40 @@
 		);
 	}
 
-	function onClear() {
-		panel = null;
-		const cleared = sheet.clearDone();
-		if (cleared.length === 0) return;
-
-		// The confirm stops the accident; the undo covers the change of mind.
-		ui.say(t.toast.cleared({ count: cleared.length }), () => {
-			sheet.restore(cleared);
-			// The change is undone, so the message describing it goes at once.
-			ui.dismiss(true);
-		});
-	}
-
+	/**
+	 * LEAVE, and DELETE where there is no code — and a way back from either.
+	 *
+	 * This is the most destructive thing in the app and it was the one change
+	 * that offered nothing afterwards, on the reasoning that the confirm in
+	 * front of it was enough. A confirm stops the accident; it does nothing for
+	 * the change of mind, which is what an undo is for, and every other removal
+	 * here has one. Nothing about it is unrecoverable either: leaving is local,
+	 * the server was never told, and what went is five keys' worth of strings
+	 * this device wrote itself.
+	 *
+	 * Read which act it was before doing it — the code is gone by the time the
+	 * message is written.
+	 */
 	function onDelete() {
 		panel = null;
-		lists.deleteCurrent();
-		ui.say(t.toast.left);
+
+		const wasShared = sync.code !== null;
+		const gone = lists.deleteCurrent();
+		const said = wasShared ? t.toast.left : t.toast.deletedList;
+
+		if (!gone) {
+			ui.say(said);
+			return;
+		}
+
+		ui.say(said, {
+			label: t.toast.undo,
+			run: () => {
+				lists.restore(gone);
+				// The change is undone, so the message describing it goes at once.
+				ui.dismiss(true);
+			}
+		});
 	}
 </script>
 
@@ -452,7 +470,7 @@
 			<ListSwitcher />
 			<div class="controls">
 				<ThemeButton />
-				<MenuButton onopen={openMenu} />
+				<MenuButton onopen={openMenu} ondebug={() => diagnostics.toggle()} />
 			</div>
 		</div>
 		<!--
@@ -478,26 +496,21 @@
 		onclosed={() => (panel = null)}
 		onimport={onImport}
 		onexport={onExportFromMenu}
-		onclear={() => (panel = 'clear')}
 		ondelete={() => (panel = 'delete')}
 	/>
 {:else if panel === 'import'}
 	<ImportModal initial={pasted} onapply={applyMarkdown} onclose={() => (panel = null)} />
-{:else if panel === 'clear'}
-	<ConfirmModal
-		title={t.confirm.clearTitle}
-		seed="clear"
-		confirmLabel={t.confirm.clearConfirm}
-		onconfirm={onClear}
-		oncancel={() => (panel = null)}
-	>
-		{t.confirm.clearBody({ count: sheet.doneCount })}
-	</ConfirmModal>
 {:else if panel === 'delete'}
+	<!--
+		Leaving and deleting are two acts wearing one button, and the confirm has
+		to agree with the button that opened it — see `menu.delete`. With a code
+		the list carries on without this device; without one this is the end of
+		it, and the screen may not say "leave" about that.
+	-->
 	<ConfirmModal
-		title={t.confirm.leaveTitle}
+		title={sync.code ? t.confirm.leaveTitle : t.confirm.deleteTitle}
 		seed="delete"
-		confirmLabel={t.confirm.leaveConfirm}
+		confirmLabel={sync.code ? t.confirm.leaveConfirm : t.confirm.deleteConfirm}
 		onconfirm={onDelete}
 		oncancel={() => (panel = null)}
 	>

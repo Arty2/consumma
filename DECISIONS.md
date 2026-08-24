@@ -9,9 +9,9 @@ Numbers in brackets are the section of the build plan a decision came from.
 1. **DELETE removes the list from this device only.** No server call, no
    revocation. The confirm shows the code first, because that screen is the
    last place on the device it exists. [§12.1]
-2. **CLEAR sweeps `done` tasks and only those.** Half-done stays. A confirm
-   _and_ a ten-second undo: the confirm stops the accident, the undo covers the
-   change of mind. [§12.2, §12.16]
+2. **Clearing sweeps `done` tasks and only those.** Half-done stays. It had a
+   confirm _and_ a ten-second undo while it lived in the menu; it lives beside
+   the group now and keeps the undo alone — see §88. [§12.2, §12.16]
 3. **Tap toggles to-do and done; long-press sets half.** `Shift+Space` is the
    keyboard equivalent. [§12.3]
 4. **Joining with local tasks asks whether to merge or discard.** Never
@@ -24,9 +24,11 @@ Numbers in brackets are the section of the build plan a decision came from.
    skipped and counted. [§12.7]
 7. **Labels are uppercased in CSS only.** A group typed as "Weekend jobs" still
    exports as "Weekend jobs". [§12.8]
-8. **Limits: 100 characters per task, 100 tasks, 50 characters per group title,
+8. **Limits: 200 characters per task, 100 tasks, 50 characters per group title,
    20 groups, 128 KB per blob.** Enforced on input, never by discarding in
-   merge. [§12.9]
+   merge. The task limit was 100 and enforced with `maxlength`, which on a
+   phone is indistinguishable from a dead keyboard; it is 200 now and a full
+   row spills the rest onto the next one. [§12.9]
 9. **Six-month expiry, swept by a daily cron.** Editing keeps a list alive;
    reading does not. [§12.10]
 10. **Storage is one JSON file per list in Vercel Blob.** No database, no rate
@@ -218,8 +220,8 @@ Numbers in brackets are the section of the build plan a decision came from.
     grown two rows of buttons and a footer beneath it; none of that is what
     someone wrote on the paper. One button sits in the corner — three strokes
     normally, an arrow up and out when something is waiting to go — and opens a
-    panel holding sync, the code and sharing, joining, IMPORT/EXPORT,
-    CLEAR/DELETE and the credit.
+    panel holding sync, the code and sharing, joining, IMPORT/EXPORT, DELETE
+    and the credit. CLEAR was in that list and left it again — see §88.
 
     The arrow replaces the hollow status mark, and is a better sign for the
     same fact: not a health light to be decoded, but an outbox that is not
@@ -499,8 +501,8 @@ Numbers in brackets are the section of the build plan a decision came from.
     hover too, which put a live delete button beside every row a finger passed
     over and left it sitting there after an un-tick, because the pointer had not
     moved away. The cost is that removing an unfinished task now means ticking
-    it first; that is the right order for a sheet where CLEAR sweeps what is
-    done.
+    it first; that is the right order for a sheet where the mark beside the
+    group sweeps what is done.
 
 59. **The click after a drop is swallowed.** A release still fires a click on
     whatever was held, and everything draggable here is a button — so dropping a
@@ -1141,6 +1143,376 @@ relative` rather than a transform, which does not apply to an inline box.
     The sides themselves are still not jagged, and that is right: paper running
     the last few pixels out to a straight drawn line is what a straight drawn
     line means. It is only their ends that the tear now owns.
+
+88. **CLEAR left the menu for the group it sweeps.** It was a button in a panel
+    with a confirm in front of it, which is a long way from the tasks it was
+    about to take — and the confirm was there precisely because the tap was so
+    far from them. The group's own mark does it now: the same scribble that
+    removes a group, doing the other half of the same idea. While there is
+    still something in the group to do it clears what is done; once there is
+    not, it removes the group, which is what it always did.
+
+    So the mark is drawn whenever it has a job and never when it has not,
+    which is the rule a done task's own mark already follows. No confirm: the
+    mark says which of the two it is, it is only ever there with something to
+    sweep, and the ten-second undo covers the change of mind, exactly as it
+    does for removing a group.
+
+    Having a job is not enough to be offered, though. Two states put a group
+    in hand rather than in a list — its name is open, or it is folded away —
+    and the mark belongs to those. Drawn on every expanded group with a done
+    task under it, the sheet grows a column of live deletes down a list
+    somebody is only reading, which is the thing a task's own mark was taken
+    off hover to avoid. A row's mark is different in kind: it sits on the one
+    task it would remove.
+
+89. **A run of ticks offers to sweep itself.** Three tasks ticked inside five
+    seconds is somebody at the end of a shop going down the list, and what
+    they want next is those rows gone. The message offers it and never does
+    it — a sheet that cleared itself would be the app deciding — and it is
+    offered once per run rather than once per tick after the third, because
+    the second kind is nagging. The offer clears exactly the tasks in the run,
+    checked against what is still done when it is tapped, so a tick taken back
+    in the meantime is left alone.
+
+90. **A drop leaves a message with a way back; a keyboard move does not.** A
+    move is the one change a finger makes that leaves no trace of where the
+    thing came from. Where it came from is two strings read off the task before
+    it goes, and putting them back is an ordinary move stamped now, not a
+    rewind. Alt+↑/↓ keeps its announcement instead: it is exact, it says where
+    the task went, and a run of them down a list would raise a message a step.
+
+91. **The checkbox gave the first word back.** Its target reached a third again
+    past its own mark so that a finger going for the box and landing on the
+    first word still ticked the task. What that cost was the first word or two,
+    which then belonged to the checkbox: tapping them ticked instead of opening
+    the row, and pressing them could not lift the task at all, because the lift
+    lives on the words and the box was sitting on top of them. Two of the row's
+    three gestures went missing at the one end of the row a finger goes to,
+    which is dearer than the mis-tap it was buying. It is `--touch` across
+    again, and still the full height of the row.
+
+92. **One scribble, drawn once.** Every delete mark was seeded from the thing
+    it would remove, so a sheet of done tasks showed a different scribble on
+    every row — which is the "seeded so it never re-jitters" rule applied to
+    the wrong noun. The seed is the mark's own name now (`SCRIBBLE` in
+    draw/hand), so the mark on a task and the mark on a group header are the
+    same drawing. It is as tall as the checkbox at the other end of the row and
+    narrower than it is tall, because the column it stands in is narrower than
+    the checkbox and the ink must keep clear of the paper's drawn edge.
+
+    The shape is unchanged — four legs, alternating ends, one unlifted stroke.
+    What the taller box did change is the padding: read as one fraction of
+    both axes, four legs in a tall box land three pixels apart and merge into
+    a smudge, so the two are now fractions of their own axis. What keeps a leg
+    from lying flat is room above and below it, not room either side.
+
+93. **A collapsed group says what is left, not how much is under it.** `[3]`
+    answered the wrong question: a group is folded away because it is dealt
+    with or because it is not yet, and a total says neither. `[1/3]` is what is
+    still to do out of what is hidden, with half counting as still to do,
+    because it is.
+
+    Unless nothing in it is done, when both halves of the fraction are the same
+    number and it says no more than the total does — so it goes back to being
+    a total. A fraction is worth its second number only where there is a
+    difference between them to report.
+
+94. **A long press on the fold icon folds every group.** The icon is the fold
+    control, so the bigger version of folding belongs to it — and on a long
+    list it is the difference between a sheet and a scroll. It opens them all
+    again when there is nothing left folded, so the gesture always has a way
+    back. Nothing is written that the tap does not write: it is the same local,
+    never-synced record, set for every group at once.
+
+95. **A drop below the last task landed it first.** Below the last row there is
+    no row to hit-test, only the group, and the group counted the row being
+    carried among its own children — so the drop asked for a place one past the
+    end of the list it was going into. Neither neighbour existed at that index,
+    and a key between nothing and nothing is the first key there is. The count
+    now leaves the carried row out, exactly as the row branch beside it always
+    did, and `orderAt` clamps besides: a caller that is one out should be one
+    out, not inverted.
+
+    The same fault drew a landing rule where the row already was: the end of
+    the group came back one higher than home, so the guard that refuses a
+    no-op drop did not recognise it.
+
+96. **The landing rule needed the shift the group's rule already had.** The hit
+    test counts the rows with the carried one taken out, because that is the
+    list it is going back into; the markup counts every row it draws. Below the
+    row's own place the two are one apart, so the rule appeared directly under
+    the row in the hand — an offer to put it back where it already was, beside
+    a drop that would have done something else. `isGroupLanding` had this
+    translation and its own docstring explaining why; `isLanding` now has both.
+
+97. **The brackets are lifted onto Graphe's baseline.** Graphe has no `[` or
+    `]`, and that is deliberate: they are what a markdown checkbox is written
+    with, and swapping in characters the face does have would be changing the
+    mark to suit the tool. So the platform substitutes a face of its own —
+    Roboto on Android, whatever is to hand elsewhere — and that face sets its
+    brackets on the true baseline, while Graphe's figures and capitals are
+    drawn well above theirs. The brackets in the fold icon came out sitting low
+    around the numbers they enclose.
+
+    `--bracket-lift` is the correction, and it is the same fact as `--cap-lift`
+    and `--num-lift` one face further out. Measured rather than derived: on a
+    canvas at 24px a substituted `[` runs from 17 above the baseline to 3
+    below, and Graphe's figures and capitals both run 19 above to 3 above —
+    four pixels between the two middles. One number for every platform, which
+    is the honest thing to have when the face at the other end is whatever the
+    phone happens to own.
+
+98. **Round brackets, which Graphe has.** The fold icon was set in square ones,
+    which it has none of, so a substituted face drew them on the true baseline
+    and they sat low around the figures they enclose. §97 corrected that with a
+    measured lift, which worked and was a lot of machinery for a character the
+    face has a proper answer to: Graphe's `(` runs 20 above the baseline to 1
+    below against its figures' 19 above to 3 above, so it encloses what it
+    holds and needs nothing. The lift and the span it hung on are gone.
+
+    Not the markdown checkbox, which keeps its square brackets and its
+    deliberate fallback: those are what other apps read, and the export has to
+    stay readable by them.
+
+99. **The group title's tap is optimistic after all.** It was held back for the
+    double-tap window (§56 and the note beside it), on the reasoning that a
+    whole list folding and unfolding under the thumb is a worse flicker than a
+    third of a second of lag. The lag is what people actually notice, and they
+    notice it most beside the fold icon two millimetres away, which has always
+    answered at once — one control answering slower than its twin reads as the
+    app being tired.
+
+    So the tap folds, and the second tap puts the fold back before opening the
+    name. Which click is the second is read off `event.detail`, the browser's
+    own count of the run, and never off a timer: a window cannot tell the
+    second click of one pair from the first click of the next, and two
+    deliberate double taps a tenth of a second apart are a thing a test does
+    routinely and a finger does eventually. That is not a hypothetical — it is
+    what the suite did, and the group came out collapsed behind the field it
+    had just opened.
+
+100.  **Enter on a group title only opens a task when the group is empty**, and
+      the row that makes a group counts. Naming a group and writing the first
+      thing into it is one motion, and an empty group is the only time the next
+      thing is certainly a task. On a group that already has tasks, somebody
+      has come to change the name and Enter is how they say they are done with
+      it; an empty row opening underneath put a caret in the middle of a list
+      nobody was adding to, and closed it again on the next tap anywhere.
+
+      The row that makes a group was left out at first, and it is the commoner
+      way to reach an empty group by far — making one is what empties it. It
+      committed by blurring its own field, and a blur cannot say whether Enter
+      caused it, so it now commits in the keydown like every other row here.
+      Tapping away still only makes the group: Enter alone means "and the next
+      one", which is also why the blur handler has to be `() => addGroup()`
+      rather than `addGroup`, or the event lands in the argument that decides.
+
+101.  **A group's name is quoted where the app says it back.** "Removed Weekend
+      and 3 done" leaves the reader to work out where the name stopped, and a
+      group called "and" or "done" makes a sentence out of nothing. Not in an
+      announcement, where a quotation mark is noise or silence depending on the
+      screen reader, and not around "the untitled group", which is a
+      description rather than a name.
+
+102.  **Joining never throws a list away.** "Leave them" meant discard: the open
+      list was wiped and the joined one arrived in its place, so answering a
+      question about a handful of tasks threw away the list they were on. The
+      device holds as many lists as it likes, so the honest reading of leaving
+      them behind is that they stay behind — the joined list arrives beside this
+      one and the switcher shows both. The question said "leave them behind" the
+      whole time; the words were right and the app was not.
+
+      The new list is made before the pull, because it is the list the pull has
+      to land in. If the code is wrong or the network is gone, the device goes
+      back to the list it was on and the blank one is dropped as it is left,
+      having written nothing — and `sync.message` is read before that switch,
+      because switching re-points sync at the other list's key-set and clears
+      what it had to say about the attempt.
+
+103.  **The code field pastes on a tap.** A code arrives in a message, so it is
+      on the clipboard nine times out of ten and the next move is always the
+      same: long-press, wait for the menu, choose Paste. The field does it
+      itself, on the tap, which is a gesture a browser will allow a clipboard
+      read inside. Only into an empty field — a tap in a field with something
+      in it is a caret being placed — and only when `codeFrom` finds a code,
+      so a clipboard holding a shopping list puts nothing in it. A refused or
+      empty clipboard says nothing: Firefox rejects a read outright and Safari
+      asks first, and the keyboard was there either way.
+
+104.  **LEAVE reads DELETE without a code.** They are two different acts wearing
+      one button. With a code the list carries on without this device and can be
+      come back to, which is leaving; without one this device is the only place
+      it has ever been, and there is nothing to leave it to. The confirm agrees
+      with the button that opened it.
+
+105.  **Sync moved into "This list", and the import preview went.** A sync is
+      the most this-list thing in the panel — it is this list going to the
+      server and coming back — and it had the top to itself above the tear, so
+      the panel opened on a sentence about a list it had not yet named. The
+      section now reads down in the order the acts belong in: what is waiting,
+      SYNC NOW, IMPORT/EXPORT, the code or the note saying there is none, and
+      the button that ends it.
+
+      The import modal had two boxes of nearly the same text, one editable and
+      one not — the parsed list written back out in export notation, on the
+      grounds that a line without a bullet becomes a task and only the parse can
+      say so. The count above the buttons says that in a sentence, and the box
+      that is left is the one you can fix a stray line in.
+
+106.  **The switcher is level with the ✕.** The scroller begins a tear's depth
+      inside the paper, so being flush with the top of it put the pill
+      `--corner-lead` above the ✕ — near enough to read as one row and far
+      enough out to read as a mistake in it. `--corner-y` is `--paper-top +
+--tear + --corner-lead` and the scroller's own top is the first two, so
+      the lead is exactly what was missing. The ✕ does not move: it is placed
+      where every corner control in the app is placed.
+
+107.  **Leaving has an undo, like everything else that takes something away.**
+      It was the one change that offered nothing afterwards, on the reasoning
+      that the confirm in front of it was enough. A confirm stops the accident;
+      it does nothing for the change of mind, which is what an undo is for —
+      and the tap that ends a list is exactly the tap somebody regrets a second
+      later. §1 said DELETE removes the list from this device only, which is
+      what makes this possible: nothing left the device, the server was never
+      told, and what went is five keys' worth of strings this device wrote
+      itself.
+
+      So it is the one undo in the app that is an undelete rather than a change
+      stamped forward. The forward rule exists because a device that already
+      synced a deletion would otherwise win the next merge and re-delete
+      everything; nothing here ever reached a merge, so the same bytes go back
+      under the same keys and the list returns with its code, its folded groups
+      and its place in the switcher.
+
+      What is captured is the **whole index**, not the row that went. Removing a
+      list rewrites what is left, and the rewrite can take the index away
+      altogether — one list remaining under the bare keys needs none, so
+      `#persist` drops it. Putting one row back into whatever that left behind
+      restores the wrong shape: in the case that found it, the other list was
+      still on the device and no longer reachable from the switcher.
+
+108.  **Enter and Backspace at the very start are each other's inverse now.**
+      Enter at the start used to leave the task whole and open an empty row
+      _beneath_ it, on the grounds that the head would be empty and a task may
+      not be. That is the same two rows in the other order, and it reads as the
+      task staying put while something appears below it — where every other
+      place that takes writing puts the line down and opens an empty one above
+      it, with the caret. So the empty row opens above, and the document is not
+      touched at all: nothing is rewritten and nothing is restamped, because a
+      draft is the only row that may be empty and drawing one before the task
+      is the whole of the change.
+
+      Backspace at the start is the other direction: the task joins onto the end
+      of the one above and the caret waits at the seam. Quietly — nothing was
+      taken away, the words are a line higher, and a "Deleted." toast would be a
+      lie about the one thing it is there to report — and refused outright when
+      the two will not fit in one task, since dropping the overflow to make them
+      fit would lose writing. Both read `selectionStart === selectionEnd === 0`
+      rather than an empty head from `splitAt`: double-tapping a word selects
+      it, which is somebody about to replace it, and that arrives looking
+      identical.
+
+      The caret after a cut also moved. It sat behind what came down, which is
+      right for a row that ran out of room and is still being typed at its end,
+      and wrong for a cut somebody asked for — Enter in the middle of a line
+      puts the caret at the head of the new line. The two cases are told apart
+      at the call site rather than guessed at from the payload.
+
+      A row still being typed answers to the join too, which it did not at
+      first: the key was written on the task row and the draft row was left
+      with only its emptied-out case. On the sheet the two are the same thing —
+      one line of writing with a box beside it — so a key that worked on the
+      row above and not on the one under the finger read as the app having lost
+      its place. The only real difference is that a draft leaves without
+      anything being deleted, which is why the join takes the task to remove as
+      an optional argument rather than assuming there is one.
+
+      And a row with no task above it goes up to the group's own name, rather
+      than closing and leaving the caret nowhere. Enter on an empty group's
+      title is what puts that row there (§100); backspacing out of it is the
+      same motion in reverse, and stopping dead one keystroke into naming a
+      list is not an answer. Only for a row still being typed — a real first
+      task emptied to nothing is already refused, because deleting it would
+      take the caret somewhere no task is and the task with it.
+
+109.  **An open add row's box takes the ink once something is written in it.**
+      Empty, the row is still an offer, and its box is drawn as faintly as the
+      ellipsis it replaced. The moment there is writing the row is a task — it
+      becomes one as soon as the finger leaves — so the box stops being a
+      suggestion and becomes the box that task is getting. Nothing moves; only
+      the weight of the line changes, which is the difference between a thing
+      offered and a thing there.
+
+110.  **A lift is put down when the node holding it leaves.** The action's
+      cleanup released its own capture and cleared its own timer, and left the
+      shared drag exactly as it was. A node can go with a finger still on it —
+      a group title swaps itself for its edit field, a row changes which element
+      it draws — and once it has, no pointerup, pointercancel or
+      lostpointercapture will ever reach those handlers again.
+
+      Because the lift is one shared state rather than a flag on the row, what
+      that left behind was not a stalled drag on one title: it was every group
+      folded shut, a dashed outline round a name, and nothing anywhere on the
+      sheet able to clear either. `destroy` resets the drag when this node was
+      the one holding it, and `lostpointercapture` covers the other half — the
+      browser taking the pointer away while the node stays.
+
+      `stop()` clears `lifted` before releasing a capture rather than after,
+      which is load-bearing: releasing fires `lostpointercapture` there and
+      then, and a handler that could not tell that from a real interruption
+      would reset the drag between `stop()` and the drop it was about to
+      deliver, and no drop would ever land again.
+
+111.  **The group title's press has two lengths in it.** Renaming was two taps
+      and nothing else, which is a gesture you have to be told about — where a
+      press is what a finger tries on anything it suspects of holding more. So
+      holding briefly opens the name and holding on picks the group up, with a
+      buzz at each threshold: the first says a release now will open the name,
+      the second says the group is in hand. Twice the shorter press, so the two
+      are told apart by feel rather than by counting.
+
+      It answers on the release rather than at the threshold, and it has to.
+      Nothing at a threshold can know whether the finger is going to stay down
+      — and opening the name swaps the title for its own edit field, which
+      takes the node out of the document, so a press that fired there would
+      leave the longer one nothing to fire on. The buzz is what stands in for
+      knowing.
+
+      The click that follows either stage is swallowed, the same way the click
+      after a drop already was, or the group folds underneath what the press
+      has just done. It is armed before the hooks run rather than after,
+      because the shorter press can take the node — and the listener that does
+      the swallowing — out of the document.
+
+      No other control has two presses. Everything else lifts at
+      `LONG_PRESS_MS`, and can: a task's other gestures are taps, and the
+      checkbox's press is its only one. Two lengths where one would do is a
+      thing to be able to justify twice over.
+
+112.  **The debug switch is not on the panel until it is on.** It is a tool for
+      whoever is building the app rather than a state the app has — §12.14's
+      "no chrome" is about exactly this — and a switch for it sitting in the
+      menu says the opposite: it is the one thing in there that is not about
+      this list, and it was the first thing under the last tear where anybody
+      scrolling would meet it.
+
+      A long press on the burger turns it on, because the switch lives in the
+      menu and that is the menu. The press swallows the tap that would have
+      opened the panel, the same swallow a drop uses, and `longPress` buzzes on
+      the threshold itself — which is the whole of what says the press landed,
+      since the panel is not open to show it. The button stays where it was,
+      because something has to turn it off again, and it is only ever seen by
+      somebody who has just turned it on.
+
+      Nothing else changed: the log, what it keeps, and the fact that turning it
+      off clears it are all as they were.
+
+113.  **The two authors are held together by a hard space.** A line break
+      between "and" and the last name leaves one of them hanging alone at the
+      start of a line, which is the one place on the sheet where the typography
+      is the point. Written as `\u00a0` in the catalogue rather than as an
+      invisible character in the source.
 
 ## Known limits
 

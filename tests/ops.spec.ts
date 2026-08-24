@@ -177,6 +177,27 @@ describe('clear and undo', () => {
 		expect(liveTasks(cleared).map((t) => t.id)).toStrictEqual(['t2', 't3']);
 	});
 
+	/*
+	 * The same rule, narrowed — to one group's finished tasks, or to the run
+	 * somebody has just ticked off. The narrowing may never widen what is swept.
+	 */
+	it('sweeps only the ids it is given', () => {
+		doc = setTaskState(doc, ctx, 't3', 'done');
+
+		const { doc: cleared, cleared: removed } = clearDone(doc, ctx, ['t3']);
+
+		expect(removed).toStrictEqual([{ id: 't3', text: 'Milk' }]);
+		expect(liveTasks(cleared).map((t) => t.id)).toStrictEqual(['t1', 't2']);
+	});
+
+	it('leaves an id that is no longer done, however it was asked for', () => {
+		// The offer was made a few seconds ago and the tick has been taken back
+		// since; a message on screen must not sweep what is no longer finished.
+		const { cleared: removed } = clearDone(doc, ctx, ['t2', 't3']);
+
+		expect(removed).toStrictEqual([]);
+	});
+
 	it('undo restores the text and stamps forward, never backwards', () => {
 		const before = doc.tasks.t1.stamps.deleted.t;
 		const { doc: cleared, cleared: removed } = clearDone(doc, ctx);

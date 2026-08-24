@@ -126,22 +126,20 @@
 
 <style>
 	/*
-	 * The mark is 22px in a 44px target, and the target now reaches further than
-	 * the mark does — a third again across, and the whole height of the row.
+	 * The mark is 22px in a 44px target, and the target is that square and no
+	 * wider — it stops where the writing starts.
 	 *
-	 * A checkbox is a small square in a line of words, and the words either side
-	 * of it are a much bigger thing to hit. So the area it answers to takes in
-	 * the start of the writing beside it: a finger going for the box and landing
-	 * on the first word still ticks the task, which is what it meant. What that
-	 * costs is that the first word or two cannot be tapped to open the row — the
-	 * words go on for a while and the end of them is always reachable, so it is
-	 * the cheaper of the two mistakes.
+	 * It did reach a third again across, so that a finger going for the box and
+	 * landing on the first word still ticked the task. What that cost was the
+	 * first word or two: they belonged to the checkbox, so tapping them ticked
+	 * the task rather than opening it, and a press there could not begin a drag
+	 * either, because the lift lives on the words and this box was sitting on
+	 * top of them. Two of the row's three gestures went missing at the one end
+	 * of the row a finger naturally goes to, and that is the dearer mistake.
 	 *
-	 * Taken out of the flow to do it. Widening a flex item would push the words
-	 * thirteen pixels right and take that much off every line on the sheet, so
-	 * the box is positioned against the row instead and the row pads itself by
-	 * exactly what the box used to occupy — the writing does not move by a pixel
-	 * and neither does the mark.
+	 * Still out of the flow, and the row still pads itself by exactly what the
+	 * box occupies: widening or narrowing a flex item here would move every line
+	 * on the sheet sideways, and nothing about the writing or the mark may move.
 	 *
 	 * Full height rather than 44px: a task over three lines has three lines of
 	 * checkbox beside it, which is what a column of anything means.
@@ -151,7 +149,7 @@
 		left: 0;
 		top: 0;
 		bottom: 0;
-		width: calc(var(--touch) * 1.3);
+		width: var(--touch);
 
 		display: inline-flex;
 		align-items: flex-start;
@@ -182,11 +180,9 @@
 	 * faded.
 	 *
 	 * Centred on the mark, and it has to say where the mark is rather than
-	 * halve its parent. `.box` used to be the 44px square the mark sat in the
-	 * middle of, so a plain `50% 50%` found it; the box now reaches a third
-	 * again across and the whole height of the row, and its middle is a point
-	 * out in the words with nothing drawn at it. The flourish followed the
-	 * middle and left the tick behind.
+	 * halve its parent. `.box` is 44px across but the whole height of the row,
+	 * so on a task over two lines its middle is a point down in the second one
+	 * with nothing drawn at it, and a plain `50% 50%` left the tick behind.
 	 *
 	 * So the same two numbers the padding above is built from, read the other
 	 * way round: the mark starts `--corner-ink` in and is `--glyph` across, so

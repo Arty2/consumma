@@ -133,12 +133,42 @@ test('deleting the open list falls back to the other one, and the pill goes once
 	await newList(page);
 	await addTask(page, 'Milk');
 
-	await fromMenu(page, 'Leave');
-	await page.getByRole('button', { name: 'Leave', exact: true }).click();
+	// Neither list has ever been synced, so the button reads DELETE.
+	await fromMenu(page, 'Delete');
+	await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
 	await expect(switcherPill(page)).toHaveCount(0);
 	await expect(task(page, 'Bread')).toBeVisible();
 	await expect(task(page, 'Milk')).toHaveCount(0);
+});
+
+test('deleting a list offers it back, and the switcher with it', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+	await addTask(page, 'Milk');
+
+	await fromMenu(page, 'Delete');
+	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+	await expect(switcherPill(page)).toHaveCount(0);
+
+	/*
+	 * The whole index goes back, not just the row that went. Removing a list
+	 * rewrites what is left, and the rewrite can take the index away
+	 * altogether — one list under the bare keys needs none — so putting one
+	 * row back into what that left behind restored the wrong shape and left
+	 * the other list unreachable.
+	 */
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+	await expect(task(page, 'Milk')).toBeVisible();
+	await expect(switcherPill(page)).toBeVisible();
+
+	await page.reload();
+	await expect(task(page, 'Milk')).toBeVisible();
+	await expect(switcherPill(page)).toBeVisible();
+
+	// And the one it was not on is still there to switch to.
+	await switcherPill(page).dblclick();
+	await expect(task(page, 'Bread')).toBeVisible();
 });
 
 test('deleting every list leaves no trace, and the next edit lands under the same bare keys as ever', async ({
@@ -148,10 +178,10 @@ test('deleting every list leaves no trace, and the next edit lands under the sam
 	await newList(page);
 	await addTask(page, 'Milk');
 
-	await fromMenu(page, 'Leave');
-	await page.getByRole('button', { name: 'Leave', exact: true }).click();
-	await fromMenu(page, 'Leave');
-	await page.getByRole('button', { name: 'Leave', exact: true }).click();
+	await fromMenu(page, 'Delete');
+	await page.getByRole('button', { name: 'Delete', exact: true }).click();
+	await fromMenu(page, 'Delete');
+	await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 

@@ -50,6 +50,23 @@ export async function openMenu(page: Page) {
 }
 
 /**
+ * Turn the debug switch on, which is a press on the burger rather than
+ * anything on the panel — it is not there until it is on. Leaves the menu
+ * shut, because the press swallows the tap that would have opened it.
+ */
+export async function turnOnDebug(page: Page) {
+	await page.keyboard.press('Escape');
+	await settle(page);
+
+	const box = (await menuButton(page).boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(650);
+	await page.mouse.up();
+	await settle(page);
+}
+
+/**
  * Open the menu and press something in it. The labels are written in title
  * case and uppercased in CSS, so the accessible name comes back in caps —
  * hence a case-insensitive match rather than `exact`.

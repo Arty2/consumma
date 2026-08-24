@@ -314,17 +314,17 @@ test('IMPORT takes a list pasted by hand, when the clipboard cannot be read', as
 	await page.evaluate(() => navigator.clipboard.writeText('Bread\nCoffee\nMilk'));
 	await fromMenu(page, 'Import');
 
-	// No preview yet: there was nothing to read, so it opens on the box.
+	// Nothing was read, so it opens on an empty box and says so.
 	const field = page.getByRole('textbox', { name: 'Markdown to import' });
 	await expect(field).toBeVisible();
-	await expect(page.getByLabel('What will be added')).toHaveCount(0);
+	await expect(field).toHaveValue('');
+	await expect(page.getByText(/Add \d+ task/)).toHaveCount(0);
 
 	await field.focus();
 	await page.keyboard.press('Control+V');
 
 	// A real paste reaches the same parse a clipboard read would have.
 	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
-	await expect(page.getByLabel('What will be added')).toContainText('- [ ] Bread');
 
 	await page.getByRole('button', { name: 'Add', exact: true }).click();
 	await expect(page.getByRole('checkbox')).toHaveCount(3);
@@ -364,11 +364,8 @@ test('IMPORT takes a list that repeats itself, in a task and in a heading', asyn
 
 	await fromMenu(page, 'Import');
 
-	// The preview reads every line, including the ones that say the same thing.
-	// This is the assertion that would have failed: the whole block went down
-	// with the duplicate key and there was nothing on screen at all.
+	// The parse reads every line, including the ones that say the same thing.
 	await expect(page.getByText('Add 4 tasks in 2 groups?')).toBeVisible();
-	await expect(page.getByLabel('What will be added')).toContainText('- [x] Milk');
 
 	/*
 	 * What lands is deduplicated, which is a separate and deliberate rule —
@@ -401,50 +398,53 @@ test('IMPORT refuses a data file and a web page, and says which', async ({ page,
 	await expect(page.getByRole('checkbox')).toHaveCount(1);
 });
 
-test('IMPORT takes plain lines, and shows what it will make of them', async ({ page, context }) => {
+test('IMPORT takes plain lines, and counts what it will make of them', async ({
+	page,
+	context
+}) => {
 	await context.grantPermissions(['clipboard-read', 'clipboard-write']);
 
 	// A list as most people have one: lines in a note, no bullets anywhere.
 	await page.evaluate(() => navigator.clipboard.writeText('Bread\nCoffee\nMilk'));
 	await fromMenu(page, 'Import');
 
-	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
-
 	/*
-	 * The preview is what it will become rather than what was pasted — a line
-	 * with no bullet becomes a task, and the only honest way to say so is to
-	 * read the parsed list back.
+	 * A line with no bullet becomes a task, and the count is how the parse says
+	 * so. There was a second box under this one for a while, showing the parsed
+	 * list written back out in export notation — two boxes of nearly the same
+	 * text, one of them editable, with nothing on screen saying which was
+	 * which. What was pasted is on screen already, and it can be edited.
 	 */
-	const preview = page.getByLabel('What will be added');
-	await expect(preview).toContainText('- [ ] Bread');
-	await expect(preview).toContainText('- [ ] Milk');
+	await expect(page.getByText('Add 3 tasks in 1 group?')).toBeVisible();
+	await expect(page.getByRole('textbox', { name: 'Markdown to import' })).toHaveValue(
+		'Bread\nCoffee\nMilk'
+	);
 
 	await page.getByRole('button', { name: 'Add', exact: true }).click();
 	await expect(page.getByRole('checkbox')).toHaveCount(3);
 });
 
-test('CLEAR asks first, then clears, and the undo still works', async ({ page }) => {
+test('clearing is beside the group now, not in the menu', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addTask(page, 'Coffee');
 	await task(page, 'Bread').click();
 
-	await fromMenu(page, 'Clear');
+	// It left the menu with its confirm: a tap in a panel is a long way from
+	// the tasks it is about to take, and the mark on the group is not.
+	await openMenu(page);
+	await expect(
+		page.getByRole('dialog', { name: 'Menu' }).getByRole('button', { name: 'Clear' })
+	).toHaveCount(0);
+	await page.getByRole('button', { name: 'Close' }).click();
 
-	const confirm = page.getByRole('dialog', { name: 'Clear completed tasks' });
-	await expect(confirm).toBeVisible();
-	await expect(confirm).toContainText('Remove 1 completed task?');
-	await expect(confirm).toContainText('everyone on this list');
-
-	// Cancel changes nothing.
-	await page.getByRole('button', { name: 'Cancel' }).click();
-	await expect(task(page, 'Bread')).toBeVisible();
-
-	await fromMenu(page, 'Clear');
-	await page.getByRole('button', { name: 'Clear', exact: true }).click();
-
+	// The sheet's own title, not the switcher pill in the panel behind it,
+	// which is named for the list it is showing and is still furling.
+	await page.locator('section[data-group] .title').dblclick();
+	await page.getByRole('button', { name: 'Clear done tasks' }).click();
 	await expect(task(page, 'Bread')).toHaveCount(0);
+	await expect(task(page, 'Coffee')).toBeVisible();
 
-	// The confirm stops the accident; the undo covers the change of mind.
+	// Nothing asked first, so the undo is what covers a change of mind.
 	await page.getByRole('button', { name: 'UNDO?' }).click();
 	await expect(task(page, 'Bread')).toBeVisible();
 });
@@ -479,6 +479,32 @@ test('LEAVE shows the code one last time, then wipes only this device', async ({
 	await expect(page.locator('.code')).toHaveCount(0);
 	expect(await page.evaluate(() => localStorage.getItem('consumma:code'))).toBeNull();
 	expect(code).toMatch(/^[0-9a-f]{12}$/);
+});
+
+test('leaving offers the list back, code and all', async ({ page }) => {
+	await withCode(page);
+	await addTask(page, 'Bread');
+
+	await fromMenu(page, 'Leave');
+	await page.getByRole('button', { name: 'Leave', exact: true }).click();
+	await expect(page.getByRole('checkbox')).toHaveCount(0);
+
+	/*
+	 * The confirm stops the accident and the undo covers the change of mind,
+	 * which is the arrangement every other removal here has. Nothing about
+	 * this one is beyond recovery: leaving is local, the server was never
+	 * told, and what went is five keys' worth of strings this device wrote.
+	 */
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+	await expect(task(page, 'Bread')).toBeVisible();
+
+	// The code with it, or the list has come back as a different list.
+	expect(await page.evaluate(() => localStorage.getItem('consumma:code'))).toMatch(
+		/^[0-9a-f]{12}$/
+	);
+
+	await page.reload();
+	await expect(task(page, 'Bread')).toBeVisible();
 });
 
 test('joining with tasks already here asks rather than deciding', async ({ page }) => {
