@@ -15,6 +15,7 @@
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
 	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { taken } from '$lib/feel';
+	import { wide } from '$lib/figures';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
 
@@ -121,10 +122,14 @@
 	 * Written out the way the group writes numbers rather than the way this line
 	 * happened to be typed, so one column does not read `5,08`, `20.00` and `10`
 	 * down its length. The stored text keeps every character of what was typed.
+	 *
+	 * `wide` is the last thing either passes through: a figure is set in the
+	 * fullwidth digits, which is a matter of how it is drawn and not of what it
+	 * says — see src/lib/figures.ts.
 	 */
-	const count = $derived(reading.count === null ? null : countLabel(reading.count, style));
+	const count = $derived(reading.count === null ? null : wide(countLabel(reading.count, style)));
 	const cost = $derived(
-		reading.money === null || style === null ? null : format(reading.money.cents, style)
+		reading.money === null || style === null ? null : wide(format(reading.money.cents, style))
 	);
 	/*
 	 * Something scribbled out, not a ✕, and the same one everywhere.

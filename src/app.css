@@ -51,13 +51,34 @@
 	 * the point: a recognised count or price is a figure, not a word, and it is
 	 * set apart so the column reads down.
 	 *
-	 * A system stack, so this is still exactly one @font-face, one file and no
-	 * request — nothing here touches connect-src or the CSP.
+	 * It is set in the fullwidth digits — see src/lib/figures.ts, which is what
+	 * substitutes them. Graphe has no glyph in that block, so this stack is what
+	 * draws them, and every face in it is one the device already has: still
+	 * exactly one @font-face, one file and no request, nothing touching
+	 * connect-src or the CSP. A browser goes on looking past the last name here
+	 * if it must, so a device with any of the block at all shows figures rather
+	 * than boxes.
 	 *
 	 * The scale correction is measured in a browser, not derived, for the same
-	 * reason `size-adjust` and `--cap-lift` are: mono faces are drawn on a
-	 * larger body than Graphe, and the two have to read at the same size when
-	 * they sit on one line. Retune it if either face changes.
+	 * reason `size-adjust` and `--cap-lift` are: these faces are drawn on a
+	 * different body from Graphe and the two have to read at the same size when
+	 * they sit on one line. It stayed where the mono stack left it, and that is
+	 * a measurement rather than a leftover — a fullwidth digit and a mono digit
+	 * stand at very nearly the same height per em (0.634 against 0.630 of the
+	 * parent's size at this value, beside Graphe's capitals at 0.748), so the
+	 * correction that was right for one is right for the other. What changed is
+	 * the width, which is the point. Retune it if either face changes.
+	 */
+	--figure:
+		'Hiragino Sans', 'Yu Gothic', 'Noto Sans CJK JP', 'Noto Sans JP', 'Microsoft YaHei', sans-serif;
+	--figure-scale: 0.9;
+
+	/*
+	 * Not the same thing, and not on the sheet at all: the IMPORT box and the
+	 * share code, which are a block of markdown and twelve hex characters. Both
+	 * want a fixed pitch for the reason a figure does not — so that a line of
+	 * punctuation and a run of letters and digits can be read a character at a
+	 * time — and neither is ever drawn beside the writing.
 	 */
 	--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	--mono-scale: 0.9;
@@ -66,9 +87,12 @@
 	 * How far a figure lifts to sit level with the capitals beside it.
 	 *
 	 * The same fact as `--cap-lift`, seen from the other side. Graphe's capitals
-	 * are drawn riding high above their own baseline, so a mono digit sitting
+	 * are drawn riding high above their own baseline, so a figure sitting
 	 * honestly on that baseline reads low against them — sharing a baseline is
-	 * not the same as looking level.
+	 * not the same as looking level. It does not lift flush and never did: the
+	 * capitals rise clear of the baseline as well as reaching higher, and a
+	 * figure taken all the way to their tops reads as though it were shouting
+	 * back at them.
 	 *
 	 * Measured in a browser, not derived: the difference between where the two
 	 * faces put their ink, at one size. Retune it with either face.
@@ -439,9 +463,9 @@ body {
  * and a figure should not have to be a flex item to sit level.
  */
 .num {
-	font-family: var(--mono);
+	font-family: var(--figure);
 	font-variant-numeric: tabular-nums;
-	font-size: calc(1em * var(--mono-scale));
+	font-size: calc(1em * var(--figure-scale));
 	letter-spacing: normal;
 	text-transform: none;
 	position: relative;

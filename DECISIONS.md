@@ -1207,9 +1207,9 @@ relative` rather than a transform, which does not apply to an inline box.
     a smudge, so the two are now fractions of their own axis. What keeps a leg
     from lying flat is room above and below it, not room either side.
 
-93. **A collapsed group says what is left, not how much is under it.** `[3]`
+93. **A collapsed group says what is left, not how much is under it.** `(3)`
     answered the wrong question: a group is folded away because it is dealt
-    with or because it is not yet, and a total says neither. `[1/3]` is what is
+    with or because it is not yet, and a total says neither. `(1/3)` is what is
     still to do out of what is hidden, with half counting as still to do,
     because it is.
 
@@ -1217,6 +1217,10 @@ relative` rather than a transform, which does not apply to an inline box.
     number and it says no more than the total does — so it goes back to being
     a total. A fraction is worth its second number only where there is a
     difference between them to report.
+
+    Superseded in part by 117, which keeps the shape and changes what the two
+    halves are; and the brackets were square when this was written, which 98
+    settled.
 
 94. **A long press on the fold icon folds every group.** The icon is the fold
     control, so the bigger version of folding belongs to it — and on a long
@@ -1513,6 +1517,104 @@ relative` rather than a transform, which does not apply to an inline box.
       start of a line, which is the one place on the sheet where the typography
       is the point. Written as `\u00a0` in the catalogue rather than as an
       invisible character in the source.
+
+114.  **A figure is set in the fullwidth digits.** A recognised count or price
+      was set in a system mono stack, which said "not a word" by borrowing a
+      whole second face's personality to say it — and the personality that came
+      with it belonged to a code editor. `０１２３４５６７８９` says the same
+      thing with the characters themselves: they are drawn one em wide apiece,
+      so the price column lines down without being asked to, and a figure
+      standing beside handwriting is unmistakably a figure.
+
+      Graphe has no glyph in that block, so a face the device already has draws
+      them. That is the same trade the mono stack made and the reason it was
+      acceptable there: a system stack is still one `@font-face`, one file and
+      no request, and nothing about it reaches the CSP. `--mono` stays for the
+      IMPORT box and the share code, which want a fixed pitch for the opposite
+      reason — so that punctuation and a run of hex can be read a character at
+      a time — and neither is ever drawn on the sheet.
+
+      The substitution is a change of drawing and not of reading. `wide` is
+      applied where a figure reaches the screen, so `amountsIn` and `format` go
+      on speaking in ordinary digits and the stored text, the accessible name,
+      the markdown export and what merge sees are all untouched. Digits only:
+      there is no fullwidth `€`, and widening `＄` and `￡` alone would leave
+      the currency column disagreeing with itself about which of the three it
+      was written in.
+
+      The decimal mark was tried wide and put back. `，` and `．` both exist, and
+      an even column was the obvious reason to want them — but a fullwidth comma
+      is a comma sitting in the middle of an em, so it opens a gap on either
+      side of itself and `5，08` reads as two numbers with a mark stranded
+      between them. Binding the two halves is the whole of what a decimal mark
+      does, and the ordinary one does it. The `×` stays for the same reason.
+
+      `--figure-scale` did not move, and that is a measurement rather than a
+      leftover: a fullwidth digit and a mono digit stand at very nearly the
+      same height per em, so the correction that was right for one is right for
+      the other. What changed is the width, which is the point.
+
+115.  **Greek chi counts, and so does a capital X.** `2x apples` read as a count
+      and `2χ apples` did not, which is a list written on a Greek keyboard
+      being told its numbers are words. Chi is the letter under that finger,
+      and `Χ` is the same shape as `X` twice over — so both cases of both go
+      in, and the Latin capital with them, which had been an accidental gap
+      rather than a decision. All five are written back as one `×`, so nothing
+      about the column changes.
+
+      One named constant rather than two literals: the pattern that reads the
+      count and the expression that strips the mark off again are sixty lines
+      apart and have to agree.
+
+116.  **A group carried to the list switcher becomes a list.** A group that had
+      outgrown the sheet it was on had no way off it short of retyping it
+      somewhere else. This is the drag that already reorders groups, given one
+      more place to land, and it costs no new gesture: the same press, the same
+      carry, a different target.
+
+      The list arrives already named, which is the part that makes it feel like
+      one motion rather than two. A list is named after its first group, so the
+      carried group becomes the new sheet's scaffolding group rather than
+      landing beside it — an empty "My list" left above would be a group nobody
+      made, and it would be the one naming the list.
+
+      The switcher is normally not on the page at one list, which is exactly the
+      case where somebody would want this. So it comes out while a group is in
+      hand: the pill appearing is what says a drop is possible, and the box it
+      draws when the group is over it is what says it would land there. It only
+      offers itself when it would take the drop — never on a sheet with one
+      group, since moving that group would move the list to itself. The refusal
+      is made by not being a target at all, rather than by taking the drop and
+      doing nothing, because the finger has to be told before it lets go.
+
+      `sync.busy` is asked before the group is taken away rather than after.
+      `createList` refuses while a sync is in flight, and a refusal arriving
+      halfway through would have the group out of one list and in no other.
+
+      The undo deletes the new list outright rather than emptying it — it holds
+      only what the group held — and then puts the group back with the ordinary
+      forward stamp, so a device that has already synced the deletion cannot
+      win the next merge and re-delete it.
+
+117.  **A folded group says what is done over what is not.** `(1/3)` was one
+      still to do out of three hidden — a part and a whole, where the whole is
+      the thing a folded group is folded away from caring about. Both halves
+      are live numbers now: ticking a task moves them both, and the pair says
+      how far along the group is.
+
+      Nothing done and the first half has nothing to say, so it is left off and
+      what remains is how much there is to do — which is decision 93's rule
+      arrived at from the other side, and it reads `(3)` exactly as it did.
+      Nothing left to do and there is no second half either; at that point the
+      group is not a count any more, so it reads `(✔)`, and the mark out in the
+      margin beside it is already offering to take the group away.
+
+      U+2714 and not U+2713: Graphe draws the heavy check and has no glyph for
+      the light one, which would fall out of the hand for a single character
+      inside brackets the hand is drawing. And `done === 0` is asked before
+      anything else, because an empty group answers true to every "is it all
+      done" there is — `[].every` included — and a group with nothing in it has
+      had nothing done to it.
 
 ## Known limits
 

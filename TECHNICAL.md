@@ -72,6 +72,16 @@ the visible case is a task titled something like `Deposit [urgent]`. `Ϋ` is
 the capital of `ΰ`, so it appears only when a word containing that letter is
 shown in caps.
 
+It has no fullwidth digits either (`U+FF10`–`U+FF19`), and that one is not a
+gap but the design: a recognised count or price is set in those characters and
+drawn by `--figure`, a stack of faces the device already has. That is the same
+trade the previous mono stack made — still one `@font-face`, one file and no
+request — and swapping Graphe for another face does not change it, since the
+substitute is unlikely to carry the block either. A device with none of it at
+all would show boxes where the figures are; the browser goes on looking past
+the last name in the stack, so in practice anything with a CJK face installed
+draws them, which is every phone.
+
 ## Greek capitalisation
 
 The sheet is set in caps in CSS, and uppercasing Greek is language-dependent:

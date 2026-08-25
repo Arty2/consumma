@@ -9,11 +9,19 @@
 	import { LIMITS } from '$lib/doc/limits';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
-	import { drag, NEW_GROUP, type DropTarget } from '$lib/dnd/drag.svelte';
+	import {
+		drag,
+		NEW_GROUP,
+		NEW_LIST,
+		type DropTarget,
+		type GroupTarget
+	} from '$lib/dnd/drag.svelte';
 	import type { State, Task } from '$lib/doc/types';
 	import { t } from '$lib/i18n';
 	import { Burst } from '$lib/state/burst';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { lists } from '$lib/state/lists.svelte';
+	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
 	let newGroupOpen = $state(false);
@@ -344,7 +352,12 @@
 		ui.say(t.toast.moved, undoing(back));
 	}
 
-	/** The same, for a whole group carried among its siblings. */
+	/** The same, for a whole group: among its siblings, or off onto a list of its own. */
+	function dropGroup(id: string, target: GroupTarget) {
+		if (target === NEW_LIST) spinOff(id);
+		else reorder(id, target);
+	}
+
 	function reorder(id: string, index: number) {
 		const was = sheet.doc.groups[id];
 		if (!was) return;
@@ -354,6 +367,77 @@
 		ui.say(
 			t.toast.moved,
 			undoing(() => sheet.moveGroup(id, order))
+		);
+	}
+
+	/**
+	 * Let go on the switcher: the group leaves this list and becomes one.
+	 *
+	 * A group that has outgrown the sheet it is on had no way off it short of
+	 * retyping. This is the drag that already reorders groups, given one more
+	 * place to land — and the list arrives already named, because a list is
+	 * named after its first group (`nameFor`) and the group is now the first
+	 * thing on it.
+	 *
+	 * Asked of `sync.busy` before anything is taken away rather than after:
+	 * `createList` refuses while a sync is in flight, and a refusal that came
+	 * halfway through would leave the group out of one list and in no other.
+	 */
+	function spinOff(id: string) {
+		if (sync.busy) return;
+
+		const group = sheet.groups.find((candidate) => candidate.id === id);
+		if (!group || group.synthetic) return;
+		// The last group on a sheet has nothing to be moved off — see ListSwitcher.
+		if (sheet.groups.filter((candidate) => !candidate.synthetic).length < 2) return;
+
+		const title = group.title;
+		const carried = group.tasks.map((task) => ({ text: task.text, state: task.state }));
+
+		// Read off before it goes: `deleteGroup` blanks the text in the tombstones
+		// and hands back what it took, which is what the undo puts back.
+		const gone = sheet.deleteGroup(id);
+		if (gone === null) return;
+
+		const from = lists.createList();
+		if (from === null) {
+			sheet.restoreGroup(gone);
+			return;
+		}
+		const to = lists.current;
+
+		/*
+		 * A fresh list arrives scaffolded with one quiet group — the same opening
+		 * group a first-ever visit draws. The carried group becomes it rather than
+		 * landing beside it: an empty "My list" left above would be a group nobody
+		 * made, and it is the first group that names the list.
+		 */
+		const seat = sheet.groups[0];
+		if (seat) {
+			sheet.renameGroup(seat.id, title);
+			for (const task of carried) {
+				const made = sheet.addTask(seat.id, task.text);
+				if (made !== null && task.state !== 'todo') sheet.setState(made, task.state);
+			}
+		}
+
+		ui.announce(t.sheet.movedToNewList);
+
+		/*
+		 * The undo goes back the way it came: the new list is deleted outright
+		 * rather than emptied, since it holds only what the group held, and then
+		 * the group goes back on the sheet it came from. `restoreGroup` stamps
+		 * forward like every other undo here, so a device that has already synced
+		 * the deletion cannot win the next merge and re-delete it.
+		 */
+		ui.say(
+			t.toast.movedToList,
+			undoing(() => {
+				if (to !== null && lists.current !== to) lists.switchTo(to);
+				lists.deleteCurrent();
+				if (lists.current !== from) lists.switchTo(from);
+				sheet.restoreGroup(gone);
+			})
 		);
 	}
 
@@ -541,7 +625,7 @@
 				ondelete={() => removeGroup(group.id, group.title)}
 				onclear={() => clearGroup(group.tasks)}
 				onaddtask={() => (inserting = { groupId: group.id, index: 0 })}
-				onreorder={(index) => reorder(group.id, index)}
+				onreorder={(target) => dropGroup(group.id, target)}
 			/>
 
 			{#if !folded && !ui.isCollapsed(group.id)}

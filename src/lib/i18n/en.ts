@@ -92,6 +92,8 @@ export const en = {
 		/** Over the hundred: what is there, against what fits. */
 		over: ({ count, max }: { count: number; max: number }) => `${count} of ${max} — clear some`,
 		movedToNewGroup: 'Moved to a new group.',
+		/** A whole group carried up to the switcher, which makes it a list. */
+		movedToNewList: 'Moved to a new list.',
 		movedWithin: ({ position, group }: { position: number; group: string }) =>
 			`Moved to position ${position} in ${group}.`,
 		movedTo: ({ group, position }: { group: string; position: number }) =>
@@ -110,6 +112,12 @@ export const en = {
 		cleared: ({ count }: { count: number }) => `Cleared ${count}.`,
 		/** A move is the one change a finger makes that it cannot see undone. */
 		moved: 'Moved.',
+		/*
+		 * The bigger move, and it says which one it was: the sheet underneath has
+		 * changed as well as the group's place on it, so "Moved." alone would
+		 * leave the reader to work out where they now are.
+		 */
+		movedToList: 'Moved to a new list.',
 		/*
 		 * A run of ticks, and the offer to sweep it. Not "UNDO?": the run is not
 		 * a mistake to be taken back, it is work finished with, and what the

@@ -22,6 +22,20 @@ export type DropTarget = { groupId: string; index: number };
  */
 export const NEW_GROUP = '__newgroup__';
 
+/**
+ * Not a place among the groups — the switcher, up in the corner.
+ *
+ * A group carried onto it stops being part of this list and becomes one of its
+ * own. The same trick `NEW_GROUP` plays, one level up: a target in the shape of
+ * the answer rather than a second kind of drop, because everything between the
+ * hit test and the drop already speaks in indices and this is the one thing
+ * that is not one.
+ */
+export const NEW_LIST = '__newlist__';
+
+/** Where a carried group would land: among its siblings, or off the sheet. */
+export type GroupTarget = number | typeof NEW_LIST;
+
 const EDGE = 60;
 const EDGE_SPEED = 12;
 
@@ -43,7 +57,7 @@ export class DragState {
 
 	/** The group currently lifted, if any. Never both at once. */
 	groupId = $state<string | null>(null);
-	groupTarget = $state<number | null>(null);
+	groupTarget = $state<GroupTarget | null>(null);
 	groupFrom = $state<number | null>(null);
 
 	get dragging(): boolean {
@@ -56,6 +70,16 @@ export class DragState {
 
 	isLiftedGroup(groupId: string): boolean {
 		return this.groupId === groupId;
+	}
+
+	/** Whether a group is in hand at all — the switcher asks, to offer itself. */
+	get carryingGroup(): boolean {
+		return this.groupId !== null;
+	}
+
+	/** Whether the group in hand is over the switcher, which draws its box for it. */
+	get overNewList(): boolean {
+		return this.groupTarget === NEW_LIST;
 	}
 
 	/**
@@ -100,7 +124,8 @@ export class DragState {
 	 * the mark pointing at it was not, which is the worse way round.
 	 */
 	isGroupLanding(index: number): boolean {
-		if (this.groupTarget === null) return false;
+		// The switcher is not an index and no rule on the sheet answers to it.
+		if (this.groupTarget === null || this.groupTarget === NEW_LIST) return false;
 		const from = this.groupFrom;
 		const shift = from !== null && this.groupTarget >= from ? 1 : 0;
 		return this.groupTarget + shift === index;
@@ -511,18 +536,29 @@ export type GroupDragOptions = {
 	enabled: boolean;
 	/** The shorter press: it opens the name rather than picking the group up. */
 	onEdit: () => void;
-	onDrop: (index: number) => void;
+	onDrop: (target: GroupTarget) => void;
 };
 
 /**
  * Where a group would land: its index among the others, by the same top-half /
  * bottom-half rule the rows use, read off the DOM rather than tracked.
  *
+ * The switcher is asked first, for the reason `targetAt` asks the new-group row
+ * first: it sits above the groups rather than among them, so the sweep below
+ * would never find it and the finger would go on reporting whichever group it
+ * last passed over. It only offers itself when it is willing to take the drop —
+ * see ListSwitcher, which is what puts the attribute there.
+ *
  * Null over the dragged group's own section — the same dead zone `targetAt`
  * refuses for a row, and for the same reason: it is still in the DOM, just
  * tilted, and offers no landing spot of its own.
  */
-function groupTargetAt(y: number, movingId: string): number | null {
+function groupTargetAt(x: number, y: number, movingId: string): GroupTarget | null {
+	const over = document.elementsFromPoint(x, y);
+	if (over.some((el) => el instanceof HTMLElement && el.dataset.newlist !== undefined)) {
+		return NEW_LIST;
+	}
+
 	const own = document.querySelector<HTMLElement>(`[data-group="${movingId}"]`);
 	if (own) {
 		const box = own.getBoundingClientRect();
@@ -561,21 +597,21 @@ export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) 
 	let options = initial;
 
 	/** The same rule the rows follow: no landing where it already is. */
-	function landing(y: number): number | null {
-		const next = groupTargetAt(y, options.groupId);
+	function landing(x: number, y: number): GroupTarget | null {
+		const next = groupTargetAt(x, y, options.groupId);
 		return next !== null && next === drag.groupFrom ? null : next;
 	}
 
 	const destroy = pressDrag(node, () => ({
 		enabled: () => options.enabled,
 		press: () => options.onEdit(),
-		lift(_x, y) {
+		lift(x, y) {
 			drag.groupId = options.groupId;
 			drag.groupFrom = groupHomeOf(options.groupId);
-			drag.groupTarget = landing(y);
+			drag.groupTarget = landing(x, y);
 		},
-		move(_x, y) {
-			drag.groupTarget = landing(y);
+		move(x, y) {
+			drag.groupTarget = landing(x, y);
 		},
 		drop() {
 			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);

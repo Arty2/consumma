@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { wide } from '../src/lib/figures';
 
 /*
  * M1's acceptance: add, edit, reorder, tri-state, group, collapse and delete
@@ -512,17 +513,24 @@ test('the header control collapses and expands, and counts what it hides', async
 	await collapse.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toHaveCount(0);
 
-	// Closed, the number is the only account of what went away — and while
-	// nothing in there is done, a total is the whole of what there is to say.
+	// Closed, the number is the only account of what went away — and with
+	// nothing in there done, how much there is to do is the whole of it.
 	const expand = page.getByRole('button', { name: 'Expand group' });
 	await expect(expand).toHaveAttribute('aria-expanded', 'false');
 	await expect(expand).toHaveText('(2)');
 
-	// Once something is done, the fraction says the thing a total could not.
+	// Once something is done, both halves are live: one done, one to go.
 	await expand.click();
 	await task(page, 'Bread').click();
 	await page.getByRole('button', { name: 'Collapse group' }).click();
-	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('(1/2)');
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('(1/1)');
+
+	// Nothing left to do, and it stops being a count: the group is finished,
+	// and the mark beside it is offering to take it away.
+	await expand.click();
+	await task(page, 'Milk').click();
+	await page.getByRole('button', { name: 'Collapse group' }).click();
+	await expect(page.getByRole('button', { name: 'Expand group' })).toHaveText('(✔)');
 
 	await expand.click();
 	await expect(page.getByRole('checkbox', { name: 'Bread' })).toBeVisible();
@@ -835,7 +843,7 @@ test('tapping a task takes the caret with it', async ({ page }) => {
 
 	// And because it can blur, it commits, and the row goes back to being read.
 	await page.keyboard.press('Escape');
-	await expect(page.locator('.tasks li .cost').first()).toHaveText('5,08');
+	await expect(page.locator('.tasks li .cost').first()).toHaveText(wide('5,08'));
 
 	/*
 	 * The same on a task that is done — where this was first noticed.
@@ -1761,9 +1769,13 @@ test('the count of what is left appears late, and under the checkbox', async ({ 
 
 	// Ten left, and counting down from there.
 	await field.fill('A'.repeat(190));
-	await expect(counter).toHaveText('10');
+	await expect(counter).toHaveText(wide('10'));
 	await field.fill('A'.repeat(196));
-	await expect(counter).toHaveText('4');
+	await expect(counter).toHaveText(wide('4'));
+
+	// What is read is not what is drawn: a live region announces its contents,
+	// and `４` is a character a screen reader may or may not call a number.
+	await expect(page.locator('.tasks li:has(.counter) .sr-only')).toHaveText('4');
 
 	/*
 	 * Under the mark rather than out in the gutter beside the first line. The

@@ -352,3 +352,121 @@ test('a list with nothing written on it cannot be synced', async ({ page }) => {
 	await openMenu(page);
 	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeEnabled();
 });
+
+/*
+ * A group carried up to the switcher: the drag that already reorders groups,
+ * given one more place to land. It is the only way off a sheet short of
+ * retyping, and the list it makes is named after the group because a list is
+ * named after its first group.
+ */
+
+/** Where the group titled `title` sits among its siblings, by title. */
+function groupOrder(page: Page) {
+	return page
+		.locator('section[data-group] .title')
+		.evaluateAll((titles) => titles.map((el) => el.textContent!.trim()));
+}
+
+async function addGroup(page: Page, title: string) {
+	await page.getByRole('button', { name: 'Add a group' }).click();
+	const name = page.getByRole('textbox', { name: 'New group' });
+	await name.fill(title);
+	await name.press('Enter');
+	await page.keyboard.press('Escape');
+}
+
+/**
+ * Held past both thresholds and carried up onto the switcher, which is only
+ * there to be aimed at once the group is in hand — so its box is read after
+ * the lift rather than before it. Left held: the caller lets go.
+ */
+async function carryToSwitcher(page: Page, title: string) {
+	const from = (await page.getByRole('button', { name: title }).boundingBox())!;
+	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+
+	await expect(switcherPill(page)).toBeVisible();
+	const pill = (await switcherPill(page).boundingBox())!;
+	await page.mouse.move(pill.x + pill.width / 2, pill.y + pill.height / 2, { steps: 12 });
+	await page.waitForTimeout(50);
+}
+
+test('the switcher is not a target while the sheet has only one group', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	// One group, and moving it would move the list to itself. Nothing comes out
+	// to be dropped on, so there is nothing there for the drag to find.
+	const title = page.getByRole('button', { name: 'My list' });
+	const box = (await title.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await expect(switcherPill(page)).toHaveCount(0);
+	await page.mouse.up();
+});
+
+test('a group carried to the switcher becomes a list of its own', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market');
+	await addTask(page, 'Milk', 1);
+	await addTask(page, 'Coffee', 1);
+	await task(page, 'Coffee').click();
+
+	expect(await groupOrder(page)).toStrictEqual(['My list', 'Market']);
+
+	/*
+	 * The pill is not on the page yet — there is only one list — so it comes out
+	 * while the group is in hand, which is what says the drop is possible. The
+	 * corner is reached by carrying the group up to it.
+	 */
+	await expect(switcherPill(page)).toHaveCount(0);
+
+	await carryToSwitcher(page, 'Market');
+
+	// Over it, the pill draws a box round itself — the same dashed mark every
+	// other landing on the sheet is drawn with.
+	await expect(switcherPill(page).locator('svg.rect path')).toHaveCount(1);
+	await page.mouse.up();
+
+	// Landed on a new list, named after the group, holding what the group held —
+	// with the tick that was on it. Stored in the casing it was typed in; the
+	// caps on the pill are CSS, as everywhere else.
+	await expect(switcherPill(page)).toContainText('Market');
+	expect(await switcherPill(page).innerText()).toContain('MARKET');
+	expect(await groupOrder(page)).toStrictEqual(['Market']);
+	await expect(task(page, 'Milk')).toBeVisible();
+	await expect(task(page, 'Coffee')).toHaveAttribute('aria-checked', 'true');
+	await expect(task(page, 'Bread')).toHaveCount(0);
+
+	// And the move says so — the sheet underneath changed as well as the
+	// group's place on it, so "Moved." on its own would leave the reader to
+	// work out where they now are.
+	await expect(
+		page.getByRole('status').filter({ hasText: 'Moved to a new list' }).first()
+	).toBeVisible();
+});
+
+test('undoing that puts the group back and takes the new list away', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market');
+	await addTask(page, 'Milk', 1);
+
+	await carryToSwitcher(page, 'Market');
+	await page.mouse.up();
+	await expect(switcherPill(page)).toContainText('Market');
+
+	await page.getByRole('button', { name: 'UNDO?' }).click();
+
+	// Back on the list it came from, with the group in place — and the list the
+	// drop made is gone, so the pill goes with it.
+	expect(await groupOrder(page)).toStrictEqual(['My list', 'Market']);
+	await expect(task(page, 'Milk')).toBeVisible();
+	await expect(task(page, 'Bread')).toBeVisible();
+	await expect(switcherPill(page)).toHaveCount(0);
+
+	// And it survives a reload, which is the only proof the index went with it.
+	await page.reload();
+	expect(await groupOrder(page)).toStrictEqual(['My list', 'Market']);
+	await expect(switcherPill(page)).toHaveCount(0);
+});
