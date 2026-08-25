@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DragState } from '../src/lib/dnd/drag.svelte';
+import { DragState, NEW_LIST } from '../src/lib/dnd/drag.svelte';
 
 /*
  * The arithmetic of a drag, without a finger.
@@ -98,6 +98,32 @@ describe('isGroupLanding', () => {
 		drag.groupTarget = 1;
 
 		expect(drag.isGroupLanding(1)).toBe(true);
+	});
+
+	/*
+	 * The switcher is a target and not a place among the groups. It arrives in
+	 * the same field as an index, so every rule on the sheet has to refuse it
+	 * before the arithmetic runs — otherwise the shift below turns a string into
+	 * a NaN comparison, which is false by accident rather than on purpose.
+	 */
+	it('draws nothing on the sheet while the group is over the switcher', () => {
+		drag.groupId = 'g1';
+		drag.groupFrom = 0;
+		drag.groupTarget = NEW_LIST;
+
+		for (const index of [0, 1, 2]) expect(drag.isGroupLanding(index)).toBe(false);
+		expect(drag.overNewList).toBe(true);
+	});
+});
+
+describe('carryingGroup', () => {
+	it('is what the switcher asks before it offers itself', () => {
+		expect(drag.carryingGroup).toBe(false);
+		drag.taskId = 't';
+		expect(drag.carryingGroup).toBe(false);
+
+		drag.groupId = 'g1';
+		expect(drag.carryingGroup).toBe(true);
 	});
 });
 

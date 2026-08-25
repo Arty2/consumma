@@ -51,10 +51,24 @@ export type Reading = {
 };
 
 /**
- * A number, optionally followed by `x`, and then whitespace — so `2x TOMATOS`
- * and `3 POTATOS` both lead with a count and `2xTOMATOS` does not.
+ * What may stand for "times" after a count: Latin `x` in both cases, the
+ * multiplication sign the app writes back, and Greek chi in both cases — on a
+ * Greek keyboard chi is the letter under that finger, and `Χ` is the same
+ * shape as `X` twice over.
+ *
+ * One constant rather than two literals, because the pattern below and the
+ * stripper in `amountsIn` have to agree and are sixty lines apart.
  */
-const AMOUNT = /^(\d+(?:[.,]\d+)?(?:\s?[x×])?)(?=\s)/;
+const TIMES = '[xX×χΧ]';
+
+/**
+ * A number, optionally followed by one of those, and then whitespace — so
+ * `2x TOMATOS` and `3 POTATOS` both lead with a count and `2xTOMATOS` does not.
+ */
+const AMOUNT = new RegExp(`^(\\d+(?:[.,]\\d+)?(?:\\s?${TIMES})?)(?=\\s)`);
+
+/** The same mark at the end of a count, for taking it off again. */
+const TIMES_END = new RegExp(`\\s?${TIMES}$`);
 
 /**
  * A price sits at the end, behind a space, with at most one currency mark on
@@ -118,7 +132,7 @@ export function amountsIn(text: string): Reading {
 	const rest = lead ? text.slice(lead[0].length) : text;
 
 	// The count reads by the same rules as the price, minus its x.
-	const counted = amount === null ? null : readNumber(amount.replace(/\s?[x×]$/, ''));
+	const counted = amount === null ? null : readNumber(amount.replace(TIMES_END, ''));
 	const count = counted === null ? null : counted.cents / 100;
 
 	const tail = COST.exec(rest);

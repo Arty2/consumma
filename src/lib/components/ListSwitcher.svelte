@@ -5,6 +5,7 @@
 	import { langOf } from '$lib/doc/lang';
 	import { handChevron, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { drag } from '$lib/dnd/drag.svelte';
 	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
@@ -35,7 +36,30 @@
 	let root: HTMLElement | undefined = $state();
 	let dropdownWidth = $state(0);
 
-	const shown = $derived(context === 'menu' ? true : lists.visible);
+	/*
+	 * A group carried up here stops being part of this list and becomes one of
+	 * its own — see `spinOff` in Sheet, which is what takes the drop.
+	 *
+	 * Refused on a sheet with one group on it: moving it would move the list to
+	 * itself and leave nothing behind, so there is nothing to offer. The refusal
+	 * is made by not being a target at all rather than by taking the drop and
+	 * doing nothing — `groupTargetAt` asks the DOM, so an attribute that is not
+	 * there is a target that does not exist, and the finger is told by the fact
+	 * that no box is drawn.
+	 */
+	const spinnable = $derived(
+		context === 'sheet' &&
+			drag.carryingGroup &&
+			sheet.groups.filter((group) => !group.synthetic).length > 1
+	);
+
+	/*
+	 * Above the sheet it is normally there only once there is a second list to
+	 * choose between — but a group in hand is exactly the case where there is
+	 * not one yet and somebody is asking for one, so it comes out to be dropped
+	 * on and goes away again with the gesture.
+	 */
+	const shown = $derived(context === 'menu' ? true : lists.visible || spinnable);
 
 	const CHEVRON = 12;
 	const chevron = $derived(
@@ -203,7 +227,7 @@
 {/snippet}
 
 {#if shown}
-	<div class="wrap {context}" bind:this={root}>
+	<div class="wrap {context}" bind:this={root} data-newlist={spinnable ? '' : undefined}>
 		<div class="switcher {context}">
 			<!--
 				Two spans rather than the one string the rule is measured from: the
@@ -225,6 +249,15 @@
 				onclick={ontap}
 				ondblclick={onsecondtap}
 			>
+				<!--
+					Dashed, like every other landing mark on the sheet, and drawn only
+					while the group is actually over it: the pill coming out is what
+					says a drop is possible, and the box is what says it would land
+					here.
+				-->
+				{#if spinnable && drag.overNewList}
+					<HandRect seed={`listdrop-${context}`} wobble={1.4} radius={3} dashed />
+				{/if}
 				<span class="label" lang={langOf(activeName)}>{activeName}</span>
 				{#if activeCode}<span class="tail">{activeCode}</span>{/if}
 				<svg
@@ -304,6 +337,8 @@
 	 * still the only face on the page.
 	 */
 	.pill {
+		/* A containing block for the box a carried group draws over it. */
+		position: relative;
 		display: inline-flex;
 		align-items: center;
 		gap: 0.4rem;

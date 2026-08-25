@@ -113,6 +113,27 @@ describe('reading a count', () => {
 		expect(amountsIn('2× Tomatos').amount).toBe('2×');
 	});
 
+	it('takes Greek chi and a capital X for the same mark', () => {
+		// Chi is the letter under that finger on a Greek keyboard, and the two
+		// capitals are the same shape twice over.
+		expect(amountsIn('2χ Tomatos').amount).toBe('2χ');
+		expect(amountsIn('2Χ Tomatos').amount).toBe('2Χ');
+		expect(amountsIn('2X Tomatos').amount).toBe('2X');
+		expect(amountsIn('2 χ Tomatos').amount).toBe('2 χ');
+	});
+
+	it('reads what any of them counted, and writes one × back', () => {
+		for (const typed of ['2x', '2X', '2×', '2χ', '2Χ']) {
+			expect(amountsIn(`${typed} Tomatos`).count).toBe(2);
+		}
+		expect(countLabel(2, null)).toBe('2×');
+	});
+
+	it('takes no other letter', () => {
+		expect(amountsIn('2y Tomatos').amount).toBeNull();
+		expect(amountsIn('2κ Tomatos').amount).toBeNull();
+	});
+
 	it('needs a space after it, so a word is left whole', () => {
 		expect(amountsIn('2xTomatos').amount).toBeNull();
 		expect(amountsIn('2x').amount).toBeNull();

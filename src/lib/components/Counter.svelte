@@ -2,6 +2,7 @@
 	import { length } from '$lib/doc/clean';
 	import { COUNTER_WITHIN, LIMITS } from '$lib/doc/limits';
 	import { nearLimit } from '$lib/doc/spill';
+	import { wide } from '$lib/figures';
 
 	type Props = {
 		/** What is being typed. The count is of what is left after it. */
@@ -29,7 +30,17 @@
 	therefore due to disagree.
 -->
 {#if shown}
-	<span class="counter num" aria-live="polite">{remaining}</span>
+	<!--
+		Two of it, and the split is the price of the fullwidth digits.
+		A live region announces what is written in it, not what it is named, and
+		what is written here is `７` rather than `7` — which a screen reader may
+		read as a number and may read as a character nobody asked about. So the
+		figure on the paper is drawn and hidden from the reading, and the reading
+		is the ordinary digits, out of sight. The same split the row itself makes,
+		where `aria-label` carries the raw text past the cells it is drawn in.
+	-->
+	<span class="counter num" aria-hidden="true">{wide(String(remaining))}</span>
+	<span class="sr-only" aria-live="polite">{remaining}</span>
 {/if}
 
 <style>
@@ -65,7 +76,7 @@
 		bottom: 0;
 		/*
 		 * `.num` lifts every figure in the app off its baseline with a relative
-		 * `top`, so that a mono digit reads level with Graphe's capitals beside
+		 * `top`, so that a figure reads level with Graphe's capitals beside
 		 * it. Positioned, that `top` stops being a nudge and becomes an edge —
 		 * and an absolute box given both a top and a bottom stretches between
 		 * them, which made this the height of the whole row. There are no

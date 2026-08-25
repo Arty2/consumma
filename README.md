@@ -121,25 +121,28 @@ the moment there is something written in it.
 
 ### A group
 
-| Where             | Gesture        | What happens                                                    |
-| ----------------- | -------------- | --------------------------------------------------------------- |
-| The title         | Tap            | Folds the group                                                 |
-| The title         | Two taps, `F2` | Opens the name, leaving the group folded as it found it         |
-| The title         | Hold briefly   | Opens the name too — a buzz says when to let go                 |
-| The title         | Hold on        | Picks the whole group up; everything folds while it is carried  |
-| The `(…)` icon    | Tap            | Folds the group, for anyone who would rather aim at it          |
-| The `(…)` icon    | Hold           | Folds **every** group — or opens them all, if none is left open |
-| The name field    | `Enter`        | Commits — and on an empty group, opens its first task           |
-| The new-group `…` | `Enter`        | Makes the group and opens its first task                        |
+| Where             | Gesture            | What happens                                                    |
+| ----------------- | ------------------ | --------------------------------------------------------------- |
+| The title         | Tap                | Folds the group                                                 |
+| The title         | Two taps, `F2`     | Opens the name, leaving the group folded as it found it         |
+| The title         | Hold briefly       | Opens the name too — a buzz says when to let go                 |
+| The title         | Hold on            | Picks the whole group up; everything folds while it is carried  |
+| A carried group   | Onto the list name | Makes a list of its own out of it, named after the group        |
+| The `(…)` icon    | Tap                | Folds the group, for anyone who would rather aim at it          |
+| The `(…)` icon    | Hold               | Folds **every** group — or opens them all, if none is left open |
+| The name field    | `Enter`            | Commits — and on an empty group, opens its first task           |
+| The new-group `…` | `Enter`            | Makes the group and opens its first task                        |
 
 The title's press has two lengths in it, and a buzz at each: hold it and let
 go at the first to open the name, or keep holding through the second to carry
 the group. Nothing else on the sheet works that way — a task lifts at the
 first — because nothing else has two things worth reaching by holding.
 
-Folded, the icon reads `(1/3)`: what is still to do, out of what is hidden.
-Half done counts as still to do. With nothing in the group done it reads `(3)`,
-since both halves of the fraction would be the same number.
+Folded, the icon reads `(1/3)`: one done, three still to do. Half done counts
+as still to do. With nothing in the group done there is no first half to write,
+so it reads `(3)` — how much there is to do, which is the whole of the news.
+With nothing left to do it stops being a count and reads `(✔)`, and the mark
+beside it is then offering to take the group away.
 
 Enter on the name commits it. On a group with nothing in it yet it also opens
 the first task, because naming a group and writing the first thing into it is
@@ -158,6 +161,16 @@ The `…` under the last group makes a new one, and Enter there opens its first
 task straight away — a group just made is certainly empty. Tapping away
 instead just makes the group. A task dragged onto that row makes one on the
 spot and becomes its first, arriving unnamed.
+
+A group carried up to the list name at the top of the sheet leaves this list
+and becomes one of its own, with everything in it and every tick as it was.
+The list name comes out to be dropped on while the group is in hand, even when
+there is only one list and it is otherwise not on the page, and draws a box
+round itself when the group is over it. The new list is named after the group,
+because a list is named after its first group, and the app lands on it. The
+usual ten-second `UNDO?` puts the group back and takes the new list away with
+it. A sheet with only one group on it is not offered this: moving that group
+would move the list to itself, so nothing comes out to be dropped on.
 
 ### The sheet, and the back of it
 
@@ -215,8 +228,15 @@ device.
 
 Counts and prices are read off the text and never stored beside it. A number
 at the front of a task is how many (`2x apples`, `3 lemons`); a number at the
-end is what it costs (`Bread 2,50`). Both `,` and `.` work as the decimal
-mark, and a group writes the whole column the way most of it was written.
+end is what it costs (`Bread 2,50`). The mark after a count can be `x`, `X`,
+`×`, or Greek `χ` or `Χ`, and it is written back as one `×` whichever was
+typed. Both `,` and `.` work as the decimal mark, and a group writes the whole
+column the way most of it was written.
+
+Every figure the sheet has recognised is set in the fullwidth digits —
+`０１２３４５６７８９` — so a price reads as a figure rather than as more
+writing, and the column lines down. Nothing else about the row changes: what
+was typed is what is stored, synced, exported and read aloud.
 
 The group total is what is **still to buy** — done does not count, half counts
 in full, and a row counts as its count times its price. It stays while the

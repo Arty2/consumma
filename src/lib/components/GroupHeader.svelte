@@ -5,11 +5,21 @@
 	import { LIMITS } from '$lib/doc/limits';
 	import { handScribble, SCRIBBLE } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
-	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
+	import { drag, dragGroup, type GroupTarget } from '$lib/dnd/drag.svelte';
 	import { longPress } from '$lib/dnd/longpress';
 	import { taken, tapped } from '$lib/feel';
+	import { wide } from '$lib/figures';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
+
+	/**
+	 * A group with nothing left to do, folded.
+	 *
+	 * U+2714 and not U+2713: Graphe draws the heavy one and has no glyph for
+	 * the light one, which would fall out of the hand for a single character
+	 * inside brackets the hand is drawing.
+	 */
+	const DONE = '✔';
 
 	type Props = {
 		title: string;
@@ -47,7 +57,8 @@
 		onclear: () => void;
 		/** Enter leaves the name and opens a task at the top of the group. */
 		onaddtask: () => void;
-		onreorder: (index: number) => void;
+		/** Where it was let go: a place among its siblings, or off onto a list of its own. */
+		onreorder: (target: GroupTarget) => void;
 	};
 
 	let {
@@ -117,12 +128,22 @@
 	/**
 	 * What the icon holds between its brackets.
 	 *
-	 * Folded, the fraction — unless nothing in the group is done, when both
-	 * halves of it are the same number and it says no more than the total does.
+	 * Folded, what is done over what is not — two live numbers rather than a
+	 * part and a whole. Nothing done and the first half has nothing to say, so
+	 * it is left off and what remains is how much there is to do. Nothing left
+	 * to do and there is no second half either, and a group in that state is
+	 * finished rather than counted: it says so with a mark.
+	 *
+	 * `done === 0` is asked first because an empty group answers `true` to every
+	 * "is it all done" there is — `finished` included, since `[].every` does —
+	 * and a group with nothing in it has had nothing done to it.
+	 *
 	 * Open, the ellipsis that means "there is more here" everywhere else on the
 	 * sheet.
 	 */
-	const shown = $derived(!collapsed ? '…' : done > 0 ? `${open}/${count}` : `${count}`);
+	const shown = $derived(
+		!collapsed ? '…' : done === 0 ? `${open}` : open === 0 ? DONE : `${done}/${open}`
+	);
 
 	/*
 	 * A tap folds the group, two taps open its name — the same pair a task row
@@ -321,14 +342,19 @@
 	</div>
 {:else}
 	<!--
-		Collapsed it reads (1/3) — what is still to do, out of what is hidden.
-		The bare total answered the wrong question: a group is folded away
-		because it is dealt with or because it is not yet, and how many tasks
-		are under there says neither. Half done counts as still to do, because
-		it is. Nothing done at all and the fraction says nothing either, since
-		both halves are the same number, so it goes back to being a total.
-		Expanded it reads (…), the same ellipsis an untitled group and the add
-		row use for "there is more here".
+		Collapsed it reads (1/3) — one done, three still to do. Both halves are
+		live numbers, so ticking a task moves them both and the pair says how
+		far along the group is rather than how much is under there, which is
+		what a folded group is folded away from saying. Half done counts as
+		still to do, because it is.
+
+		Nothing done and there is no first half to write, so it reads (3): how
+		much there is to do, which is the whole of the news. Nothing left to do
+		and there is no second half either, and at that point the group is not
+		a count any more — it reads (✔), and the mark out in the margin beside
+		it is offering to take the group away. Expanded it reads (…), the same
+		ellipsis an untitled group and the add row use for "there is more
+		here".
 
 		Round brackets, and Graphe draws them itself: they run from 20 above
 		the baseline to 1 below against its figures' 19 above to 3 above, so
@@ -441,7 +467,7 @@
 			collapsed, which is when it is worth most.
 		-->
 		{#if total !== null}
-			<span class="num total">{total}</span>
+			<span class="num total">{wide(total)}</span>
 		{/if}
 
 		{#if mark !== null}

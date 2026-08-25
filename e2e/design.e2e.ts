@@ -211,20 +211,38 @@ test('one handwritten face, served from our origin, and only one', async ({ page
 
 	/*
 	 * The one exception, and it is named rather than inferred: a recognised
-	 * count or price carries `.num` and is set in the mono stack, because a
-	 * figure is not a word and the prices have to line down a column. Anything
-	 * else resolving to something other than Graphe is a second face creeping
-	 * back in.
+	 * count or price carries `.num` and is set in the fullwidth digits, which
+	 * Graphe has no glyph for — a figure is not a word, and the prices have to
+	 * line down a column. Anything else resolving to something other than
+	 * Graphe is a second face creeping back in.
+	 *
+	 * A figure has to be put on the sheet first, or the sweep below runs over a
+	 * page that has none and the carve-out is asserted of nothing.
 	 */
+	await page.getByRole('button', { name: 'Add a task' }).first().click();
+	const field = page.getByRole('textbox', { name: 'New task' });
+	await field.fill('2x Tomatos 5,08');
+	await field.press('Enter');
+	await page.keyboard.press('Escape');
+	await expect(page.locator('.num.cost')).toHaveCount(1);
+
 	const used = await page.evaluate(() =>
 		[...document.querySelectorAll('body *')].map((el) => ({
 			figure: el.classList.contains('num'),
 			stack: getComputedStyle(el).fontFamily
 		}))
 	);
+
+	// Three of them: the count, the price and the group's total.
+	expect(used.filter((el) => el.figure).length).toBe(3);
+
 	for (const { figure, stack } of used) {
-		if (figure) expect(stack, stack).toContain('ui-monospace');
-		else expect(stack, stack).toContain('Graphe');
+		if (figure) {
+			expect(stack, stack).toContain('Hiragino Sans');
+			expect(stack, stack).not.toContain('Graphe');
+		} else {
+			expect(stack, stack).toContain('Graphe');
+		}
 	}
 });
 
