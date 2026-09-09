@@ -92,6 +92,14 @@ export const en = {
 		/** Over the hundred: what is there, against what fits. */
 		over: ({ count, max }: { count: number; max: number }) => `${count} of ${max} — clear some`,
 		movedToNewGroup: 'Moved to a new group.',
+		/*
+		 * Where a whole group went, for a screen reader. The toast beside it
+		 * says the same thing on the paper — a group leaving the sheet
+		 * altogether is the one move whose result cannot be looked at, since
+		 * what it went to is not on this screen.
+		 */
+		movedToList: ({ list }: { list: string }) => `Moved to ${list}.`,
+		movedToNewList: 'Moved to a new list.',
 		movedWithin: ({ position, group }: { position: number; group: string }) =>
 			`Moved to position ${position} in ${group}.`,
 		movedTo: ({ group, position }: { group: string; position: number }) =>
@@ -107,9 +115,26 @@ export const en = {
 		/** A removed group says how many finished tasks went with it. */
 		removedWithDone: ({ what, count }: { what: string; count: number }) =>
 			`${what} and ${count} done`,
+		/*
+		 * And a group carried to the corner says how many tasks did, done or
+		 * not. The header's mark is only ever drawn on a group with nothing left
+		 * to do, so "and 3 done" is the whole truth there; the fold takes a group
+		 * in whatever state it is in, and counting only the finished ones would
+		 * report less than went.
+		 */
+		removedWithTasks: ({ what, count }: { what: string; count: number }) =>
+			`${what} and ${count} ${plural(count, 'task', 'tasks')}`,
 		cleared: ({ count }: { count: number }) => `Cleared ${count}.`,
 		/** A move is the one change a finger makes that it cannot see undone. */
 		moved: 'Moved.',
+		/*
+		 * A group carried off this list and onto another one. Named, unlike
+		 * every other move, because the thing that moved is no longer on the
+		 * sheet to be seen: "Moved." alone would leave the reader looking for
+		 * a group that is on a different list.
+		 */
+		movedToList: ({ what }: { what: string }) => `Moved to ${what}.`,
+		movedToNewList: 'Moved to a new list.',
 		/*
 		 * A run of ticks, and the offer to sweep it. Not "UNDO?": the run is not
 		 * a mistake to be taken back, it is work finished with, and what the
@@ -199,7 +224,14 @@ export const en = {
 		switch: 'Switch list',
 		new: 'New list',
 		/** A list that has never left this device has no code to show. */
-		localOnly: 'Local only, never synced'
+		localOnly: 'Local only, never synced',
+		/*
+		 * A list's name, quoted, wherever the app says it back — the same rule
+		 * a group's name follows, and for the same reason: a list is named
+		 * after its first group, so it is a title somebody typed and the
+		 * sentence has to say where it stops.
+		 */
+		named: ({ name }: { name: string }) => `“${name}”`
 	},
 
 	theme: {

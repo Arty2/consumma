@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
+	import CornerFold from '$lib/components/CornerFold.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
 	import ListSwitcher from '$lib/components/ListSwitcher.svelte';
 	import Menu from '$lib/components/Menu.svelte';
@@ -102,6 +103,21 @@
 	const still = () => browser && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 	/*
+	 * A group is in hand, and the corner answers for it.
+	 *
+	 * The theme and the burger go — neither has anything to say to a group being
+	 * carried, and both are a tap where the finger is already holding something
+	 * — and the paper's corner turns down in their place, which is where the
+	 * group goes to be got rid of. The switcher stays and unfolds into the lists
+	 * the group could go to instead (see ListSwitcher).
+	 *
+	 * Nothing about the swap is animated. It happens under a finger that is
+	 * already moving, and a control fading out while something is being carried
+	 * over it would be the corner arguing with the hand.
+	 */
+	const carrying = $derived(drag.groupId !== null);
+
+	/*
 	 * Where the reader is, in the sheet's own coordinates.
 	 *
 	 * `transform: perspective(…)` projects towards the element's own
@@ -199,6 +215,26 @@
 
 	function onpointermove(event: PointerEvent) {
 		if (!dragStart || !paper) return;
+
+		/*
+		 * Something was picked up after this gesture armed, and that one has the
+		 * floor.
+		 *
+		 * `onpointerdown` asks the same question, but the answer can change under
+		 * it: a lift takes most of a second, so the press that becomes one is a
+		 * press this handler has already accepted. A group title is the case that
+		 * bites — it is a span with a button's role rather than a `<button>`, so
+		 * it is not among the controls the guard below stands aside for — and
+		 * what happened next was worse than a sheet turning by mistake. Taking
+		 * the capture over hands it to `main`, the title loses it mid-carry, and
+		 * `lostpointercapture` puts the whole lift down: a group dragged
+		 * sideways, which is exactly what carrying one to the corner is, went
+		 * dead the moment it moved.
+		 */
+		if (drag.dragging) {
+			dragStart = null;
+			return;
+		}
 
 		const dx = event.clientX - dragStart.x;
 		const dy = event.clientY - dragStart.y;
@@ -458,6 +494,10 @@
 			<SideEdge seed="right" side="right" />
 		</div>
 
+		{#if carrying}
+			<CornerFold />
+		{/if}
+
 		<!--
 			Sync on its own at the left, because it is the one that comes and goes;
 			the switcher sits between it and the two that are always there, which
@@ -468,10 +508,12 @@
 		<div class="corner">
 			<SyncButton />
 			<ListSwitcher />
-			<div class="controls">
-				<ThemeButton />
-				<MenuButton onopen={openMenu} ondebug={() => diagnostics.toggle()} />
-			</div>
+			{#if !carrying}
+				<div class="controls">
+					<ThemeButton />
+					<MenuButton onopen={openMenu} ondebug={() => diagnostics.toggle()} />
+				</div>
+			{/if}
 		</div>
 		<!--
 			Keyed on which list is open, so a row a task was being typed into, or a

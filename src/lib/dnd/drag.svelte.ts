@@ -22,6 +22,30 @@ export type DropTarget = { groupId: string; index: number };
  */
 export const NEW_GROUP = '__newgroup__';
 
+/**
+ * Not a list — the row that offers to make one.
+ *
+ * The same shape as `NEW_GROUP` one level up, and for the same reason:
+ * everything between the hit test and the drop already speaks in list ids, and
+ * a second kind of target would have to be carried through every one of them.
+ */
+export const NEW_LIST = '__newlist__';
+
+/**
+ * Where a group being carried would land.
+ *
+ * Three answers rather than one, because the corner answers for a group too. A
+ * place among its siblings is the one this has always had; a list is the
+ * switcher, which unfolds into the lists this group could go to while one is in
+ * hand; the fold is the paper's own turned-down corner, which takes it away.
+ *
+ * A discriminated union rather than a bare index, so nothing can read a corner
+ * drop as a position — the landing rule between two groups is drawn off the
+ * same field, and an index is exactly what it would have found there.
+ */
+export type GroupDrop =
+	{ kind: 'order'; index: number } | { kind: 'list'; listId: string } | { kind: 'fold' };
+
 const EDGE = 60;
 const EDGE_SPEED = 12;
 
@@ -43,7 +67,7 @@ export class DragState {
 
 	/** The group currently lifted, if any. Never both at once. */
 	groupId = $state<string | null>(null);
-	groupTarget = $state<number | null>(null);
+	groupTarget = $state<GroupDrop | null>(null);
 	groupFrom = $state<number | null>(null);
 
 	get dragging(): boolean {
@@ -100,10 +124,26 @@ export class DragState {
 	 * the mark pointing at it was not, which is the worse way round.
 	 */
 	isGroupLanding(index: number): boolean {
-		if (this.groupTarget === null) return false;
+		if (this.groupTarget?.kind !== 'order') return false;
+
+		const at = this.groupTarget.index;
 		const from = this.groupFrom;
-		const shift = from !== null && this.groupTarget >= from ? 1 : 0;
-		return this.groupTarget + shift === index;
+		const shift = from !== null && at >= from ? 1 : 0;
+		return at + shift === index;
+	}
+
+	/**
+	 * The same offer, on one of the lists the switcher unfolds into while a
+	 * group is in hand. No translation to do here: a list is a place, not a
+	 * boundary between two things that shift when one of them is picked up.
+	 */
+	isListLanding(listId: string): boolean {
+		return this.groupTarget?.kind === 'list' && this.groupTarget.listId === listId;
+	}
+
+	/** Over the corner, which is where a group goes to be got rid of. */
+	get overFold(): boolean {
+		return this.groupTarget?.kind === 'fold';
 	}
 
 	reset(): void {
@@ -511,7 +551,7 @@ export type GroupDragOptions = {
 	enabled: boolean;
 	/** The shorter press: it opens the name rather than picking the group up. */
 	onEdit: () => void;
-	onDrop: (index: number) => void;
+	onDrop: (drop: GroupDrop) => void;
 };
 
 /**
@@ -522,7 +562,32 @@ export type GroupDragOptions = {
  * refuses for a row, and for the same reason: it is still in the DOM, just
  * tilted, and offers no landing spot of its own.
  */
-function groupTargetAt(y: number, movingId: string): number | null {
+function groupTargetAt(x: number, y: number, movingId: string): GroupDrop | null {
+	/*
+	 * The corner is asked first, and the switcher's rows second, for the reason
+	 * `targetAt` asks about the new-group row first: neither is in the groups'
+	 * own flow, so the sweep below would never find them and the finger would
+	 * go on reporting whichever group it was last over.
+	 *
+	 * `elementsFromPoint` hands back the whole stack rather than the topmost
+	 * element, so a message sliding down over the corner does not cover the
+	 * targets underneath it.
+	 */
+	const elements = document.elementsFromPoint(x, y);
+
+	if (elements.some((el) => el instanceof HTMLElement && el.dataset.fold !== undefined)) {
+		return { kind: 'fold' };
+	}
+
+	if (elements.some((el) => el instanceof HTMLElement && el.dataset.newlist !== undefined)) {
+		return { kind: 'list', listId: NEW_LIST };
+	}
+
+	const row = elements.find((el) => el instanceof HTMLElement && el.dataset.list) as
+		HTMLElement | undefined;
+
+	if (row?.dataset.list) return { kind: 'list', listId: row.dataset.list };
+
 	const own = document.querySelector<HTMLElement>(`[data-group="${movingId}"]`);
 	if (own) {
 		const box = own.getBoundingClientRect();
@@ -535,10 +600,10 @@ function groupTargetAt(y: number, movingId: string): number | null {
 
 	for (let i = 0; i < sections.length; i++) {
 		const box = sections[i].getBoundingClientRect();
-		if (y < box.top + box.height / 2) return i;
+		if (y < box.top + box.height / 2) return { kind: 'order', index: i };
 	}
 
-	return sections.length;
+	return { kind: 'order', index: sections.length };
 }
 
 /** Where a group sits now, counted among its siblings including itself. */
@@ -560,22 +625,30 @@ function groupHomeOf(groupId: string): number | null {
 export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) => {
 	let options = initial;
 
-	/** The same rule the rows follow: no landing where it already is. */
-	function landing(y: number): number | null {
-		const next = groupTargetAt(y, options.groupId);
-		return next !== null && next === drag.groupFrom ? null : next;
+	/**
+	 * The same rule the rows follow: no landing where it already is.
+	 *
+	 * Only a place among its siblings can be the place it is already in. The
+	 * list it is already on is never offered — the switcher leaves the open
+	 * list out of the column it unfolds into — and the corner is never where
+	 * anything already is.
+	 */
+	function landing(x: number, y: number): GroupDrop | null {
+		const next = groupTargetAt(x, y, options.groupId);
+		if (next?.kind === 'order' && next.index === drag.groupFrom) return null;
+		return next;
 	}
 
 	const destroy = pressDrag(node, () => ({
 		enabled: () => options.enabled,
 		press: () => options.onEdit(),
-		lift(_x, y) {
+		lift(x, y) {
 			drag.groupId = options.groupId;
 			drag.groupFrom = groupHomeOf(options.groupId);
-			drag.groupTarget = landing(y);
+			drag.groupTarget = landing(x, y);
 		},
-		move(_x, y) {
-			drag.groupTarget = landing(y);
+		move(x, y) {
+			drag.groupTarget = landing(x, y);
 		},
 		drop() {
 			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);

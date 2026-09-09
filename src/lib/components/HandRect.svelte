@@ -9,9 +9,12 @@
 		dashed?: boolean;
 		/** Cuts the corners and closes the stroke instead of crossing it. */
 		radius?: number;
+		/** Drawn as an offer rather than as a thing: the same weight an
+		 * untitled group's ellipsis is set in. */
+		faint?: boolean;
 	};
 
-	let { seed, wobble = 1.6, dashed = false, radius = 0 }: Props = $props();
+	let { seed, wobble = 1.6, dashed = false, radius = 0, faint = false }: Props = $props();
 
 	/*
 	 * Measured rather than stretched: a box drawn in a fixed viewBox and scaled
@@ -28,7 +31,7 @@
 
 <svg class="rect" bind:clientWidth={width} bind:clientHeight={height} aria-hidden="true">
 	{#if d}
-		<path {d} class="drawn" class:drawn--dashed={dashed} />
+		<path {d} class="drawn" class:drawn--dashed={dashed} class:drawn--faint={faint} />
 	{/if}
 </svg>
 

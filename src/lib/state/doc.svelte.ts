@@ -1,3 +1,4 @@
+import { handOff } from '$lib/doc/handoff';
 import { isId, newId } from '$lib/doc/id';
 import * as ops from '$lib/doc/ops';
 import { between } from '$lib/doc/order';
@@ -144,6 +145,43 @@ export class Sheet {
 		this.#apply((doc, ctx) => ops.deleteGroup(doc, ctx, id));
 
 		return { id, tasks };
+	}
+
+	/**
+	 * A whole group, carried onto another list's document.
+	 *
+	 * Nothing is committed here. Both documents come back for the caller to
+	 * write in the order it decides, because that order is the one thing about
+	 * this that matters: the list being arrived at has to be written before the
+	 * list being left. A group in two places is something a person can sort
+	 * out; a group in neither is writing lost.
+	 *
+	 * `gone` is what went, in the shape `restoreGroup` takes, so the undo puts
+	 * the group back here rather than fetching it from over there.
+	 */
+	carryGroup(
+		id: string,
+		to: Doc
+	): {
+		from: Doc;
+		to: Doc;
+		gone: { id: string; tasks: { id: string; text: string }[] };
+		refused: 'groups' | 'tasks' | null;
+	} | null {
+		if (!this.#ctx) return null;
+
+		const group = this.doc.groups[id];
+		if (!group || group.deleted) return null;
+
+		const gone = {
+			id,
+			tasks: ops.liveTasks(this.doc, id).map((t) => ({ id: t.id, text: t.text }))
+		};
+
+		const result = handOff(this.doc, to, this.#ctx, id);
+		if (!result) return null;
+
+		return { from: result.from, to: result.to, gone, refused: result.refused };
 	}
 
 	/** Undo for the above: the group first, then everything that was in it. */

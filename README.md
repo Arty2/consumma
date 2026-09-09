@@ -121,16 +121,19 @@ the moment there is something written in it.
 
 ### A group
 
-| Where             | Gesture        | What happens                                                    |
-| ----------------- | -------------- | --------------------------------------------------------------- |
-| The title         | Tap            | Folds the group                                                 |
-| The title         | Two taps, `F2` | Opens the name, leaving the group folded as it found it         |
-| The title         | Hold briefly   | Opens the name too — a buzz says when to let go                 |
-| The title         | Hold on        | Picks the whole group up; everything folds while it is carried  |
-| The `(…)` icon    | Tap            | Folds the group, for anyone who would rather aim at it          |
-| The `(…)` icon    | Hold           | Folds **every** group — or opens them all, if none is left open |
-| The name field    | `Enter`        | Commits — and on an empty group, opens its first task           |
-| The new-group `…` | `Enter`        | Makes the group and opens its first task                        |
+| Where             | Gesture            | What happens                                                    |
+| ----------------- | ------------------ | --------------------------------------------------------------- |
+| The title         | Tap                | Folds the group                                                 |
+| The title         | Two taps, `F2`     | Opens the name, leaving the group folded as it found it         |
+| The title         | Hold briefly       | Opens the name too — a buzz says when to let go                 |
+| The title         | Hold on            | Picks the whole group up; everything folds while it is carried  |
+| A carried group   | Drop on a list     | Moves it to that list, with everything in it                    |
+| A carried group   | Drop on `NEW LIST` | Makes a list on this device and puts it there                   |
+| A carried group   | Drop on the corner | Removes it, with everything in it                               |
+| The `(…)` icon    | Tap                | Folds the group, for anyone who would rather aim at it          |
+| The `(…)` icon    | Hold               | Folds **every** group — or opens them all, if none is left open |
+| The name field    | `Enter`            | Commits — and on an empty group, opens its first task           |
+| The new-group `…` | `Enter`            | Makes the group and opens its first task                        |
 
 The title's press has two lengths in it, and a buzz at each: hold it and let
 go at the first to open the name, or keep holding through the second to carry
@@ -158,6 +161,25 @@ The `…` under the last group makes a new one, and Enter there opens its first
 task straight away — a group just made is certainly empty. Tapping away
 instead just makes the group. A task dragged onto that row makes one on the
 spot and becomes its first, arriving unnamed.
+
+While a group is in hand the corner answers for it. The theme and the burger
+go — neither has anything to say to a group being carried — and the paper's
+top-right corner turns down in their place, with the same scribble on it that
+deletes anything else here. Let the group go on that fold and it is removed,
+tasks and all, done or not, with the usual ten-second `UNDO?`.
+
+The list name stays, and opens into the lists the group could go to instead:
+one row per list, and `NEW LIST` under them. Drop it on a list and the group
+moves there whole — its tasks, their words, and their half-done ticks. Drop it
+on `NEW LIST` and a list is made on this device with that group on it, named
+after the group, and it stays on this device until it is synced. The switcher
+is there for this even when there is only one list, since that is the device
+with most to gain from a second; it is not offered while a sync is in flight.
+
+Undo puts things back the way they were. A group moved to a list that already
+existed comes back here and leaves that list exactly as it found it; a group
+moved to a list the drop invented brings the list back down with it, and a
+device that had one list before has one list again.
 
 ### The sheet, and the back of it
 

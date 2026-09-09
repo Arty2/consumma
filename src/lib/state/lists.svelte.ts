@@ -1,4 +1,5 @@
 import { newId } from '../doc/id';
+import { emptyDoc, type Doc } from '../doc/types';
 import { parseDoc } from '../doc/validate';
 import { sheet } from './doc.svelte';
 import { nameFor, parseIndex, type ListEntry } from './lists';
@@ -78,17 +79,51 @@ export class Lists {
 	nameOf(entry: ListEntry): string {
 		if (entry.id === this.current) return this.activeName();
 
-		const keys = keysFor(entry.legacy ? null : entry.id);
-		const doc = parseDoc(read(keys.doc) ?? '');
-		return doc ? nameFor(doc) : nameFor({ v: 1, groups: {}, tasks: {} });
+		const doc = this.docOf(entry.id);
+		return nameFor(doc ?? emptyDoc());
 	}
 
 	/** Another list's code, or null if it has never been synced. */
 	codeOf(entry: ListEntry): string | null {
 		if (entry.id === this.current) return sync.code;
 
-		const keys = keysFor(entry.legacy ? null : entry.id);
-		return read(keys.code);
+		return read(this.#keysOf(entry.id).code);
+	}
+
+	/**
+	 * Another list's document, parsed off the device.
+	 *
+	 * Untrusted the same way the open list's own is: it comes out of
+	 * localStorage, and a damaged one reads as a list with nothing on it rather
+	 * than taking the app down. Never the open list — that one is live in
+	 * `sheet.doc`, and a copy read back off storage would be a second answer to
+	 * the same question.
+	 */
+	docOf(id: string): Doc | null {
+		if (id === this.current) return sheet.doc;
+		return parseDoc(read(this.#keysOf(id).doc) ?? '');
+	}
+
+	/**
+	 * And writing one back — the other half of carrying a group across.
+	 *
+	 * Only the document. The list's `version` and `synced` keys are deliberately
+	 * left where they are, so what has just landed there counts as unsent on
+	 * that list, exactly as it would if it had been typed on it.
+	 */
+	writeDoc(id: string, doc: Doc): void {
+		if (id === this.current) {
+			sheet.replace(doc);
+			return;
+		}
+
+		write(this.#keysOf(id).doc, JSON.stringify(doc));
+	}
+
+	/** Whichever key-set a remembered list lives under, legacy or namespaced. */
+	#keysOf(id: string) {
+		const entry = this.entries.find((candidate) => candidate.id === id);
+		return keysFor(entry && entry.legacy ? null : id);
 	}
 
 	/**
@@ -189,6 +224,64 @@ export class Lists {
 		this.switchTo(id);
 
 		return left;
+	}
+
+	/**
+	 * A list minted to receive something, rather than to be gone to.
+	 *
+	 * `createList` opens what it makes, because somebody tapped New list and
+	 * that is where they meant to be. A group carried onto the switcher's NEW
+	 * LIST row means the opposite: the group goes there and the finger stays
+	 * here, on the list it came off. So this makes the entry, writes the index
+	 * and hands back the id, and never re-points the sheet.
+	 *
+	 * The first time it runs there is no index yet, and the list already open
+	 * becomes the legacy entry keeping its bare keys — the same bootstrap
+	 * `createList` does, and the same reason: an index cannot record a second
+	 * list without recording the first.
+	 */
+	adopt(): string | null {
+		if (sync.busy) return null;
+
+		if (this.entries.length === 0) {
+			const now = Date.now();
+			this.entries = [{ id: newId(), legacy: true, createdAt: now, lastUsedAt: now }];
+			this.current = this.entries[0].id;
+		}
+
+		const now = Date.now();
+		const id = newId();
+		this.entries = [...this.entries, { id, legacy: false, createdAt: now, lastUsedAt: now }];
+		this.#persist();
+
+		return id;
+	}
+
+	/**
+	 * Unmakes a list this device made a moment ago — the undo for the above.
+	 *
+	 * Not LEAVE: that one is about the list you are standing on and goes
+	 * through `sync.forget()`. This is a list nobody has been to, made by a
+	 * drop and unmade by taking that drop back, so it is the entry and its five
+	 * keys and nothing else. Refused for the open list and for the legacy one,
+	 * which holds the bare keys an unrelated list lives under.
+	 *
+	 * `#persist` may then take the index away altogether, which is the point:
+	 * on a device that had one list before the drop, that is exactly the shape
+	 * it had.
+	 */
+	forget(id: string): void {
+		const entry = this.entries.find((candidate) => candidate.id === id);
+		if (!entry || entry.legacy || id === this.current) return;
+
+		this.entries = this.entries.filter((candidate) => candidate.id !== id);
+
+		const keys = keysFor(entry.id);
+		for (const key of [keys.doc, keys.code, keys.version, keys.synced, keys.collapsed]) {
+			remove(key);
+		}
+
+		this.#persist();
 	}
 
 	/**

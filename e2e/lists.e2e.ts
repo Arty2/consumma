@@ -352,3 +352,196 @@ test('a list with nothing written on it cannot be synced', async ({ page }) => {
 	await openMenu(page);
 	await expect(page.getByRole('button', { name: /^Sync now/ })).toBeEnabled();
 });
+
+/*
+ * Carrying a whole group off the list it is on.
+ *
+ * A group in hand is the one time the corner has anything to say to it, so the
+ * theme and the burger leave, the paper's corner turns down, and the switcher
+ * unfolds into the lists the group could go to instead. Three places to let
+ * go, and all three leave the ten-second undo everything else here does.
+ */
+
+/** Long enough to pick a group up: the title's press has two lengths in it. */
+const CARRY_MS = 1100;
+
+async function addGroup(page: Page, name: string, index: number) {
+	await page.keyboard.press('Escape');
+	await page.getByRole('button', { name: 'Add a group' }).click();
+
+	const field = page.getByRole('textbox', { name: 'New group' });
+	await field.fill(name);
+	await field.press('Enter');
+	await addTask(page, `${name} thing`, index);
+}
+
+/** Press the title, hold past both thresholds, and stay still while it lifts. */
+async function liftGroup(page: Page, name: string) {
+	const box = (await page.getByRole('button', { name, exact: true }).boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(CARRY_MS);
+}
+
+/** Carry it to a target and let go there. */
+async function dropOn(page: Page, target: string, at?: { dx: number; dy: number }) {
+	const box = (await page.locator(target).boundingBox())!;
+	const point = at ?? { dx: box.width / 2, dy: box.height / 2 };
+
+	await page.mouse.move(box.x + point.dx, box.y + point.dy, { steps: 10 });
+	await page.mouse.up();
+}
+
+/** Well inside the flap, which is the half of the corner past the crease. */
+const ON_THE_FOLD = { dx: 60, dy: 12 };
+
+function titles(page: Page) {
+	return page
+		.locator('section[data-group] .title')
+		.evaluateAll((all) => all.map((title) => title.textContent!.trim()));
+}
+
+function undo(page: Page) {
+	return page.getByRole('button', { name: 'UNDO?' }).click();
+}
+
+test('while a group is carried the corner answers for it', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+
+	await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
+	await expect(page.locator('[data-fold]')).toHaveCount(0);
+
+	await liftGroup(page, 'Market');
+
+	// The two that have nothing to say to a group in hand are gone, with no
+	// animation to sit through, and the corner is turned down in their place.
+	await expect(page.getByRole('button', { name: 'Menu' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: /^Theme/ })).toHaveCount(0);
+	await expect(page.locator('[data-fold]')).toHaveCount(1);
+
+	// And the switcher is on the page even at one list, because the way to a
+	// second one is to carry a group onto it.
+	await expect(page.locator('[data-newlist]')).toHaveCount(1);
+
+	await page.mouse.up();
+
+	await expect(page.getByRole('button', { name: 'Menu' })).toBeVisible();
+	await expect(page.locator('[data-fold]')).toHaveCount(0);
+});
+
+test('a group let go on the fold is removed, tasks and all, with an undo', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+
+	await liftGroup(page, 'Market');
+	await dropOn(page, '[data-fold]', ON_THE_FOLD);
+
+	// It counts what went, done or not — the header's own mark is only ever
+	// drawn on a group with nothing left to do, and this one had something.
+	await expect(page.getByRole('status').last()).toContainText('Removed “Market” and 1 task.');
+	expect(await titles(page)).toStrictEqual(['My list']);
+
+	/*
+	 * And nothing else answered the release. The title the press began on is
+	 * deleted by this drop, and the corner buttons come back the instant the
+	 * group is out of hand — so the click that follows has both a target that
+	 * no longer exists and a burger sitting exactly where the finger is.
+	 */
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+
+	await undo(page);
+	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+	await expect(task(page, 'Market thing')).toBeVisible();
+
+	await page.reload();
+	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+});
+
+test('a group carried onto NEW LIST makes one, and goes to it', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+
+	await liftGroup(page, 'Market');
+	await dropOn(page, '[data-newlist]');
+
+	await expect(page.getByRole('status').last()).toContainText('Moved to a new list.');
+	expect(await titles(page)).toStrictEqual(['My list']);
+
+	// Two lists now, so the pill has earned its place — and the new one is
+	// named after the group that made it, a list's name being its first
+	// group's title.
+	await expect(switcherPill(page)).toBeVisible();
+	await switcherPill(page).click();
+	await dropdown(page)
+		.getByRole('option', { name: /Market/i })
+		.click();
+
+	expect(await titles(page)).toStrictEqual(['Market']);
+	await expect(task(page, 'Market thing')).toBeVisible();
+
+	// Nothing was left behind on the way: the task is on the new list and
+	// nowhere else.
+	await page.reload();
+	await expect(task(page, 'Market thing')).toBeVisible();
+});
+
+test('undoing a move to a new list unmakes the list it invented', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+
+	await liftGroup(page, 'Market');
+	await dropOn(page, '[data-newlist]');
+	await undo(page);
+
+	// Back where it was, with what was in it.
+	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+	await expect(task(page, 'Market thing')).toBeVisible();
+
+	// And the list the drop made is gone with the drop, which puts the device
+	// back to the exact shape it had: one list, no index.
+	await expect(switcherPill(page)).toHaveCount(0);
+	const keys = await page.evaluate(() => Object.keys(localStorage));
+	expect(keys.filter((key) => key.startsWith('consumma:lists'))).toStrictEqual([]);
+});
+
+test('a group carried onto another list moves there, and the undo leaves both', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+
+	// A second list with a name of its own, so the message can be read.
+	await addTask(page, 'Milk');
+	await page.locator('section[data-group] .title').first().dblclick();
+	const field = page.getByRole('textbox', { name: 'Group title' });
+	await field.fill('Larder');
+	await field.press('Enter');
+
+	// Back to the first, and a group on it to carry.
+	await switcherPill(page).click();
+	await dropdown(page)
+		.getByRole('option', { name: /My list/i })
+		.click();
+	await addGroup(page, 'Market', 1);
+
+	await liftGroup(page, 'Market');
+	await dropOn(page, '[data-list]');
+
+	await expect(page.getByRole('status').last()).toContainText('Moved to “Larder”.');
+	expect(await titles(page)).toStrictEqual(['My list']);
+
+	await undo(page);
+
+	// Back here, whole — and the list it went to is still there, with only
+	// what it always had on it.
+	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+	await expect(task(page, 'Market thing')).toBeVisible();
+
+	await switcherPill(page).click();
+	await dropdown(page)
+		.getByRole('option', { name: /Larder/i })
+		.click();
+	expect(await titles(page)).toStrictEqual(['Larder']);
+	await expect(task(page, 'Milk')).toBeVisible();
+});

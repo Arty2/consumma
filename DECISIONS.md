@@ -1514,6 +1514,105 @@ relative` rather than a transform, which does not apply to an inline box.
       is the point. Written as `\u00a0` in the catalogue rather than as an
       invisible character in the source.
 
+114.  **A group in hand is offered the corner, and the corner alone changes to
+      say so.** A group being carried has three places to go, and two of them
+      are not on the sheet: another list, and away. Both belong in the corner,
+      because the corner is where everything that is about the list rather than
+      about the writing already lives.
+
+      So the theme and the burger leave the moment a group is lifted. Neither
+      has anything to say to a group in hand, both are a tap where the finger is
+      already holding something, and between them they occupy the only place
+      the answer could go. Nothing about the swap is animated: it happens under
+      a finger that is already moving, and a control fading out while something
+      is being carried over it would be the corner arguing with the hand.
+
+      What appears in their place is the paper's own corner, turned down. It is
+      drawn the way the tear is — the ground is closed past the fold and filled
+      with paper, so the torn edge and the side edge are cut on the diagonal
+      rather than drawn over — and it carries the app's one delete mark, faint
+      while it is only an offer and full ink once the group is over it. A corner
+      is either turned down or it is not, so that too appears without an
+      animation.
+
+      The hit area is the flap and not the box it is drawn in. The top of the
+      list is directly under the corner, and carrying a group up there to make
+      it first must not land on a delete; clipped to the fold itself, what is
+      left over the writing is a sliver at the paper's own edge.
+
+      The fold takes a group whatever state it is in, which is the one rule the
+      header's own mark does not follow. That mark is drawn beside a list
+      somebody may only be reading, where a live delete has to be earned by the
+      group being finished. This is a group already in hand, thrown at the one
+      place that means gone, and it leaves the same ten-second undo.
+
+115.  **A group carried onto the switcher moves lists, and the switcher unfolds
+      to say where it can go.** While a group is in hand the pill opens into a
+      column: every list but the one the group is already on, and a row that
+      makes a list on the spot. It is the same pair of offers a task already
+      has one level down, where it can be dropped into a group or onto the row
+      that invents one — `NEW_LIST` is a sentinel list id for exactly the
+      reason `NEW_GROUP` is a sentinel group id.
+
+      The switcher is on the page for this even where there is only one list.
+      Otherwise the way to a second one by carrying a group there would be
+      missing from precisely the device that has never had one. It is withheld
+      while a sync is in flight, because a list minted then could not be
+      written to safely and a control that is not going to answer is better not
+      offered.
+
+      The column is out of the flow. A column that opened in it would move the
+      list under the finger, and the finger is steering by what it can see —
+      the same reason the landing rule has no height. It has no frame and no
+      ground of its own: each row carries a drawn box instead, so what lies
+      over the writing is a few boxes laid on the paper rather than one white
+      card taking a bite out of it. The box is faint while it is only an offer
+      and full ink once the group is over it, which is how the add row's own
+      box already reads and how the corner's mark reads a few inches away. Only
+      the box changes weight — the name it holds has to stay legible either
+      way, so this is not the dashed rule the sheet draws between two rows: a
+      list is a place, not a boundary.
+
+      **The undo is two ordinary changes, not a rewind.** Onto a list that was
+      already there, the group is taken back out of it and put back here: that
+      list may have a code, may have been synced since, and writing yesterday's
+      bytes over it would take anything else that landed there with them.
+      `lists.restore` may put a whole list back verbatim only because leaving
+      never reached a merge; this is the opposite case. Onto a list the drop
+      invented there is nothing to preserve, so it is unmade whole — after the
+      group is out of it — which on a device that had one list before the drop
+      takes the index away again and leaves exactly the shape it had.
+
+      **Nothing is copied.** `handOff` in src/lib/doc/handoff.ts writes the
+      group and its live tasks into the other document as fresh records —
+      keeping every id, every word, and every half-done state — and deletes the
+      group where it came from, tasks and all, through the ordinary path. The
+      records are written fresh rather than moved because the destination may
+      still hold tombstones under those ids from an earlier visit, and a record
+      stamped now is what beats a tombstone stamped then. The task keys travel
+      unchanged: a fractional index is only ever compared against its own
+      siblings, and all of them are moving.
+
+      The list being arrived at is written before the list being left. Storage
+      can refuse a write, and of the two ways that can go, a group on both
+      lists is something a person can see and sort out, while a group on
+      neither is writing gone.
+
+116.  **The sheet's turn gives way to anything picked up after it armed.** The
+      turn arms on `pointerdown` and asks then whether something is already
+      being carried — but a lift takes most of a second, so the press that
+      becomes one is a press the turn has already accepted. A group title is
+      the case that bites: it is a span with a button's role rather than a
+      `<button>`, so it is not among the controls the turn stands aside for.
+
+      What happened next was worse than a sheet turning by mistake. Taking the
+      pointer capture over hands it to `main`, the title loses it mid-carry,
+      and `lostpointercapture` puts the whole lift down — so a group dragged
+      sideways went dead the moment it moved. It never showed while the only
+      places to drop a group were above and below it; carrying one to the
+      corner is a sideways drag by definition, and it showed at once. The
+      question is asked again on the first move.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

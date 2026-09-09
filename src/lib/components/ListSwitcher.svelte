@@ -5,6 +5,7 @@
 	import { langOf } from '$lib/doc/lang';
 	import { handChevron, handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { drag, NEW_LIST } from '$lib/dnd/drag.svelte';
 	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
@@ -35,7 +36,22 @@
 	let root: HTMLElement | undefined = $state();
 	let dropdownWidth = $state(0);
 
-	const shown = $derived(context === 'menu' ? true : lists.visible);
+	/*
+	 * A group is in hand, and this is where it can be put down.
+	 *
+	 * The pill unfolds into the lists this group could go to, and it is on the
+	 * page for that even where there is only one list — otherwise the way to
+	 * make a second one by carrying a group there would be missing from exactly
+	 * the device that has never had one. The theme and the burger leave at the
+	 * same moment (see +page.svelte), so the corner is being redrawn anyway.
+	 *
+	 * Not while a sync is in flight: a list minted then could not be written to
+	 * safely, `lists.adopt()` refuses, and a control that is not going to answer
+	 * is better not offered.
+	 */
+	const carrying = $derived(context === 'sheet' && drag.groupId !== null && !sync.busy);
+
+	const shown = $derived(context === 'menu' ? true : lists.visible || carrying);
 
 	const CHEVRON = 12;
 	const chevron = $derived(
@@ -62,6 +78,13 @@
 			? handLine(dropdownWidth, { seed: seedFrom(`listsep-${context}`), wobble: 0.8, y: 2 })
 			: ''
 	);
+
+	/*
+	 * Every list but the one the group is already on. That one is not a place
+	 * it can go, and a row that answers nothing in the middle of the column is
+	 * a dead spot under a finger.
+	 */
+	const elsewhere = $derived(sorted.filter((entry) => entry.id !== lists.current));
 
 	function nameOf(entry: ListEntry): string {
 		return entry.id === lists.current ? activeName : lists.nameOf(entry);
@@ -245,6 +268,45 @@
 		</div>
 
 		<!--
+			Where a carried group can be let go: one row per list it could go to,
+			and one that makes a list on the spot — the same pair of offers the
+			sheet already makes a task one level down, where a row can be dropped
+			into a group or onto the row that invents one.
+
+			Out of flow, over the writing rather than pushing it: a column that
+			opened in the flow would move the list under the finger, and the finger
+			is steering by what it can see. Aria-hidden because there is no way to
+			reach it but by carrying something — the same as every landing rule on
+			the sheet.
+		-->
+		{#if carrying}
+			<div class="carry" aria-hidden="true">
+				{#each elsewhere as entry (entry.id)}
+					{@const rowName = nameOf(entry)}
+					<div class="carry-row caps" data-list={entry.id}>
+						<HandRect
+							seed={`listcarry-${entry.id}`}
+							wobble={1.4}
+							radius={3}
+							faint={!drag.isListLanding(entry.id)}
+						/>
+						<span class="name" lang={langOf(rowName)}>{rowName}</span>
+					</div>
+				{/each}
+
+				<div class="carry-row caps" data-newlist>
+					<HandRect
+						seed="listcarrynew"
+						wobble={1.4}
+						radius={3}
+						faint={!drag.isListLanding(NEW_LIST)}
+					/>
+					<span class="name">{t.lists.new}</span>
+				</div>
+			</div>
+		{/if}
+
+		<!--
 			The sheet's copy is a real Modal, the same as SYNC/SHARE/IMPORT — full
 			screen, its own frame and ✕, closed by Escape or the drag-down grip —
 			rather than a small popover, so a listbox lives inside it for the
@@ -282,6 +344,7 @@
 	 * of the panel (menu).
 	 */
 	.wrap.sheet {
+		position: relative;
 		margin-inline: 0.4rem;
 		min-width: 0;
 	}
@@ -519,5 +582,68 @@
 		width: 100%;
 		height: 3px;
 		overflow: visible;
+	}
+
+	/*
+	 * The column a carried group is offered. Anchored under the pill and out of
+	 * the flow, so nothing below it moves while a finger is steering by it —
+	 * the same reason the sheet's own landing rule has no height.
+	 *
+	 * Wider than the pill where the pill is short: these are list names being
+	 * aimed at, not read.
+	 */
+	/*
+	 * The column a carried group is offered, hanging under the pill and out of
+	 * the flow — a column that opened in it would move the list under the
+	 * finger, and the finger is steering by what it can see, which is the same
+	 * reason the sheet's landing rule has no height.
+	 *
+	 * No ground and no frame of its own. Each row carries its own, so what lies
+	 * over the writing is a few drawn boxes laid on the paper rather than one
+	 * white card taking a bite out of it.
+	 */
+	.carry {
+		position: absolute;
+		top: 100%;
+		left: 0;
+		z-index: 2;
+		min-width: max(100%, 11rem);
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding-top: 0.4rem;
+		pointer-events: none;
+	}
+
+	/*
+	 * A place to put something down, drawn as a box because that is what it is.
+	 * Faint while it is only an offer and full ink once the group is over it —
+	 * the rule the add row's own box follows, and the one the corner's mark
+	 * follows a few inches away. Only the box changes weight; the name it holds
+	 * has to stay legible either way.
+	 *
+	 * Its own ground, so the writing underneath does not read through the words.
+	 * Nothing here is tapped, so nothing here answers a tap — but it does have
+	 * to be hit-tested, which the column above turns off for the gaps between.
+	 */
+	.carry-row {
+		position: relative;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		min-height: var(--touch);
+		padding: 0 0.8rem;
+		background: var(--paper);
+		pointer-events: auto;
+		cursor: default;
+		user-select: none;
+		-webkit-user-select: none;
+	}
+
+	.carry-row .name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		translate: 0 var(--cap-lift);
 	}
 </style>
