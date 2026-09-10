@@ -428,18 +428,30 @@
 	.switcher.sheet {
 		position: relative;
 		translate: 0 -5px;
+		/*
+		 * How wide a hand's loop is, drawn round something the size of a name.
+		 * Two and a half touch targets: enough to ring the short names most
+		 * lists have, and near enough for the long ones that it crosses a
+		 * letter or two rather than reaching for the end of the line.
+		 */
+		--loop: calc(var(--touch) * 2.5);
 	}
 
 	/*
-	 * The drop target's box, drawn a few pixels out from the switcher rather
+	 * The drop target's loop, drawn a few pixels out from the switcher rather
 	 * than around its exact bounds.
 	 *
-	 * HandRect fills whatever it is in, and what this one is in is the pill and
-	 * the rule under it — so flush, its bottom stroke lay along the rule and it
-	 * read as one more line under the words rather than as a box round them. A
-	 * hand drawing a box round something on paper leaves room; the numbers are
-	 * enough to part the two strokes and no more, and the sides stay within the
-	 * margin the switcher already keeps from the sync mark beside it.
+	 * Flush, its lower stroke ran along the rule under the pill and read as one
+	 * more line under the words rather than as a loop round them. A hand
+	 * ringing something on paper leaves room; the numbers are enough to part
+	 * the two strokes and no more.
+	 *
+	 * **One size, whatever the name is.** A loop that grew with the words was a
+	 * different mark on every list — a tight ring round a short name and a long
+	 * flat ellipse round a name that filled the line, which is not one hand
+	 * making one gesture. A pen circling a word draws about the same loop every
+	 * time and lets it fall where it falls, crossing the letters at either end
+	 * if the word is long. `--loop` is that gesture's own width.
 	 *
 	 * Written as a size rather than as offsets, which is not a preference: an
 	 * `<svg>` is a replaced element, so `width: auto` resolves to its own
@@ -450,7 +462,7 @@
 	.switcher.sheet :global(svg.oval) {
 		top: -5px;
 		left: -6px;
-		width: calc(100% + 12px);
+		width: var(--loop);
 		height: calc(100% + 9px);
 	}
 
@@ -540,6 +552,14 @@
 	 */
 	.wrap.menu {
 		min-width: 0;
+		/*
+		 * The room before the panel's first tear, held here rather than on the
+		 * pill inside. On the pill it was also the room before the column of
+		 * lists, which hangs under it in the flow on this face — so the list
+		 * opened a centimetre below the name it belongs to, where on the sheet
+		 * it sits directly under it.
+		 */
+		margin-bottom: 1.5rem;
 	}
 
 	.switcher.menu {
@@ -557,7 +577,6 @@
 		 * where every corner control in the app is placed.
 		 */
 		margin-top: var(--corner-lead);
-		margin-bottom: 1.5rem;
 		/*
 		 * Left, against the panel's own centred prose. It answers which list
 		 * this is, and it is read the way the rows it opens are — which are
@@ -584,8 +603,18 @@
 		background: var(--paper);
 	}
 
+	/*
+	 * The pill is an inline-flex box a touch target tall, standing in a line box
+	 * the face's own strut decides — so it hangs a few pixels below the bottom
+	 * of the box that holds it, and a column laid directly under that box begins
+	 * *above* the words it belongs to. On the sheet the question never comes up:
+	 * the column is absolute and the pill is painted up by the same amount it
+	 * overflows by, so the two cancel. Here it is given back by hand, and the
+	 * first rule lands the same hair below the name on both faces of the paper.
+	 */
 	.dropdown.menu {
 		width: 100%;
+		margin-top: 5px;
 	}
 
 	/*

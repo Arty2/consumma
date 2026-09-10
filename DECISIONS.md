@@ -1768,6 +1768,30 @@ relative` rather than a transform, which does not apply to an inline box.
       lifted and both marks left, and the whole sheet stepped up ten pixels
       under the finger carrying it.
 
+124.  **The drop target's loop is one size, whatever the list is called.** It
+      was drawn round the pill's own bounds, which is what a box does and what
+      `HandRect` had done there before it. On a name of three letters that came
+      out a tight ring; on one that filled the line, a long flat ellipse a
+      third of the width of the paper. Two lists, two different marks — and the
+      whole reason for a loop rather than a box was that it is a gesture
+      somebody makes, and a gesture does not resize itself to fit.
+
+      So `--loop` is that gesture's own width, two and a half touch targets:
+      about what a pen circling a word on paper draws every time, left to fall
+      where it falls. Round a short name it has room to spare, round a long one
+      it crosses a letter at either end, which is exactly what circling a long
+      word with a pen looks like.
+
+      **And the menu's column of lists hangs where the sheet's does.** The pill
+      is a touch target tall standing in a line box the face's own strut
+      decides, so it overhangs the box that holds it by five pixels. On the
+      sheet nothing shows: the column is absolute and the pill is painted up by
+      that same amount, so the two cancel. In the panel the column follows in
+      flow, so it began five pixels above where it should — the first rule
+      crossing the name it belongs to rather than sitting under it. Given back
+      by hand on `.dropdown.menu`, and the first list now stands the same hair
+      below the name on both faces.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT
