@@ -80,7 +80,8 @@ the app is right and this file is a bug.
 | The words      | Two taps           | Marks it done                                             |
 | The words      | Three taps         | Marks it half done                                        |
 | The words      | Four taps          | Back to where it started, and open for editing again      |
-| The words      | Pull it leftwards  | To-do ⇄ done                                              |
+| The words      | Pull it leftwards  | Marks it done                                             |
+| A done task    | Pull it again      | Deletes it, with an undo                                  |
 | The words      | Hold, then drag    | Picks the task up, including into another group           |
 | The words      | `F2`               | Opens the row for editing                                 |
 | A done task    | Tap the mark       | Deletes it, with an undo                                  |
@@ -90,9 +91,17 @@ Pulling a row leftwards pushes the words towards the box at the head of it,
 and the box takes the tick. The row gives as far as the margin the writing is
 held off the paper's drawn edge by and then stops; the hand carries on, and
 the tick lands where it gets to — under the finger, with a buzz, rather than
-waiting for it to come up. Pulling a done row is how it goes back to to-do,
-and pulling a half-done one finishes it off. Rightwards is not this: that is
-the sheet turning over, and it only takes hold on bare paper.
+waiting for it to come up. A half-done row is finished off, as tapping its box
+would.
+
+Pull a row that is already done and it goes, with the same ten-second `UNDO?`
+the mark in the gutter leaves — the two ways out of a finished row, one for a
+hand already moving and one for a hand that is not. Neither replaces the
+other: the mark is there through both pulls. Nothing is offered on a row that
+is not done, which is the rule the mark itself follows.
+
+Rightwards is not any of this: that is the sheet turning over, and it only
+takes hold on bare paper.
 
 A run of taps that begins in the last few characters of a task never climbs
 that ladder — reaching for the end of a line means adding to it, so two taps

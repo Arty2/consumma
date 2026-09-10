@@ -15,7 +15,7 @@
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
 	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
 	import { swipeRow } from '$lib/dnd/swipe';
-	import { finished, taken, tapped } from '$lib/feel';
+	import { finished, taken } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
 
@@ -494,23 +494,33 @@
 	/*
 	 * The row pulled leftwards, towards the box at the head of it.
 	 *
-	 * What the pull means is what the box means, so it is the checkbox's own tap
-	 * made from anywhere on the words: to-do becomes done, done goes back to
-	 * to-do, and a half-done row is finished off. A gesture that only ever
-	 * ticked would answer a mistaken tick with nothing at all, and the way back
-	 * from this one ought to be the gesture itself.
+	 * One pull ticks it off and the next takes it away — the same two things
+	 * that stand at the two ends of a done row, reached from anywhere along it
+	 * without having to aim at either. A half-done row is finished off, since
+	 * that is what the box beside it does too.
 	 *
-	 * The buzz is the whole of what says it landed — the tick happens under a
+	 * The second pull is offered on exactly the rows the delete mark is, and for
+	 * the same reason: getting rid of a task is earned by the task being
+	 * finished with. It does not stand in for that mark, which is still there
+	 * through both pulls — this is the way to it for a hand already moving, and
+	 * that is the way to it for one that is not.
+	 *
+	 * It goes out the way the mark sends it out, so the pop, the answer from the
+	 * phone and the message with the way back are the delete that was already
+	 * here rather than a second one written beside it.
+	 *
+	 * The buzz is the whole of what says either landed — it happens under a
 	 * finger that is still moving, with nothing on the screen where the finger
 	 * is to report it.
 	 */
 	function pulled() {
-		const next = task.state === 'done' ? 'todo' : 'done';
+		if (task.state === 'done') {
+			pop();
+			return;
+		}
 
-		if (next === 'done') finished();
-		else tapped();
-
-		onstate(next);
+		finished();
+		onstate('done');
 	}
 
 	/*
@@ -532,6 +542,15 @@
 	 * the row would stay out of place for good.
 	 */
 	function home() {
+		/*
+		 * Already on its way out, because the pull that just landed was the one
+		 * that takes a done row away. It pops from where the hand left it: two
+		 * animations on one element is one of them winning by the order they
+		 * happen to be written in, and a row swinging back into place while it
+		 * is being deleted is the wrong one to win.
+		 */
+		if (going) return;
+
 		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			pull = 0;
 			return;
@@ -541,11 +560,13 @@
 	}
 
 	/*
-	 * The row's own animation and no other. The sparkle a tick throws out is
-	 * drawn inside the checkbox and its end bubbles up through here.
+	 * The swing home ending, and nothing else that ends on this row. The sparkle
+	 * a tick throws out is drawn inside the checkbox and bubbles up through
+	 * here, and the pop of a row on its way out ends here too — clearing the
+	 * pull on that one would stand the row back up for the frame before it goes.
 	 */
 	function settled(event: AnimationEvent) {
-		if (event.target !== row) return;
+		if (event.target !== row || !homing) return;
 
 		homing = false;
 		pull = 0;

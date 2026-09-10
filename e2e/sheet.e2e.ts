@@ -1579,10 +1579,11 @@ async function pull(page: Page, locator: ReturnType<Page['getByRole']>, by: numb
 	await page.mouse.up();
 }
 
-test('a task pulled leftwards is ticked off, and pulling it again puts it back', async ({
+test('a task pulled leftwards is ticked off, and pulling it again takes it away', async ({
 	page
 }) => {
 	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
 
 	const words = page.getByRole('button', { name: 'Bread', exact: true });
 
@@ -1590,14 +1591,56 @@ test('a task pulled leftwards is ticked off, and pulling it again puts it back',
 	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
 
 	/*
-	 * The way back is the gesture itself. What the pull means is what the box at
-	 * the head of the row means, and that is a tap that toggles.
+	 * The second pull is offered on exactly the rows the delete mark is: getting
+	 * rid of a task is earned by the task being finished with.
 	 */
 	await pull(page, words, 120);
-	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+	await expect(task(page, 'Bread')).toHaveCount(0);
+	await expect(task(page, 'Coffee')).toBeVisible();
 
 	await page.reload();
-	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+	await expect(task(page, 'Bread')).toHaveCount(0);
+});
+
+test('a task pulled away can be had back from the message it leaves', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+
+	await pull(page, words, 120);
+	await pull(page, words, 120);
+
+	// The same way out the mark in the gutter takes, so it leaves the same
+	// message with the same way back rather than a second delete beside it.
+	const toast = page.getByRole('status').filter({ hasText: /deleted/i });
+	await expect(toast).toBeVisible();
+	await toast.getByRole('button', { name: 'Undo?' }).click();
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+
+	await page.reload();
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+});
+
+test('the mark that deletes a done task is there through both pulls', async ({ page }) => {
+	/*
+	 * The pull is the way to it for a hand already moving; the mark is the way
+	 * for one that is not. Neither stands in for the other.
+	 */
+	await addTask(page, 'Bread');
+
+	// Off the sheet first: adding tasks pushes the add row down under the
+	// pointer, and a pointer resting on a row is not what this is about.
+	await page.mouse.move(0, 0);
+
+	const mark = page.getByRole('button', { name: 'Delete task' });
+	await expect(mark).toHaveCount(0);
+
+	await pull(page, page.getByRole('button', { name: 'Bread', exact: true }), 120);
+	await expect(mark).toBeVisible();
+
+	await mark.click();
+	await expect(task(page, 'Bread')).toHaveCount(0);
 });
 
 test('a pull does not open the row it was made on', async ({ page }) => {

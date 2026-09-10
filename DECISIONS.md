@@ -1896,10 +1896,36 @@ relative` rather than a transform, which does not apply to an inline box.
       flick that commits a turn is — a pull is a movement of the hand, and a
       hand does not know how wide the paper is.
 
-      **It toggles, as the box it is standing in for does.** A pull that only
-      ever ticked would answer a mistaken tick with nothing at all, and the way
-      back from a gesture ought to be the gesture. A half-done row is finished
-      off, which is what a tap on its box does too.
+      **One pull ticks it off and the next takes it away.** They are the two
+      things standing at the two ends of a done row — the box at the head of it
+      and the mark out in the gutter — reached from anywhere along the row
+      without having to aim at either, which is the whole of what the gesture
+      is for. A half-done row is finished off, which is what a tap on its box
+      does too.
+
+      The second pull is offered on exactly the rows the mark is: nothing on a
+      row still to do, because getting rid of a task is earned by the task
+      being finished with, and that rule is not this gesture's to relax. A pull
+      that only ever ticked was the other option, with a pull on a done row
+      putting it back to to-do; it was the tidier symmetry and the wrong one,
+      because un-ticking is a rare correction that the box two centimetres away
+      already answers, and taking a finished row off the sheet is the thing a
+      hand going down a list actually wants next.
+
+      **It does not stand in for the mark**, which is drawn through both pulls.
+      The pull is the way to it for a hand already moving; the mark is the way
+      for one that is not, and it is the only one of the two that can be seen.
+      A gesture that quietly replaced a visible control would take the app's one
+      discoverable delete away in exchange for one nobody can find.
+
+      And it goes out through the same `pop()` the mark does, so the pop, the
+      answer from the phone and the ten-second `UNDO?` are the delete that was
+      already there rather than a second one written beside it. Two consequences
+      worth naming: the swing home stands aside while the row is going, or two
+      animations argue over one element and the row swings back into place while
+      it is being deleted; and the handler that clears the pull answers only its
+      own animation, or the pop ending stands the row back up for the frame
+      before it goes.
 
       **The row gives, and how far is the paper's business.** It slides into
       the margin the writing is held off the drawn edge by — the column every
