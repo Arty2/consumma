@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
 	handArrow,
+	handBin,
 	handBracket,
-	handBack,
 	handBurger,
 	handCheck,
 	handCross,
 	handLine,
+	handList,
 	handMoon,
+	handOval,
 	handPath,
 	handRect,
 	handRefresh,
@@ -302,6 +304,107 @@ describe('handBurger', () => {
 	});
 });
 
+describe('handOval', () => {
+	const W = 90;
+	const H = 40;
+
+	/*
+	 * The mark that says a carried group can be let go here. A loop rather than
+	 * a box, because a box is a frame put round the words and a loop is
+	 * somebody's pen going round them once.
+	 */
+	it('comes back to where it started, and a little past it', () => {
+		const points = endpoints(handOval(W, H, { seed: 3, wobble: 0 }));
+		const first = points[0];
+		const last = points.at(-1)!;
+
+		// Round, so the end is near the start — and past it, so the pen crosses
+		// its own line the way a hand closing a loop does rather than stopping
+		// dead on it.
+		expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeLessThan(W / 4);
+		expect(last).not.toStrictEqual(first);
+	});
+
+	it('keeps to the box it is drawn in, give or take the tilt', () => {
+		for (const seed of [1, 7, 99]) {
+			for (const { x, y } of endpoints(handOval(W, H, { seed, wobble: 1, tilt: -3 }))) {
+				// A tilted ellipse reaches past its own box at two corners, and
+				// `overflow: visible` is what lets it — but only just.
+				expect(x, `seed ${seed}`).toBeGreaterThan(-H / 4);
+				expect(x, `seed ${seed}`).toBeLessThan(W + H / 4);
+				expect(y, `seed ${seed}`).toBeGreaterThan(-W / 8);
+				expect(y, `seed ${seed}`).toBeLessThan(H + W / 8);
+			}
+		}
+	});
+
+	it('is one unlifted stroke, because a hand does not lift to draw a ring', () => {
+		expect(handOval(W, H, { seed: 5 }).match(/M /g)).toHaveLength(1);
+	});
+
+	it('is off level, and levelling it draws something else', () => {
+		expect(handOval(W, H, { seed: 5, tilt: 0 })).not.toBe(handOval(W, H, { seed: 5, tilt: -3 }));
+	});
+
+	it('is stable for a seed, so it never re-jitters on a render', () => {
+		expect(handOval(W, H, { seed: 8 })).toBe(handOval(W, H, { seed: 8 }));
+	});
+});
+
+describe('handBin', () => {
+	const W = 22;
+	const H = 26;
+
+	/*
+	 * The one delete in the app that is not the scribble, because the corner it
+	 * stands in is a place rather than a mark. What has to hold about it is what
+	 * has to hold about every drawn glyph: it stays in its box, it is one hand's
+	 * work rather than one stroke repeated, and it comes back the same.
+	 */
+	it('stays inside the box it is drawn in', () => {
+		for (const seed of [1, 7, 99, 1234]) {
+			for (const { x, y } of endpoints(handBin(W, H, { seed, wobble: 0.9 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(W);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(H);
+			}
+		}
+	});
+
+	it('is the body, the lid, the tab and two ribs — five strokes', () => {
+		expect(handBin(W, H, { seed: seedFrom('bin') }).match(/M /g)).toHaveLength(5);
+	});
+
+	it('draws the body in one unlifted run down, across and up', () => {
+		const body = handBin(W, H, { seed: 4, wobble: 0 }).split('M ')[1];
+		const points = endpoints(`M ${body}`);
+
+		expect(points).toHaveLength(4);
+		// Down one wall, across the bottom, up the other.
+		expect(points[1].y).toBeGreaterThan(points[0].y);
+		expect(points[2].x).toBeGreaterThan(points[1].x);
+		expect(points[3].y).toBeLessThan(points[2].y);
+	});
+
+	it('leans its walls in, so it is a bin rather than a box', () => {
+		const points = endpoints(`M ${handBin(W, H, { seed: 4, wobble: 0 }).split('M ')[1]}`);
+
+		// The foot is inside the shoulder on both sides.
+		expect(points[1].x).toBeGreaterThan(points[0].x);
+		expect(points[2].x).toBeLessThan(points[3].x);
+	});
+
+	it('wobbles each stroke independently rather than repeating one', () => {
+		const strokes = handBin(W, H, { seed: 5, wobble: 1.2 }).split('M ').filter(Boolean);
+		expect(new Set(strokes).size).toBe(strokes.length);
+	});
+
+	it('is stable for a seed, so it never re-jitters on a render', () => {
+		expect(handBin(W, H, { seed: 8 })).toBe(handBin(W, H, { seed: 8 }));
+	});
+});
+
 describe('handArrow', () => {
 	const SIZE = 22;
 
@@ -342,28 +445,43 @@ describe('handArrow', () => {
 	});
 });
 
-describe('handBack', () => {
+describe('handList', () => {
 	const SIZE = 22;
 
-	it('points left, and level rather than on the diagonal', () => {
-		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
-		const [start] = points;
-		const tip = points[2];
+	it('is the burger with a dash at the head of each row', () => {
+		const d = handList(SIZE, { seed: seedFrom('menu') });
 
-		expect(tip.x).toBeLessThan(start.x);
-		// Level: the shaft ends at the height it started at.
-		expect(tip.y).toBeCloseTo(start.y, 6);
+		// Three rows, two strokes each: the dash and the line it heads.
+		expect(d.match(/M /g)).toHaveLength(6);
 	});
 
-	it('has a head that meets the point of the shaft', () => {
-		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
-		const tip = points[2];
-		expect(points.some((p, i) => i > 2 && p.x === tip.x && p.y === tip.y)).toBe(true);
+	it('stacks its rows the way the burger stacks its bars', () => {
+		const rows = [...new Set(endpoints(handList(SIZE, { seed: 3 })).map((p) => p.y))];
+		const bars = [...new Set(endpoints(handBurger(SIZE, { seed: 3 })).map((p) => p.y))];
+
+		// The same three heights: it is the same mark with something added to it,
+		// not a second drawing of three lines that happens to sit nearby.
+		expect([...rows].sort()).toStrictEqual([...bars].sort());
 	});
 
-	it('stays inside its box, so the button never clips it', () => {
+	it('parts each dash from its line, and never lets the two touch', () => {
+		const rows = new Map<number, number[]>();
+		for (const { x, y } of endpoints(handList(SIZE, { seed: 3, wobble: 0 }))) {
+			rows.set(y, [...(rows.get(y) ?? []), x]);
+		}
+
+		expect(rows.size).toBe(3);
+		for (const [y, xs] of rows) {
+			const sorted = [...xs].sort((a, b) => a - b);
+			// The dash ends before the line begins, by a readable amount.
+			const gap = sorted[2] - sorted[1];
+			expect(gap, `row ${y}`).toBeGreaterThan(1);
+		}
+	});
+
+	it('keeps every stroke inside the box it is drawn in', () => {
 		for (const seed of [1, 7, 99, 1234]) {
-			for (const { x, y } of endpoints(handBack(SIZE, { seed, wobble: 1 }))) {
+			for (const { x, y } of endpoints(handList(SIZE, { seed, wobble: 1 }))) {
 				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
 				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
 				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
@@ -372,12 +490,20 @@ describe('handBack', () => {
 		}
 	});
 
-	it('is stable for a seed', () => {
-		expect(handBack(SIZE, { seed: 4 })).toBe(handBack(SIZE, { seed: 4 }));
+	it('wobbles each dash apart from the line it heads', () => {
+		// Sharing a seed would draw the two as one stroke cut in half, and the
+		// gap would read as a break rather than as a space.
+		const strokes = handList(SIZE, { seed: 5, wobble: 1.4 }).split('M ').filter(Boolean);
+
+		expect(new Set(strokes).size).toBe(strokes.length);
 	});
 
-	it('is not the outbox arrow laid on its side', () => {
-		expect(handBack(SIZE, { seed: 4 })).not.toBe(handArrow(SIZE, { seed: 4 }));
+	it('is stable for a seed, so it never re-jitters on a render', () => {
+		expect(handList(SIZE, { seed: 8 })).toBe(handList(SIZE, { seed: 8 }));
+	});
+
+	it('is not the burger, which is the same rows without the dashes', () => {
+		expect(handList(SIZE, { seed: 4 })).not.toBe(handBurger(SIZE, { seed: 4 }));
 	});
 });
 

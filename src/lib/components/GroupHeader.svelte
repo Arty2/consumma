@@ -5,7 +5,7 @@
 	import { LIMITS } from '$lib/doc/limits';
 	import { handScribble, SCRIBBLE } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
-	import { drag, dragGroup } from '$lib/dnd/drag.svelte';
+	import { drag, dragGroup, type GroupDrop } from '$lib/dnd/drag.svelte';
 	import { longPress } from '$lib/dnd/longpress';
 	import { taken, tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
@@ -47,7 +47,12 @@
 		onclear: () => void;
 		/** Enter leaves the name and opens a task at the top of the group. */
 		onaddtask: () => void;
-		onreorder: (index: number) => void;
+		/**
+		 * Where the group was let go: among its siblings, on one of the lists the
+		 * switcher unfolds into, or on the corner. The header does not care which
+		 * — it only knows the group is in hand and where the finger came up.
+		 */
+		ondrop: (drop: GroupDrop) => void;
 	};
 
 	let {
@@ -68,7 +73,7 @@
 		ondelete,
 		onclear,
 		onaddtask,
-		onreorder
+		ondrop
 	}: Props = $props();
 
 	let editing = $state(false);
@@ -429,7 +434,7 @@
 						groupId: seed,
 						enabled: !synthetic,
 						onEdit: startEditing,
-						onDrop: onreorder
+						onDrop: ondrop
 					}}>{title === '' ? '…' : title}</span
 				>{@render foldIcon()}
 			</span>

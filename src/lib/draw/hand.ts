@@ -415,6 +415,118 @@ export function handScribble(width: number, height: number, options: HandOptions
 	return handPath(points, { ...options, wobble: options.wobble ?? 0.9 });
 }
 
+/**
+ * A loop drawn round something, the way a hand rings a word on paper.
+ *
+ * Not a box. A box is a thing with corners and reads as a frame put round the
+ * words; a loop is somebody's pen going round them once, which is what a place
+ * to drop something in wants to say. It is tilted a little for the same reason
+ * — a hand circling a word does not level the ellipse first.
+ *
+ * The pen carries on a little past where it started, because it does: closing
+ * exactly on the first point is a shape, and crossing it is a gesture.
+ */
+export function handOval(
+	width: number,
+	height: number,
+	options: HandOptions & { tilt?: number }
+): string {
+	const cx = width / 2;
+	const cy = height / 2;
+	const tilt = ((options.tilt ?? 0) * Math.PI) / 180;
+	const cos = Math.cos(tilt);
+	const sin = Math.sin(tilt);
+
+	/*
+	 * Twelve is enough for handPath's bends to read as a curve rather than as a
+	 * polygon, and few enough that the wobble lands on the shape rather than
+	 * sanding it smooth.
+	 */
+	const steps = 12;
+	/** How far past the start the pen goes, in steps. */
+	const over = 0.7;
+
+	const at = (turn: number): Pt => {
+		const a = (turn / steps) * Math.PI * 2;
+		const x = Math.cos(a) * (width / 2);
+		const y = Math.sin(a) * (height / 2);
+		return { x: cx + x * cos - y * sin, y: cy + x * sin + y * cos };
+	};
+
+	const points: Pt[] = [];
+	for (let i = 0; i <= steps; i++) points.push(at(i));
+	points.push(at(steps + over));
+
+	return handPath(points, options);
+}
+
+/**
+ * A bin, for the corner the paper folds away to show.
+ *
+ * Not the scribble, and that is the whole point of it. A scribble is what a
+ * hand does to a line it wants rid of — it is a mark made *on* something, and
+ * it belongs beside the thing it strikes out. The corner is not a mark; it is
+ * a place, and what a place to be rid of things looks like is a bin. The two
+ * never appear together, and neither could stand in for the other: a scribble
+ * on an empty corner would be a mark with nothing under it, and a bin beside a
+ * row would be a picture where every other mark on the sheet is a gesture.
+ *
+ * Four strokes, and one of them unlifted: a pen draws the body in a single
+ * run down one wall, across the bottom and up the other, then rules the lid,
+ * then the tab above it, then the ribs. The walls lean in and the ribs lean
+ * with them, or the ribs read as bars in front of a box rather than as the
+ * moulding of the thing.
+ */
+export function handBin(width: number, height: number, options: HandOptions): string {
+	/** Where the lid sits, and so where the body starts. */
+	const lid = height * 0.24;
+	const inner = height - lid;
+
+	const body = handPath(
+		[
+			{ x: width * 0.1, y: lid },
+			{ x: width * 0.21, y: height },
+			{ x: width * 0.79, y: height },
+			{ x: width * 0.9, y: lid }
+		],
+		options
+	);
+
+	const rim = handPath(
+		[
+			{ x: 0, y: lid },
+			{ x: width, y: lid }
+		],
+		{ ...options, seed: options.seed + 131 }
+	);
+
+	const tab = handPath(
+		[
+			{ x: width * 0.35, y: lid },
+			{ x: width * 0.37, y: height * 0.05 },
+			{ x: width * 0.63, y: height * 0.05 },
+			{ x: width * 0.65, y: lid }
+		],
+		{ ...options, seed: options.seed + 271 }
+	);
+
+	/** Two, leaning the way the wall nearest each of them leans. */
+	const ribs = [0.37, 0.63]
+		.map((at, i) => {
+			const lean = (at - 0.5) * 0.16;
+			return handPath(
+				[
+					{ x: width * at, y: lid + inner * 0.14 },
+					{ x: width * (at - lean), y: lid + inner * 0.86 }
+				],
+				{ ...options, seed: options.seed + 613 + i * 97 }
+			);
+		})
+		.join(' ');
+
+	return `${body} ${rim} ${tab} ${ribs}`;
+}
+
 /** The chevron on a group title. */
 export function handChevron(size: number, collapsed: boolean, options: HandOptions): string {
 	const w = size * 0.62;
@@ -445,24 +557,90 @@ export function handChevron(size: number, collapsed: boolean, options: HandOptio
  * The bars are unequal by a few percent, the way three pen strokes are.
  */
 export function handBurger(size: number, options: HandOptions): string {
+	return bars(size, options, false);
+}
+
+/**
+ * The same three strokes with a mark put in front of each: the burger seen as
+ * what it has always been a picture of, which is a list.
+ *
+ * It is the panel's own corner mark, where the sheet has the burger — the two
+ * are the same button on the two sides of one piece of paper, so the second
+ * has to be the first with something done to it rather than a different
+ * drawing that happens to be three lines. Every proportion here is the
+ * burger's; what is added is the short dash at the head of each row, and the
+ * gap that parts it from the words.
+ *
+ * A list rather than an arrow back. An arrow says where a tap goes; this says
+ * what is on the other side, which is the thing the tap is for — and the mark
+ * a finger left from is the mark it comes back to.
+ */
+export function handList(size: number, options: HandOptions): string {
+	return bars(size, options, true);
+}
+
+/**
+ * Three rows across a square, bulleted or not.
+ *
+ * One function for both, because they are one mark: retuning the burger's gap
+ * or the lean of its bars and leaving the list where it was would put two
+ * different hands on the two faces of the same sheet.
+ */
+function bars(size: number, options: HandOptions, bulleted: boolean): string {
 	const widths = [1, 0.88, 0.96];
 	const gap = size * 0.3;
 	const top = (size - gap * 2) / 2;
 
+	/*
+	 * How much of a row the dash takes, and how far it stands off the rest of
+	 * it. Short enough to read as a mark beside the line rather than as a
+	 * fourth bar broken in two, and parted by about its own length — closer and
+	 * the round caps close the gap at this size, further and the dashes stop
+	 * belonging to the rows they head.
+	 */
+	const DASH = 0.18;
+	const PART = 0.14;
+
 	return widths
-		.map((factor, i) => {
+		.flatMap((factor, i) => {
 			const w = size * factor;
 			const x = (size - w) / 2;
 			const y = top + gap * i;
+			const seed = options.seed + i * 977;
 
-			return handPath(
-				[
-					{ x, y },
-					{ x: x + w * 0.45, y },
-					{ x: x + w, y }
-				],
-				{ ...options, seed: options.seed + i * 977 }
-			);
+			if (!bulleted) {
+				return handPath(
+					[
+						{ x, y },
+						{ x: x + w * 0.45, y },
+						{ x: x + w, y }
+					],
+					{ ...options, seed }
+				);
+			}
+
+			const head = x + w * DASH;
+			const from = x + w * (DASH + PART);
+
+			return [
+				handPath(
+					[
+						{ x, y },
+						{ x: head, y }
+					],
+					{ ...options, seed }
+				),
+				handPath(
+					[
+						{ x: from, y },
+						{ x: from + (x + w - from) * 0.45, y },
+						{ x: x + w, y }
+					],
+					// Apart from its own dash, or the two wobble as one stroke cut
+					// in half and the gap reads as a break rather than as a space.
+					{ ...options, seed: seed + 313 }
+				)
+			];
 		})
 		.join(' ');
 }
@@ -484,35 +662,6 @@ export function handArrow(size: number, options: HandOptions): string {
 		...options,
 		seed: options.seed + 613
 	});
-
-	return `${shaft} ${barb}`;
-}
-
-/**
- * An arrow pointing back the way you came, level rather than on the diagonal.
- *
- * The panel's own corner mark. It is not `handArrow` turned: that one runs up
- * and out and means an outbox, and the same drawing laid on its side would be
- * a mark saying something it was not drawn to say. Level and leftwards is its
- * own stroke, and what it means is where the tap goes.
- */
-export function handBack(size: number, options: HandOptions): string {
-	const pad = size * 0.2;
-	const middle = size / 2;
-	const from = { x: size - pad, y: middle };
-	const to = { x: pad, y: middle };
-	const head = size * 0.28;
-
-	const shaft = handPath([from, { x: (from.x + to.x) / 2, y: middle }, to], options);
-
-	// Both barbs in one polyline, so the corner at the point joins as a corner.
-	const barb = handPath(
-		[{ x: to.x + head, y: middle - head }, to, { x: to.x + head, y: middle + head }],
-		{
-			...options,
-			seed: options.seed + 421
-		}
-	);
 
 	return `${shaft} ${barb}`;
 }

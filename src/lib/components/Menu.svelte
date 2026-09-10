@@ -20,11 +20,12 @@
 	import Perforation from './Perforation.svelte';
 	import SideEdge from './SideEdge.svelte';
 	import TextRule from './TextRule.svelte';
+	import ThemeButton from './ThemeButton.svelte';
 	import TornEdge from './TornEdge.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
-	import { handBack } from '$lib/draw/hand';
+	import { handList } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
@@ -111,14 +112,17 @@
 	 * The same size as the burger, in the same place, because it is the same
 	 * corner of the same sheet seen from the other side.
 	 *
-	 * An arrow back rather than a ✕. A cross closes something that was put on
-	 * top; nothing was put on top here — the paper was turned over, and what
-	 * this does is turn it back. It is also the one mark on the panel that has
-	 * to say where a tap goes rather than what a thing is.
+	 * And now the same mark: the burger with a dash put at the head of each of
+	 * its rows, which is a list. A cross was wrong first — nothing was put on
+	 * top here, the paper was turned over — and the arrow back that replaced it
+	 * was wrong in a quieter way: it said where the tap goes, where every other
+	 * mark in this app says what a thing is. What is on the other side of the
+	 * paper is the list, and the button a finger left from is the button it
+	 * comes back to, so it should still be recognisably that button.
 	 */
 	const CLOSE = 22;
 
-	const back = $derived(handBack(CLOSE, { seed: seedFrom('backtolist'), wobble: 0.8 }));
+	const mark = $derived(handList(CLOSE, { seed: seedFrom('backtolist'), wobble: 0.8 }));
 
 	const summary = $derived(statusText(sync.status, sync.unsent, refused));
 	const valid = $derived(normaliseCode(entered) !== null);
@@ -446,14 +450,14 @@
 	>
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
 			<!--
-				The same two strokes drawn twice: once in the paper, wide, and then
-				in the ink on top. It is the mark's own shape held clear of whatever
+				The same strokes drawn twice: once in the paper, wide, and then in
+				the ink on top. It is the mark's own shape held clear of whatever
 				has scrolled under it, rather than a box of ground around it — a
 				square of paper cut the line it landed on in half, and the panel has
 				no rectangles on it anywhere else.
 			-->
-			<path d={back} class="drawn knockout" />
-			<path d={back} class="drawn" />
+			<path d={mark} class="drawn knockout" />
+			<path d={mark} class="drawn" />
 		</svg>
 	</button>
 
@@ -476,7 +480,24 @@
 				dropdown, when open, is ordinary content and scrolls like everything
 				else beneath it.
 			-->
-			<ListSwitcher context="menu" onafterselect={close} />
+			<div class="settings">
+				<!--
+					Which list this is, then the theme, then the ✕ — the same shape
+					the sheet's own corner row has, and the same widths: a name
+					taking the line, one thin mark, and the corner control.
+
+					The theme stood in the sheet's corner, next to the burger, on the
+					reasoning that a control for how the sheet looks cannot be buried
+					under a panel that covers the sheet. What that missed is that the
+					panel is not over the sheet — it is the other side of it, and
+					turning the paper to reach the switch shows the answer on the way
+					back. So it is here, where every other thing about this device
+					rather than about the writing already is, and the sheet's corner
+					is left to the two things that are about the list.
+				-->
+				<ListSwitcher context="menu" onafterselect={close} />
+				<div class="theme-slot"><ThemeButton /></div>
+			</div>
 
 			<!--
 				The panel's sections are told apart by a tear across the paper, the
@@ -1057,6 +1078,51 @@
 	 */
 	.body {
 		text-align: center;
+	}
+
+	/*
+	 * The row the panel opens on: which list this is, then the theme, then the
+	 * room the ✕ stands in.
+	 *
+	 * That room has to be reserved rather than shared. The ✕ is placed like
+	 * every corner control in the app — `right: var(--corner-x)`, which is
+	 * exactly where this scroller's own content stops — so it lies over the
+	 * last touch target's width of the line, and anything laid out into that
+	 * width ends up underneath it. The padding holds it back, and what is left
+	 * is a switcher exactly as wide as the one on the other face, which has the
+	 * sync mark and the burger at the end of its row instead.
+	 *
+	 * Aligned to the top rather than the middle, because the switcher carries a
+	 * rule under its pill and a bottom margin of its own — centring the pair
+	 * would hang the theme's glyph off the middle of all of that instead of
+	 * level with the words.
+	 */
+	.settings {
+		display: flex;
+		align-items: flex-start;
+		/*
+		 * The same gap the switcher keeps from the marks beside it on the sheet
+		 * (`.wrap.sheet`'s own right margin), so the pill comes out the same
+		 * width on both faces rather than nearly.
+		 */
+		gap: 0.4rem;
+		padding-right: var(--touch);
+	}
+
+	/*
+	 * The same offset the switcher's pill takes, so both sit on the line the ✕
+	 * is on. See `.switcher.menu` in ListSwitcher.svelte, which explains where
+	 * the number comes from.
+	 */
+	.theme-slot {
+		flex: none;
+		/*
+		 * At the end of the row, where the sheet keeps its own two marks. The
+		 * name is as wide as its words and this is as far from them as the line
+		 * allows, so the two faces read the same way round.
+		 */
+		margin-left: auto;
+		margin-top: var(--corner-lead);
 	}
 
 	/*

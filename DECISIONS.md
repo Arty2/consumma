@@ -1514,6 +1514,361 @@ relative` rather than a transform, which does not apply to an inline box.
       is the point. Written as `\u00a0` in the catalogue rather than as an
       invisible character in the source.
 
+114.  **A group in hand is offered the corner, and the corner alone changes to
+      say so.** A group being carried has three places to go, and two of them
+      are not on the sheet: another list, and away. Both belong in the corner,
+      because the corner is where everything that is about the list rather than
+      about the writing already lives.
+
+      So the theme and the burger leave the moment a group is lifted. Neither
+      has anything to say to a group in hand, both are a tap where the finger is
+      already holding something, and between them they occupy the only place
+      the answer could go. Nothing about the swap is animated: it happens under
+      a finger that is already moving, and a control fading out while something
+      is being carried over it would be the corner arguing with the hand.
+
+      What appears in their place is the paper's own corner, turned down. It is
+      drawn the way the tear is — the ground is closed past the fold and filled
+      with paper, so the torn edge and the side edge are cut on the diagonal
+      rather than drawn over. A corner is either turned down or it is not, so
+      that too appears without an animation.
+
+      **The corner brings its own edges over with it.** The paper's corner is
+      reflected across the crease, and what the reflection carries is the two
+      edges the sheet was cut with: the torn top edge arrives running down from
+      the crease's top end, and the side edge arrives running in from its
+      bottom one, drawn with the same `handTear` and `handVertical` the paper's
+      own edges use. Left as a plain triangle it was a corner guillotined off
+      and laid back down — the one thing this sheet has never been.
+
+      **The mark on it is a bin, and it stands in the room the fold clears.**
+      Every other delete in the app is the scribble, and this is the one place
+      that would be wrong: a scribble is a mark made _on_ a thing and belongs
+      beside the row it strikes out, where a corner with the paper off it is
+      not a mark at all but a place. What a place to be rid of things looks
+      like is a bin, and it sits past the crease, which is the one part of this
+      sheet nothing can ever be written on. Faint while it is only an offer and
+      full ink once the group is over it.
+
+      The hit area is the fold's own square — the flap and the room it has
+      cleared — stopping at the crease's two ends rather than at the box the
+      fold is drawn in. The top of the list is directly under the corner, and
+      that is as far as a delete may reach towards it.
+
+      The fold takes a group whatever state it is in, which is the one rule the
+      header's own mark does not follow. That mark is drawn beside a list
+      somebody may only be reading, where a live delete has to be earned by the
+      group being finished. This is a group already in hand, thrown at the one
+      place that means gone, and it leaves the same ten-second undo.
+
+115.  **A group carried onto the switcher moves lists, and the switcher unfolds
+      to say where it can go.** The pill wears a dashed box while a group is in
+      hand — that is what a dashed box means here, somewhere it can be put down
+      — and carrying the group onto it opens a column: every list but the one
+      the group is already on, and a row that makes a list on the spot. It is
+      the same pair of offers a task already has one level down, where it can
+      be dropped into a group or onto the row that invents one — `NEW_LIST` is
+      a sentinel list id for exactly the reason `NEW_GROUP` is a sentinel group
+      id.
+
+      **The lists are not shown until the group reaches the switcher.** Open
+      for the whole of a drag, the column lies across the sheet the group is
+      being carried over: it covers the titles a drop between two groups is
+      aimed at, and it answers the hit test before they do — a way of moving a
+      group between lists that broke moving one within a list. So it opens the
+      way a finger opens anything, by arriving, and shuts again the moment the
+      group goes back to the sheet.
+
+      That needs `data-switcher` on the column as well as on the wrap the pill
+      is in. `elementsFromPoint` answers with the boxes under the point rather
+      than with the chain of elements around it, so a column hanging below the
+      pill is not the pill's ancestor as far as the hit test is concerned:
+      without the second one, crossing from the pill into a gap between two
+      rows read as leaving the switcher and the column shut under the finger on
+      its way to a list.
+
+      Letting go on the pill itself does nothing. The switcher answers a group
+      by unfolding; only a list takes one.
+
+      It is on the page for this even where there is only one list. Otherwise
+      the way to a second one by carrying a group there would be missing from
+      precisely the device that has never had one. It is withheld while a sync
+      is in flight, because a list minted then could not be written to safely
+      and a control that is not going to answer is better not offered.
+
+      The column is out of the flow. A column that opened in it would move the
+      list under the finger, and the finger is steering by what it can see —
+      the same reason the landing rule has no height. It is the menu's own
+      dropdown, rows and ground and all, because that is what a list of lists
+      already looks like here; the row under the group is marked by its box
+      going dashed, which is what the switcher above it is already wearing.
+      Only the box changes — the name it holds has to stay legible either way,
+      so this is not the dashed rule the sheet draws between two rows: a list
+      is a place, not a boundary.
+
+      **The undo is two ordinary changes, not a rewind.** Onto a list that was
+      already there, the group is taken back out of it and put back here: that
+      list may have a code, may have been synced since, and writing yesterday's
+      bytes over it would take anything else that landed there with them.
+      `lists.restore` may put a whole list back verbatim only because leaving
+      never reached a merge; this is the opposite case. Onto a list the drop
+      invented there is nothing to preserve, so it is unmade whole — after the
+      group is out of it — which on a device that had one list before the drop
+      takes the index away again and leaves exactly the shape it had.
+
+      **Nothing is copied.** `handOff` in src/lib/doc/handoff.ts writes the
+      group and its live tasks into the other document as fresh records —
+      keeping every id, every word, and every half-done state — and deletes the
+      group where it came from, tasks and all, through the ordinary path. The
+      records are written fresh rather than moved because the destination may
+      still hold tombstones under those ids from an earlier visit, and a record
+      stamped now is what beats a tombstone stamped then. The task keys travel
+      unchanged: a fractional index is only ever compared against its own
+      siblings, and all of them are moving.
+
+      The list being arrived at is written before the list being left. Storage
+      can refuse a write, and of the two ways that can go, a group on both
+      lists is something a person can see and sort out, while a group on
+      neither is writing gone.
+
+116.  **The sheet's turn gives way to anything picked up after it armed.** The
+      turn arms on `pointerdown` and asks then whether something is already
+      being carried — but a lift takes most of a second, so the press that
+      becomes one is a press the turn has already accepted. A group title is
+      the case that bites: it is a span with a button's role rather than a
+      `<button>`, so it is not among the controls the turn stands aside for.
+
+      What happened next was worse than a sheet turning by mistake. Taking the
+      pointer capture over hands it to `main`, the title loses it mid-carry,
+      and `lostpointercapture` puts the whole lift down — so a group dragged
+      sideways went dead the moment it moved. It never showed while the only
+      places to drop a group were above and below it; carrying one to the
+      corner is a sideways drag by definition, and it showed at once. The
+      question is asked again on the first move.
+
+117.  **The theme moved to the back of the sheet.** It sat in the corner beside
+      the burger on the reasoning that a control for how the sheet looks
+      cannot be buried under a panel that covers the sheet. That reasoning
+      described a drawer; the panel is the other side of the same piece of
+      paper, and turning it over to reach the switch shows the answer on the
+      way back.
+
+      So it is beside the switcher, which is the other thing in the panel that
+      is about this device rather than about the writing, and level with the ✕
+      across from them. The sheet's own corner is left to the two things that
+      are about the list: what is unsent, and the way in.
+
+      It stays a glyph rather than gaining a drawn box. Every worded button in
+      the menu is boxed; the three marks — the ✕, the switcher's pill and this
+      — are not, because a box round a picture of the sun is a button round a
+      drawing.
+
+118.  **The switcher's column is what a tap opens too, and the modal is gone.**
+      The sheet's pill opened a full-screen modal and the menu's opened a
+      column in place, which is two answers to one question — and then a
+      carried group opened a third. A modal is for something that has to be
+      settled before anything else happens; choosing which list you are on is a
+      glance at four names, and covering the sheet to show them made a decision
+      out of it.
+
+      One column now, in both homes and for both gestures. Escape and a tap
+      outside close it, which is what the menu's copy always did: there is
+      nothing in a list of names to hold Tab inside, and locking body scroll
+      for four rows is a much bigger door than this needs.
+
+      **Never wider than the paper.** It hangs from the pill's own left edge and
+      the pill starts a sync mark's width into the row, so the cap is the row's
+      width less that — and a name too long for what is left is cut with an
+      ellipsis, exactly as the pill above it cuts one.
+
+      The rows are shorter than they were and carry their own padding rather
+      than a height floor: less at the sides than above and below, because the
+      padding is what the line under a row rules off and a word wants more room
+      over it than beside it.
+
+119.  **The marks a drop offers are a loop and a dashed line.** Both were drawn
+      boxes, and both were wrong for the same reason: a box is a frame put
+      round something, and a frame round a name reads as the name having been
+      selected rather than as a place to put something down.
+
+      The switcher wears a loop instead — `handOval`, off level, which is
+      somebody's pen going round a word once. A list says where a group would
+      land by its own line going dashed: the rule under a name belongs to that
+      name, and a dash is what says "here" everywhere else on the sheet.
+
+      That also settled a hit-testing bug. The pill and the column it opens are
+      two boxes with a corner of nothing between them — the column hangs below
+      and is several times as wide — and a finger crossing diagonally from one
+      to the other fell through that corner, shutting the column it was
+      reaching into. The drag reads the two as one box round the pair now,
+      measured rather than hit-tested.
+
+120.  **The bin is ink, and it boils when a group is over it.** It was drawn
+      faint until then, on the rule the add row's box follows — but that box is
+      a suggestion of a task that is not there yet, where this is a bin that is
+      there whether or not anything is going into it, and a faint one read as a
+      control not yet available.
+
+      What says a group is over it is the mark boiling: the same hand redrawing
+      the same drawing four times over that the sync button works by. It is the
+      one thing on this sheet that means _live under your finger_, which is
+      exactly what a drop target wants to say and what a change of weight
+      cannot. The technique moved into `src/lib/draw/boil.svelte.ts` in the
+      same change — two marks drawing it twice is two techniques as soon as one
+      of them is retuned.
+
+      It is never dotted. The dots are the sync marks saying they are mid-flight;
+      the bin is saying "here", which is a different sentence.
+
+121.  **Nothing is picked up off a sheet that is moving.** A lift takes most of
+      a second and a turn takes about the same, so a press held through a swipe
+      came up carrying a row of a page that was edge-on or already face down —
+      and steering by a hit test reading boxes off it mid-rotation.
+
+      The page sets `drag.turning` for as long as the paper is turning, sliding
+      or swinging home, and `pressDrag` refuses a press while it holds. Refused
+      rather than swallowed: the release is still a tap, because a press that
+      never became a lift never became anything else either.
+
+122.  **The toast is laid on the sheet rather than set square on it.** A degree
+      off level, about a point just inside its own left edge, so the far corner
+      lifts. Everything else at the top of the paper is ruled to the row — the
+      marks, the writing, the tear — and a message that lined up with all of it
+      read as another part of the page rather than as a note dropped over it.
+
+      In `rotate` rather than in `transform`, which carries the arrival and the
+      throw: the two must not have to know about each other.
+
+123.  **Both faces of the paper carry the same row.** The sheet's corner had one
+      mark at each end — sync alone at the far left, the burger at the far
+      right — with the name of the list squeezed between them. With the theme
+      gone to the back there was a touch target of room going spare, and the
+      obvious thing to do with it was give it to the only part of the row made
+      of words.
+
+      So the name goes first, where every other word on the paper starts, and
+      both marks go to the end together. The back of the sheet is laid out to
+      match: the name, then the theme, then the ✕. The panel reserves the ✕'s
+      own column with a padding rather than letting the theme share it — the ✕
+      is placed like every corner control at `right: var(--corner-x)`, which is
+      exactly where the scroller's content stops, so anything laid out into
+      that width ends up underneath it. The two pills come out the same width
+      to the pixel, and turning the paper over does not move the name.
+
+      **As wide as its words, not as wide as the room.** Filling the line was
+      tried and is wrong twice over: the drop target's loop came out drawn
+      round half a sheet of nothing, and the column of lists — which is at
+      least as wide as the pill, so that everything under the pill is over the
+      column — lay across the first two titles of the sheet, which are titles a
+      carried group is aimed at.
+
+      **And the row holds its own height now.** It was held up by whichever
+      mark happened to be standing in it, the pill being an inline-flex box in
+      a line box ten pixels shorter — so the row shrank the moment a group was
+      lifted and both marks left, and the whole sheet stepped up ten pixels
+      under the finger carrying it.
+
+124.  **The drop target's loop is one size, whatever the list is called.** It
+      was drawn round the pill's own bounds, which is what a box does and what
+      `HandRect` had done there before it. On a name of three letters that came
+      out a tight ring; on one that filled the line, a long flat ellipse a
+      third of the width of the paper. Two lists, two different marks — and the
+      whole reason for a loop rather than a box was that it is a gesture
+      somebody makes, and a gesture does not resize itself to fit.
+
+      So `--loop` is that gesture's own width, two and a half touch targets:
+      about what a pen circling a word on paper draws every time, left to fall
+      where it falls. Round a short name it has room to spare, round a long one
+      it crosses a letter at either end, which is exactly what circling a long
+      word with a pen looks like.
+
+      **And the menu's column of lists hangs where the sheet's does.** The pill
+      is a touch target tall standing in a line box the face's own strut
+      decides, so it overhangs the box that holds it by five pixels. On the
+      sheet nothing shows: the column is absolute and the pill is painted up by
+      that same amount, so the two cancel. In the panel the column follows in
+      flow, so it began five pixels above where it should — the first rule
+      crossing the name it belongs to rather than sitting under it. Given back
+      by hand on `.dropdown.menu`, and the first list now stands the same hair
+      below the name on both faces.
+
+125.  **The panel's corner is the burger, drawn as a list.** It has been three
+      marks now. A ✕ first, which was wrong because a cross closes something
+      laid on top of something else and nothing is laid on top here — the paper
+      was turned over. Then an arrow pointing back, which was better and still
+      wrong: it said _where the tap goes_, where every other mark in this app
+      says _what a thing is_, and it left the corner a finger had just tapped
+      showing a different drawing than the one it tapped.
+
+      So it is the burger again, with a short dash at the head of each of its
+      three rows — which is a burger read as what it has always been a picture
+      of. The button does not change identity when the paper turns; it gains
+      the marks that say the other side is the list. `handBurger` and
+      `handList` are one function with a flag, because retuning the gap or the
+      lean of the bars on one and not the other would put two different hands
+      on the two faces of a single sheet.
+
+      `handBack` went with the arrow. A drawing nothing draws is weight in the
+      bundle and a second answer sitting there waiting to be picked by
+      somebody who does not know why the first one lost.
+
+126.  **The switcher's column is the lists you are not on.** It listed every
+      list including the open one, marked selected. But the pill a centimetre
+      above it is already the answer to "which list am I on" — so the column
+      said it a second time, and said it as a row that looked exactly like the
+      ones that go somewhere and did nothing at all when tapped. What a list of
+      places is for is the places you are not.
+
+      It follows that nothing in the column is ever selected now. That is
+      written out rather than dropped, because the `option` role requires the
+      attribute; a column where the answer is always "no" is a hint that this
+      is closer to a menu than a listbox, and if it is ever given real
+      arrow-key roving it should become one.
+
+      **And `+ NEW LIST` is the last row rather than a button.** A drawn box
+      round centred words made the one control in the column look like a
+      control — which made the rows above it look like something else, when
+      every one of them is the same kind of thing: somewhere to go. So it is a
+      row, left where their names are and ruled off underneath like theirs. The
+      `+` sits where the others have their first letter and is all the
+      difference the row needs; it is `aria-hidden`, so what is read aloud
+      stays the plain words.
+
+      **The column's width is stated, not fitted — and what it is stated as is
+      the full width of the writing.** Left to its contents, the column a tap
+      opens and the column a carried group opens came out different widths, and
+      even holding the same rows a code appearing would move the edge. A drop
+      target that changes width under the finger steering at it is a worse
+      thing than a long name losing its tail, and the pill above it already
+      cuts one with the same ellipsis. Full width here means the paper's own
+      width less the room the writing keeps inside its drawn edges — the same
+      line every other line on either face begins and ends on.
+
+      **The two faces hang it differently, and have to.** The sheet's is out of
+      the flow, because it opens over a list a carried group is being steered
+      across and a column that pushed would move the thing being aimed at. The
+      panel's is in it. Both were tried the other way round: taken out of the
+      flow on the panel, the column lay over the full-bleed perforation that
+      rules the panel's sections off, cut the middle out of it and left its two
+      ends sticking out either side, which reads as a rule somebody broke
+      rather than as a column standing over one. Widening the column's _ground_
+      to cover the perforation whole only moved the damage — at the paper's
+      drawn width it painted over the paper's own side edges, so the sheet had
+      a gap in its outline for as long as the column was open.
+
+      In the flow it is wider than the box holding it, since the settings row
+      keeps the ✕'s column in reserve and carries the theme mark, so it
+      overflows the wrap to the right and nothing clips it. That is also why
+      `.pill` is capped with `max-width` rather than stretched with `width`: a
+      wrap sized to hold the column would have taken the pill with it, and the
+      pill is the one thing on the panel that has to come out exactly as wide
+      as it is on the sheet.
+
+      One consequence, worth knowing rather than fixing: at this width the open
+      column lies over the first group's title, and the hit test reads the pill
+      and the column as one box — so taking a carried group "back to the sheet"
+      now means below the column rather than merely off the pill.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

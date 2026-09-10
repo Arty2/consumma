@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { handArrow, handRefresh, handSlashedCircle, type HandOptions } from '$lib/draw/hand';
-	import { seedFrom } from '$lib/draw/rng';
+	import { boil, boiling } from '$lib/draw/boil.svelte';
+	import { handArrow, handRefresh, handSlashedCircle } from '$lib/draw/hand';
 	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { sync } from '$lib/state/sync.svelte';
@@ -24,38 +24,6 @@
 	const SIZE = 22;
 
 	/**
-	 * How many times each mark is drawn, and how long each drawing is held.
-	 *
-	 * The same hand, drawing the same mark four times over: no two strokes come
-	 * out identical, and cycling between them is what makes a line look alive
-	 * on paper — the boil that hand-drawn animation has always had, rather than
-	 * a shape being scaled or faded by a machine.
-	 *
-	 * Four is what the technique uses: enough that the loop does not read as a
-	 * flicker between two states, few enough that each drawing is on screen
-	 * long enough to be seen as a drawing. `900 / 4` keeps the one duration the
-	 * whole corner already works to.
-	 */
-	const FRAMES = 4;
-	const BEAT_MS = 900 / FRAMES;
-
-	/**
-	 * How loose the hand is on each of the four drawings.
-	 *
-	 * A different seed alone only moves the same amount of wobble to different
-	 * places, so four frames drawn to one setting differ about as much as four
-	 * copies of a printed line — the boil was there but barely readable. A hand
-	 * does not redraw at a constant roughness either, so the looseness varies
-	 * frame to frame as well as the seed.
-	 *
-	 * The first is the resting mark and keeps 0.7, which is what the burger and
-	 * the theme glyph beside it are drawn at — a mark standing still in that
-	 * row has to belong to it. The other three are only ever seen in motion,
-	 * where a rougher line reads as a hand working rather than as a shaky one.
-	 */
-	const WOBBLES = [0.7, 1.8, 1.2, 2.1];
-
-	/**
 	 * Where the ink lands on each of the four drawings.
 	 *
 	 * A mark that is working reads lighter than one standing still, and the way
@@ -75,20 +43,10 @@
 		{ gap: 3.4, shift: 2 }
 	];
 
-	/*
-	 * Drawn once each, up front, so the strokes never twitch as the count
-	 * changes — the cycling below picks between drawings that already exist
-	 * rather than making new ones. The first frame keeps the bare seed, so a
-	 * mark standing still is the same mark it has always been.
-	 */
-	const boil = (draw: (size: number, options: HandOptions) => string, name: string): string[] =>
-		Array.from({ length: FRAMES }, (_, i) =>
-			draw(SIZE, { seed: seedFrom(i === 0 ? name : `${name}${i}`), wobble: WOBBLES[i] })
-		);
-
-	const arrow = boil(handArrow, 'arrow');
-	const refresh = boil(handRefresh, 'refresh');
-	const slash = boil(handSlashedCircle, 'offline');
+	/* The four drawings of each mark — see src/lib/draw/boil.svelte.ts. */
+	const arrow = boil('arrow', (o) => handArrow(SIZE, o));
+	const refresh = boil('refresh', (o) => handRefresh(SIZE, o));
+	const slash = boil('offline', (o) => handSlashedCircle(SIZE, o));
 
 	const waiting = $derived(sync.unsent > 0);
 	const offline = $derived(sync.status === 'offline');
@@ -116,33 +74,8 @@
 	/** While a sync is actually in flight — from here or from the menu. */
 	const working = $derived(sync.busy && !still());
 
-	/*
-	 * Which of the four drawings is on screen. Zero whenever nothing is in
-	 * flight, so a mark standing still is always the same mark — the boil is
-	 * something the button does while it works, not a state it is left in.
-	 *
-	 * `working` already asks `prefers-reduced-motion` (see `still()`), so a
-	 * device that wants no motion never starts the interval and the mark holds
-	 * its first drawing.
-	 */
-	let frame = $state(0);
-
-	$effect(() => {
-		if (!working) {
-			frame = 0;
-			return;
-		}
-
-		/*
-		 * Counted locally rather than off `frame` itself, so the callback only
-		 * ever writes reactive state and never reads it — the mistake that took
-		 * this tree's reactivity down once already (see sync.svelte.ts's
-		 * `refresh`) was an effect that did both.
-		 */
-		let next = 0;
-		const tick = setInterval(() => (frame = next = (next + 1) % FRAMES), BEAT_MS);
-		return () => clearInterval(tick);
-	});
+	/* Which of the four drawings is on screen, and when. */
+	const boiled = boiling(() => working);
 
 	/*
 	 * On its way out after a sync that left nothing to offer.
@@ -230,11 +163,11 @@
 			aria-hidden="true"
 		>
 			<path
-				d={(offline ? slash : waiting ? arrow : refresh)[frame]}
+				d={(offline ? slash : waiting ? arrow : refresh)[boiled.frame]}
 				class="drawn"
 				class:drawn--dotted={working}
-				style:--dot-gap={DOTS[frame].gap}
-				style:--dot-shift={DOTS[frame].shift}
+				style:--dot-gap={DOTS[boiled.frame].gap}
+				style:--dot-shift={DOTS[boiled.frame].shift}
 			/>
 		</svg>
 	</button>

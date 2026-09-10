@@ -22,6 +22,33 @@ export type DropTarget = { groupId: string; index: number };
  */
 export const NEW_GROUP = '__newgroup__';
 
+/**
+ * Not a list — the row that offers to make one.
+ *
+ * The same shape as `NEW_GROUP` one level up, and for the same reason:
+ * everything between the hit test and the drop already speaks in list ids, and
+ * a second kind of target would have to be carried through every one of them.
+ */
+export const NEW_LIST = '__newlist__';
+
+/**
+ * Where a group being carried would land.
+ *
+ * Three answers rather than one, because the corner answers for a group too. A
+ * place among its siblings is the one this has always had; a list is the
+ * switcher, which unfolds into the lists this group could go to while one is in
+ * hand; the fold is the paper's own turned-down corner, which takes it away.
+ *
+ * A discriminated union rather than a bare index, so nothing can read a corner
+ * drop as a position — the landing rule between two groups is drawn off the
+ * same field, and an index is exactly what it would have found there.
+ */
+export type GroupDrop =
+	| { kind: 'order'; index: number }
+	| { kind: 'switcher' }
+	| { kind: 'list'; listId: string }
+	| { kind: 'fold' };
+
 const EDGE = 60;
 const EDGE_SPEED = 12;
 
@@ -41,9 +68,21 @@ export class DragState {
 	 */
 	from = $state<DropTarget | null>(null);
 
+	/**
+	 * The paper is turning, and nothing may be picked up off it while it is.
+	 *
+	 * A lift takes most of a second and the turn takes about the same, so a
+	 * press held through a swipe came up holding a row of a sheet that was
+	 * edge-on or already face down — and the hit test it then steered by was
+	 * reading boxes off a page mid-rotation. Set by the page, which is the only
+	 * thing that knows the paper is moving; asked at the press, because that is
+	 * where a gesture can still be refused without taking anything back.
+	 */
+	turning = $state(false);
+
 	/** The group currently lifted, if any. Never both at once. */
 	groupId = $state<string | null>(null);
-	groupTarget = $state<number | null>(null);
+	groupTarget = $state<GroupDrop | null>(null);
 	groupFrom = $state<number | null>(null);
 
 	get dragging(): boolean {
@@ -100,10 +139,38 @@ export class DragState {
 	 * the mark pointing at it was not, which is the worse way round.
 	 */
 	isGroupLanding(index: number): boolean {
-		if (this.groupTarget === null) return false;
+		if (this.groupTarget?.kind !== 'order') return false;
+
+		const at = this.groupTarget.index;
 		const from = this.groupFrom;
-		const shift = from !== null && this.groupTarget >= from ? 1 : 0;
-		return this.groupTarget + shift === index;
+		const shift = from !== null && at >= from ? 1 : 0;
+		return at + shift === index;
+	}
+
+	/**
+	 * The same offer, on one of the lists the switcher unfolds into while a
+	 * group is in hand. No translation to do here: a list is a place, not a
+	 * boundary between two things that shift when one of them is picked up.
+	 */
+	isListLanding(listId: string): boolean {
+		return this.groupTarget?.kind === 'list' && this.groupTarget.listId === listId;
+	}
+
+	/** Over the corner, which is where a group goes to be got rid of. */
+	get overFold(): boolean {
+		return this.groupTarget?.kind === 'fold';
+	}
+
+	/**
+	 * Over the switcher, or over one of the lists it has opened to show.
+	 *
+	 * The switcher is a drop target that answers by unfolding rather than by
+	 * taking the group: letting go on the pill itself does nothing. The lists
+	 * are only shown while this holds, because a column standing open for the
+	 * whole of a drag covers the sheet the group is being carried across.
+	 */
+	get overSwitcher(): boolean {
+		return this.groupTarget?.kind === 'switcher' || this.groupTarget?.kind === 'list';
 	}
 
 	reset(): void {
@@ -299,6 +366,7 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0) return;
+		if (drag.turning) return;
 		if (!hooks().enabled()) return;
 
 		dropped = false;
@@ -511,7 +579,7 @@ export type GroupDragOptions = {
 	enabled: boolean;
 	/** The shorter press: it opens the name rather than picking the group up. */
 	onEdit: () => void;
-	onDrop: (index: number) => void;
+	onDrop: (drop: GroupDrop) => void;
 };
 
 /**
@@ -522,7 +590,48 @@ export type GroupDragOptions = {
  * refuses for a row, and for the same reason: it is still in the DOM, just
  * tilted, and offers no landing spot of its own.
  */
-function groupTargetAt(y: number, movingId: string): number | null {
+function groupTargetAt(x: number, y: number, movingId: string): GroupDrop | null {
+	/*
+	 * The corner is asked first, and the switcher's rows second, for the reason
+	 * `targetAt` asks about the new-group row first: neither is in the groups'
+	 * own flow, so the sweep below would never find them and the finger would
+	 * go on reporting whichever group it was last over.
+	 *
+	 * `elementsFromPoint` hands back the whole stack rather than the topmost
+	 * element, so a message sliding down over the corner does not cover the
+	 * targets underneath it.
+	 */
+	const elements = document.elementsFromPoint(x, y);
+
+	if (elements.some((el) => el instanceof HTMLElement && el.dataset.fold !== undefined)) {
+		return { kind: 'fold' };
+	}
+
+	if (elements.some((el) => el instanceof HTMLElement && el.dataset.newlist !== undefined)) {
+		return { kind: 'list', listId: NEW_LIST };
+	}
+
+	const row = elements.find((el) => el instanceof HTMLElement && el.dataset.list) as
+		HTMLElement | undefined;
+
+	if (row?.dataset.list) return { kind: 'list', listId: row.dataset.list };
+
+	/*
+	 * Asked after the rows it opens, because they are inside it: over a list the
+	 * answer is that list, and anywhere else about the switcher the answer is
+	 * the switcher itself, which is what keeps the column open while a finger
+	 * crosses it.
+	 *
+	 * Measured rather than hit-tested, which is the one place here that is. The
+	 * pill and the column it opens are two boxes with a corner of nothing
+	 * between them — the column hangs below the pill and is several times as
+	 * wide — and a finger going diagonally from one to the other passes through
+	 * that corner. Hit-testing, the switcher was left for those few pixels and
+	 * the column shut under the hand on its way to a list. One box round the
+	 * two of them has no gap to fall through.
+	 */
+	if (overSwitcher(x, y)) return { kind: 'switcher' };
+
 	const own = document.querySelector<HTMLElement>(`[data-group="${movingId}"]`);
 	if (own) {
 		const box = own.getBoundingClientRect();
@@ -535,10 +644,44 @@ function groupTargetAt(y: number, movingId: string): number | null {
 
 	for (let i = 0; i < sections.length; i++) {
 		const box = sections[i].getBoundingClientRect();
-		if (y < box.top + box.height / 2) return i;
+		if (y < box.top + box.height / 2) return { kind: 'order', index: i };
 	}
 
-	return sections.length;
+	return { kind: 'order', index: sections.length };
+}
+
+/**
+ * Whether the pointer is on the switcher: on the pill, or on the column of
+ * lists it opens.
+ *
+ * Measured rather than hit-tested, so that what is under the column — the
+ * sheet's own titles — cannot answer for a point that is over it, and so that
+ * the two parts are one target rather than two.
+ *
+ * One box round every part of it, rather than each part answering for itself.
+ * The pill is as wide as its own words and the column below it is wider, so
+ * the two leave a corner of nothing between them — and a finger going
+ * diagonally from one into the other passed through that corner, shutting the
+ * column it was reaching into.
+ */
+function overSwitcher(x: number, y: number): boolean {
+	const parts = document.querySelectorAll<HTMLElement>('[data-switcher]');
+	if (parts.length === 0) return false;
+
+	let left = Infinity;
+	let right = -Infinity;
+	let top = Infinity;
+	let bottom = -Infinity;
+
+	for (const part of parts) {
+		const box = part.getBoundingClientRect();
+		left = Math.min(left, box.left);
+		right = Math.max(right, box.right);
+		top = Math.min(top, box.top);
+		bottom = Math.max(bottom, box.bottom);
+	}
+
+	return x >= left && x <= right && y >= top && y <= bottom;
 }
 
 /** Where a group sits now, counted among its siblings including itself. */
@@ -560,22 +703,30 @@ function groupHomeOf(groupId: string): number | null {
 export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) => {
 	let options = initial;
 
-	/** The same rule the rows follow: no landing where it already is. */
-	function landing(y: number): number | null {
-		const next = groupTargetAt(y, options.groupId);
-		return next !== null && next === drag.groupFrom ? null : next;
+	/**
+	 * The same rule the rows follow: no landing where it already is.
+	 *
+	 * Only a place among its siblings can be the place it is already in. The
+	 * list it is already on is never offered — the switcher leaves the open
+	 * list out of the column it unfolds into — and the corner is never where
+	 * anything already is.
+	 */
+	function landing(x: number, y: number): GroupDrop | null {
+		const next = groupTargetAt(x, y, options.groupId);
+		if (next?.kind === 'order' && next.index === drag.groupFrom) return null;
+		return next;
 	}
 
 	const destroy = pressDrag(node, () => ({
 		enabled: () => options.enabled,
 		press: () => options.onEdit(),
-		lift(_x, y) {
+		lift(x, y) {
 			drag.groupId = options.groupId;
 			drag.groupFrom = groupHomeOf(options.groupId);
-			drag.groupTarget = landing(y);
+			drag.groupTarget = landing(x, y);
 		},
-		move(_x, y) {
-			drag.groupTarget = landing(y);
+		move(x, y) {
+			drag.groupTarget = landing(x, y);
 		},
 		drop() {
 			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);

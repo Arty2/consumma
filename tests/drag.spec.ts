@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { DragState } from '../src/lib/dnd/drag.svelte';
+import { DragState, NEW_LIST } from '../src/lib/dnd/drag.svelte';
 
 /*
  * The arithmetic of a drag, without a finger.
@@ -86,7 +86,7 @@ describe('isGroupLanding', () => {
 	it('draws below the hole the carried group left', () => {
 		drag.groupId = 'g1';
 		drag.groupFrom = 0;
-		drag.groupTarget = 1;
+		drag.groupTarget = { kind: 'order', index: 1 };
 
 		expect(drag.isGroupLanding(1)).toBe(false);
 		expect(drag.isGroupLanding(2)).toBe(true);
@@ -95,9 +95,59 @@ describe('isGroupLanding', () => {
 	it('draws where it is asked above it', () => {
 		drag.groupId = 'g3';
 		drag.groupFrom = 2;
-		drag.groupTarget = 1;
+		drag.groupTarget = { kind: 'order', index: 1 };
 
 		expect(drag.isGroupLanding(1)).toBe(true);
+	});
+
+	/*
+	 * The corner and the switcher answer in the same field the sheet reads for
+	 * its landing rule, so the one thing that must never happen is a drop meant
+	 * for either being read as a position between two groups.
+	 */
+	it('draws nothing between the groups while the corner is the target', () => {
+		drag.groupId = 'g1';
+		drag.groupFrom = 0;
+		drag.groupTarget = { kind: 'fold' };
+
+		expect(drag.isGroupLanding(0)).toBe(false);
+		expect(drag.isGroupLanding(1)).toBe(false);
+		expect(drag.overFold).toBe(true);
+	});
+
+	it('draws nothing between the groups while a list is the target', () => {
+		drag.groupId = 'g1';
+		drag.groupFrom = 0;
+		drag.groupTarget = { kind: 'list', listId: 'abc' };
+
+		expect(drag.isGroupLanding(0)).toBe(false);
+		expect(drag.isGroupLanding(1)).toBe(false);
+		expect(drag.overFold).toBe(false);
+	});
+});
+
+describe('isListLanding', () => {
+	it('draws on the list under the finger and on no other', () => {
+		drag.groupId = 'g1';
+		drag.groupTarget = { kind: 'list', listId: 'abc' };
+
+		expect(drag.isListLanding('abc')).toBe(true);
+		expect(drag.isListLanding('def')).toBe(false);
+		expect(drag.isListLanding(NEW_LIST)).toBe(false);
+	});
+
+	it('draws on the row that makes a list, which is a list id like any other', () => {
+		drag.groupId = 'g1';
+		drag.groupTarget = { kind: 'list', listId: NEW_LIST };
+
+		expect(drag.isListLanding(NEW_LIST)).toBe(true);
+	});
+
+	it('draws nothing while the group is going somewhere on the sheet', () => {
+		drag.groupId = 'g1';
+		drag.groupTarget = { kind: 'order', index: 1 };
+
+		expect(drag.isListLanding('abc')).toBe(false);
 	});
 });
 
@@ -107,7 +157,7 @@ describe('reset', () => {
 		drag.target = { groupId: 'g1', index: 0 };
 		drag.groupId = 'g2';
 		drag.groupFrom = 1;
-		drag.groupTarget = 0;
+		drag.groupTarget = { kind: 'order', index: 0 };
 
 		drag.reset();
 

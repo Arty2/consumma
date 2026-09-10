@@ -1958,3 +1958,52 @@ test('the rule a carried group is dropped on is drawn where it will land', async
 	const order = await page.getByRole('button', { name: /^(My list|Market|Deli)$/ }).allInnerTexts();
 	expect(order).toStrictEqual(['MARKET', 'MY LIST', 'DELI']);
 });
+
+test('nothing is picked up off a sheet that is still moving', async ({ page }) => {
+	/*
+	 * A lift takes most of a second and a turn takes about the same, so a press
+	 * held through a swipe came up carrying a row of a page that was edge-on or
+	 * already face down — and then steered by a hit test reading boxes off it
+	 * mid-rotation.
+	 *
+	 * The paper's own clock, slowed, so the press lands squarely inside the
+	 * movement rather than racing it. What is under test is the rule, not the
+	 * hundred and fifty milliseconds it usually holds for. Set through the
+	 * CSSOM rather than as a stylesheet, because `style-src 'self'` refuses one
+	 * — the same reason the sheet writes its own turn that way.
+	 */
+	await page.evaluate(() => document.documentElement.style.setProperty('--flip', '1500ms'));
+	await addTask(page, 'Bread');
+
+	// A swipe rightwards that does not go far enough: the paper swings home,
+	// and for the length of that swing it is still turning.
+	const paper = (await page.locator('main').boundingBox())!;
+	await page.mouse.move(paper.x + 30, paper.y + paper.height - 60);
+	await page.mouse.down();
+	await page.mouse.move(paper.x + 70, paper.y + paper.height - 60, { steps: 5 });
+	await page.mouse.up();
+
+	// A press held through it does nothing at all.
+	const row = page.getByRole('button', { name: 'Bread', exact: true });
+	const box = (await row.boundingBox())!;
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await expect(page.locator('.lifted')).toHaveCount(0);
+	await page.mouse.up();
+
+	/*
+	 * The press was refused, not swallowed: the release is still a tap, and a
+	 * tap on the words opens the row. Close it before pressing again, or the
+	 * second press lands on a field rather than on a task.
+	 */
+	await page.keyboard.press('Escape');
+
+	// And the same press, once the paper has stopped, picks the row up.
+	await page.waitForTimeout(1200);
+	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+	await page.mouse.down();
+	await page.waitForTimeout(600);
+	await expect(page.locator('.lifted')).toHaveCount(1);
+	await page.mouse.up();
+});

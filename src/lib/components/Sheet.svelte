@@ -4,16 +4,18 @@
 	import TaskRow from './TaskRow.svelte';
 	import TextRule from './TextRule.svelte';
 	import { figures } from '$lib/doc/amount';
+	import { handBack } from '$lib/doc/handoff';
 	import { langOf } from '$lib/doc/lang';
 	import { length } from '$lib/doc/clean';
 	import { LIMITS } from '$lib/doc/limits';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
-	import { drag, NEW_GROUP, type DropTarget } from '$lib/dnd/drag.svelte';
-	import type { State, Task } from '$lib/doc/types';
+	import { drag, NEW_GROUP, NEW_LIST, type DropTarget, type GroupDrop } from '$lib/dnd/drag.svelte';
+	import { emptyDoc, type State, type Task } from '$lib/doc/types';
 	import { t } from '$lib/i18n';
 	import { Burst } from '$lib/state/burst';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { lists } from '$lib/state/lists.svelte';
 	import { ui } from '$lib/state/ui.svelte';
 
 	let newGroupOpen = $state(false);
@@ -78,14 +80,18 @@
 	/*
 	 * Only offered once every task in the group is done, so nothing anyone is
 	 * still waiting on goes with it — but the tasks do go, so it says how many.
+	 *
+	 * `finished` is what the header's own mark knows and the corner does not: a
+	 * group carried to the fold goes whatever state it was in, so what went with
+	 * it is a count of tasks rather than a count of done ones.
 	 */
-	function removeGroup(id: string, title: string) {
+	function removeGroup(id: string, title: string, finished = true) {
 		const gone = sheet.deleteGroup(id);
 		if (!gone) return;
 
 		const count = gone.tasks.length;
-		const what =
-			count === 0 ? named(title) : t.toast.removedWithDone({ what: named(title), count });
+		const went = finished ? t.toast.removedWithDone : t.toast.removedWithTasks;
+		const what = count === 0 ? named(title) : went({ what: named(title), count });
 
 		// The confirm stops nothing here — the header only offers it on a finished
 		// group — so the undo is what covers a change of mind.
@@ -344,7 +350,39 @@
 		ui.say(t.toast.moved, undoing(back));
 	}
 
-	/** The same, for a whole group carried among its siblings. */
+	/**
+	 * The same, for a whole group — which has three places to land rather than
+	 * one, because while a group is in hand the corner answers for it too.
+	 */
+	function dropGroup(id: string, title: string, drop: GroupDrop) {
+		if (drop.kind === 'order') {
+			reorder(id, drop.index);
+			return;
+		}
+
+		/*
+		 * The turned-down corner. It takes the group and everything in it,
+		 * finished or not — which is the one rule the header's own mark does not
+		 * follow, and deliberately: that mark is drawn beside a list somebody may
+		 * only be reading, where a live delete has to be earned, and this is a
+		 * group already in hand, thrown at the one place that means gone.
+		 */
+		if (drop.kind === 'fold') {
+			removeGroup(id, title, false);
+			return;
+		}
+
+		/*
+		 * The switcher itself, rather than one of the lists it opened to show.
+		 * It answers a group arriving by unfolding, and there is nothing on the
+		 * pill to let go of — the group stays where it is.
+		 */
+		if (drop.kind === 'switcher') return;
+
+		sendTo(id, drop.listId);
+	}
+
+	/** A group carried among its siblings. The neighbours are never restamped. */
 	function reorder(id: string, index: number) {
 		const was = sheet.doc.groups[id];
 		if (!was) return;
@@ -354,6 +392,75 @@
 		ui.say(
 			t.toast.moved,
 			undoing(() => sheet.moveGroup(id, order))
+		);
+	}
+
+	/**
+	 * A group carried off this list altogether, onto another one — or onto a
+	 * list that does not exist yet, which the drop then makes.
+	 *
+	 * The undo is two ordinary changes rather than a rewind, and which two
+	 * depends on what the drop did. Onto a list that was already there, the
+	 * group is taken back out of it and put back here: that list may have a
+	 * code, may have been synced since, and writing yesterday's bytes over it
+	 * would take anything else that landed there with them. Onto a list the drop
+	 * invented, there is nothing to preserve — it is unmade whole, after the
+	 * group is out of it, exactly as an invented group is one level down.
+	 */
+	function sendTo(id: string, listId: string) {
+		const ctx = sheet.ctx;
+		if (!ctx) return;
+
+		const made = listId === NEW_LIST;
+		const target = made ? lists.adopt() : listId;
+		if (target === null) return;
+
+		/*
+		 * Read before anything moves: it is the name of the list being sent to as
+		 * it stands, and a list's name is its first group's title — which is a
+		 * thing this very drop can change.
+		 */
+		const entry = lists.entries.find((candidate) => candidate.id === target);
+		const name = entry ? lists.nameOf(entry) : '';
+
+		const carried = sheet.carryGroup(id, lists.docOf(target) ?? emptyDoc());
+
+		if (!carried || carried.refused !== null) {
+			// Nothing moved, so a list minted to receive it has nothing to be.
+			if (made) lists.forget(target);
+			if (carried?.refused === 'groups') ui.say(t.toast.overGroups({ max: LIMITS.groups }));
+			else if (carried?.refused === 'tasks') ui.say(t.toast.overTasks({ max: LIMITS.tasks }));
+			return;
+		}
+
+		/*
+		 * The list it is going to is written first, and only then is it taken off
+		 * this one. Storage can refuse a write — a full quota is the ordinary way
+		 * — and of the two ways that can go, a group on both lists is something a
+		 * person can see and sort out, while a group on neither is writing gone.
+		 */
+		lists.writeDoc(target, carried.to);
+		sheet.replace(carried.from);
+
+		ui.announce(made ? t.sheet.movedToNewList : t.sheet.movedToList({ list: name }));
+
+		ui.say(
+			made ? t.toast.movedToNewList : t.toast.movedToList({ what: t.lists.named({ name }) }),
+			undoing(() => {
+				if (made) {
+					lists.forget(target);
+				} else {
+					/*
+					 * Re-read rather than reusing the document written a moment ago,
+					 * so anything that has landed on that list since is still there
+					 * when the group leaves it again.
+					 */
+					const there = lists.docOf(target);
+					if (there) lists.writeDoc(target, handBack(there, ctx, id));
+				}
+
+				sheet.restoreGroup(carried.gone);
+			})
 		);
 	}
 
@@ -541,7 +648,7 @@
 				ondelete={() => removeGroup(group.id, group.title)}
 				onclear={() => clearGroup(group.tasks)}
 				onaddtask={() => (inserting = { groupId: group.id, index: 0 })}
-				onreorder={(index) => reorder(group.id, index)}
+				ondrop={(drop) => dropGroup(group.id, group.title, drop)}
 			/>
 
 			{#if !folded && !ui.isCollapsed(group.id)}

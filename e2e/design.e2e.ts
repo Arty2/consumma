@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { fromMenu, openMenu, turnOnDebug } from './menu';
+import { fromMenu, openMenu, settle, turnOnDebug } from './menu';
 
 /*
  * M2's acceptance, as far as a browser can check it: two colours and nothing
@@ -94,7 +94,9 @@ test('the link underline is ink, and turns over with the theme', async ({ page }
 	// baked and the pair is swapped with the theme. Black on the white sheet.
 	expect(decodeURIComponent(await tile())).toContain('stroke="#000"');
 
+	await settings(page);
 	await themeButton(page).click();
+	await backToSheet(page);
 	await expect.poll(async () => (await swatch(page)).resolved).toBe('dark');
 	expect(decodeURIComponent(await tile())).toContain('stroke="#fff"');
 });
@@ -644,10 +646,12 @@ test('every button in the menu is boxed, and no two boxes are alike', async ({ p
 	await openMenu(page);
 
 	const menu = page.locator('[role="dialog"]');
-	// Every button that does something, which is all of them but the ✕ and
-	// the switcher pill — a disclosure toggle like the burger it stands
-	// beside on the sheet, drawn without a box there too.
-	const labelled = menu.locator('button:not(.close):not(.pill)');
+	// Every button whose name is a word. The three that are drawn marks
+	// instead are not: the ✕, the switcher pill — a disclosure toggle like the
+	// burger it stood beside on the sheet, drawn without a box there too — and
+	// the theme, which is a glyph reporting a state and boxing it would put a
+	// button round a picture of the sun.
+	const labelled = menu.locator('button:not(.close):not(.pill):not(.theme)');
 	const count = await labelled.count();
 	expect(count).toBeGreaterThanOrEqual(6);
 
@@ -720,6 +724,25 @@ function themeButton(page: Page) {
 	return page.getByRole('button', { name: /^Theme/ });
 }
 
+/**
+ * The theme is on the back of the sheet now, beside the switcher, so reaching
+ * it means turning the paper over first.
+ *
+ * Idempotent, which is what lets a test tap the glyph twice in a row: the
+ * panel stays up between taps, and what a tap changes is the whole screen
+ * either way.
+ */
+async function settings(page: Page) {
+	if (await page.getByRole('dialog', { name: 'Menu' }).isVisible()) return;
+	await openMenu(page);
+}
+
+/** And back to the sheet, for the tests that then write on it. */
+async function backToSheet(page: Page) {
+	await page.keyboard.press('Escape');
+	await settle(page);
+}
+
 const swatch = (page: Page) =>
 	page.evaluate(() => {
 		const style = getComputedStyle(document.documentElement);
@@ -733,6 +756,8 @@ const swatch = (page: Page) =>
 	});
 
 test('the sheet follows the phone until somebody says otherwise', async ({ page }) => {
+	await settings(page);
+
 	// The default, and it writes nothing down: arriving is not a choice.
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — following the phone');
 	expect(await page.evaluate(() => localStorage.getItem('consumma:theme'))).toBeNull();
@@ -753,6 +778,7 @@ test('the first tap is always the opposite of the phone, so something changes', 
 	page
 }) => {
 	await page.emulateMedia({ colorScheme: 'light' });
+	await settings(page);
 	await themeButton(page).click();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 	expect((await swatch(page)).resolved).toBe('dark');
@@ -775,11 +801,13 @@ test('dark is the two colours changing places, and no third one', async ({ page 
 	const light = await swatch(page);
 	expect(light).toMatchObject({ ink: '#000', paper: '#fff', tint: '#ffffff' });
 
+	await settings(page);
 	await themeButton(page).click();
 	const dark = await swatch(page);
 	expect(dark).toMatchObject({ ink: '#fff', paper: '#000', tint: '#000000' });
 	expect(dark.background).not.toBe(light.background);
 
+	await backToSheet(page);
 	await page.getByRole('button', { name: 'Add a task' }).click();
 	const input = page.getByRole('textbox', { name: 'New task' });
 	await input.fill('Bread');
@@ -873,6 +901,7 @@ test('and it does not turn white again once the app has loaded', async ({ page }
 });
 
 test('the theme is the device’s, so removing the list does not take it', async ({ page }) => {
+	await settings(page);
 	await themeButton(page).click();
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 
@@ -882,6 +911,7 @@ test('the theme is the device’s, so removing the list does not take it', async
 	await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
 	await page.reload();
+	await settings(page);
 	await expect(themeButton(page)).toHaveAttribute('aria-label', 'Theme — dark');
 	expect((await swatch(page)).resolved).toBe('dark');
 });
@@ -934,12 +964,14 @@ test('the toast stands at the top, clear of where a keyboard comes up', async ({
 	 * below them — and covering them outright while it shows, which is why it
 	 * has to reach at least as far as the burger does at either end.
 	 *
-	 * `--toast-lead` holds it a few pixels lower than dead level, so its own
-	 * drawn box does not sit on the burger's ink. Below the row rather than
-	 * above it, and never far enough to open a second line.
+	 * Read middle against middle rather than top against top: the bar is laid
+	 * on the sheet a degree off level (see Toast.svelte), so the corner that
+	 * lifts carries the top of its bounding box up with it and a top-to-top
+	 * reading measures the tilt rather than the placement.
 	 */
-	expect(where.top - where.cornerTop).toBeGreaterThanOrEqual(0);
-	expect(where.top - where.cornerTop).toBeLessThan(6);
+	const middle = (where.top + where.bottom) / 2;
+	const cornerMiddle = (where.cornerTop + where.cornerBottom) / 2;
+	expect(Math.abs(middle - cornerMiddle)).toBeLessThan(8);
 	expect(where.bottom).toBeGreaterThanOrEqual(where.cornerBottom);
 	expect(where.right).toBeGreaterThanOrEqual(where.cornerRight);
 
