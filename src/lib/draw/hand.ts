@@ -557,24 +557,90 @@ export function handChevron(size: number, collapsed: boolean, options: HandOptio
  * The bars are unequal by a few percent, the way three pen strokes are.
  */
 export function handBurger(size: number, options: HandOptions): string {
+	return bars(size, options, false);
+}
+
+/**
+ * The same three strokes with a mark put in front of each: the burger seen as
+ * what it has always been a picture of, which is a list.
+ *
+ * It is the panel's own corner mark, where the sheet has the burger — the two
+ * are the same button on the two sides of one piece of paper, so the second
+ * has to be the first with something done to it rather than a different
+ * drawing that happens to be three lines. Every proportion here is the
+ * burger's; what is added is the short dash at the head of each row, and the
+ * gap that parts it from the words.
+ *
+ * A list rather than an arrow back. An arrow says where a tap goes; this says
+ * what is on the other side, which is the thing the tap is for — and the mark
+ * a finger left from is the mark it comes back to.
+ */
+export function handList(size: number, options: HandOptions): string {
+	return bars(size, options, true);
+}
+
+/**
+ * Three rows across a square, bulleted or not.
+ *
+ * One function for both, because they are one mark: retuning the burger's gap
+ * or the lean of its bars and leaving the list where it was would put two
+ * different hands on the two faces of the same sheet.
+ */
+function bars(size: number, options: HandOptions, bulleted: boolean): string {
 	const widths = [1, 0.88, 0.96];
 	const gap = size * 0.3;
 	const top = (size - gap * 2) / 2;
 
+	/*
+	 * How much of a row the dash takes, and how far it stands off the rest of
+	 * it. Short enough to read as a mark beside the line rather than as a
+	 * fourth bar broken in two, and parted by about its own length — closer and
+	 * the round caps close the gap at this size, further and the dashes stop
+	 * belonging to the rows they head.
+	 */
+	const DASH = 0.18;
+	const PART = 0.14;
+
 	return widths
-		.map((factor, i) => {
+		.flatMap((factor, i) => {
 			const w = size * factor;
 			const x = (size - w) / 2;
 			const y = top + gap * i;
+			const seed = options.seed + i * 977;
 
-			return handPath(
-				[
-					{ x, y },
-					{ x: x + w * 0.45, y },
-					{ x: x + w, y }
-				],
-				{ ...options, seed: options.seed + i * 977 }
-			);
+			if (!bulleted) {
+				return handPath(
+					[
+						{ x, y },
+						{ x: x + w * 0.45, y },
+						{ x: x + w, y }
+					],
+					{ ...options, seed }
+				);
+			}
+
+			const head = x + w * DASH;
+			const from = x + w * (DASH + PART);
+
+			return [
+				handPath(
+					[
+						{ x, y },
+						{ x: head, y }
+					],
+					{ ...options, seed }
+				),
+				handPath(
+					[
+						{ x: from, y },
+						{ x: from + (x + w - from) * 0.45, y },
+						{ x: x + w, y }
+					],
+					// Apart from its own dash, or the two wobble as one stroke cut
+					// in half and the gap reads as a break rather than as a space.
+					{ ...options, seed: seed + 313 }
+				)
+			];
 		})
 		.join(' ');
 }
@@ -596,35 +662,6 @@ export function handArrow(size: number, options: HandOptions): string {
 		...options,
 		seed: options.seed + 613
 	});
-
-	return `${shaft} ${barb}`;
-}
-
-/**
- * An arrow pointing back the way you came, level rather than on the diagonal.
- *
- * The panel's own corner mark. It is not `handArrow` turned: that one runs up
- * and out and means an outbox, and the same drawing laid on its side would be
- * a mark saying something it was not drawn to say. Level and leftwards is its
- * own stroke, and what it means is where the tap goes.
- */
-export function handBack(size: number, options: HandOptions): string {
-	const pad = size * 0.2;
-	const middle = size / 2;
-	const from = { x: size - pad, y: middle };
-	const to = { x: pad, y: middle };
-	const head = size * 0.28;
-
-	const shaft = handPath([from, { x: (from.x + to.x) / 2, y: middle }, to], options);
-
-	// Both barbs in one polyline, so the corner at the point joins as a corner.
-	const barb = handPath(
-		[{ x: to.x + head, y: middle - head }, to, { x: to.x + head, y: middle + head }],
-		{
-			...options,
-			seed: options.seed + 421
-		}
-	);
 
 	return `${shaft} ${barb}`;
 }

@@ -194,7 +194,7 @@ device that had one list before has one list again.
 | -------------- | ---------------------- | ---------------------------------------------------------- |
 | The sheet      | Drag rightwards        | Turns the paper over to the menu — from bare paper         |
 | The menu       | Drag rightwards        | Turns it back, from anywhere on it, buttons included       |
-| Top right      | Tap the burger         | The same turn, without the drag                            |
+| Top right      | Tap the burger         | The same turn, from either face — it is the same button    |
 | Top right      | Hold the burger        | Turns the debug switch on and off — see below              |
 | The code field | Tap it while empty     | Pastes the code from the clipboard, if there is one there  |
 | Top right      | Tap the sync mark      | Syncs. It is only there when there is something to say     |
@@ -219,9 +219,10 @@ arriving. The switcher then shows both.
 
 Both sides of the paper carry the same row: the name of the list at the left,
 where the writing starts, and the marks at the right. On the sheet those are
-sync and the burger; on the back, the theme and the way back to the list. The
-name has the same room on either side, so turning the paper over does not move
-it.
+sync and the burger; on the back, the theme and the burger again — drawn there
+with a dash at the head of each of its rows, which is the list it turns back
+to. The name has the same room on either side, so turning the paper over does
+not move it.
 
 The theme lives on the back of the sheet — it and the name of the list are the
 two things in the app that are about this device rather than about the

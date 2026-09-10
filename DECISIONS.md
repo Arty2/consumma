@@ -1792,6 +1792,26 @@ relative` rather than a transform, which does not apply to an inline box.
       by hand on `.dropdown.menu`, and the first list now stands the same hair
       below the name on both faces.
 
+125.  **The panel's corner is the burger, drawn as a list.** It has been three
+      marks now. A ✕ first, which was wrong because a cross closes something
+      laid on top of something else and nothing is laid on top here — the paper
+      was turned over. Then an arrow pointing back, which was better and still
+      wrong: it said _where the tap goes_, where every other mark in this app
+      says _what a thing is_, and it left the corner a finger had just tapped
+      showing a different drawing than the one it tapped.
+
+      So it is the burger again, with a short dash at the head of each of its
+      three rows — which is a burger read as what it has always been a picture
+      of. The button does not change identity when the paper turns; it gains
+      the marks that say the other side is the list. `handBurger` and
+      `handList` are one function with a flag, because retuning the gap or the
+      lean of the bars on one and not the other would put two different hands
+      on the two faces of a single sheet.
+
+      `handBack` went with the arrow. A drawing nothing draws is weight in the
+      bundle and a second answer sitting there waiting to be picked by
+      somebody who does not know why the first one lost.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

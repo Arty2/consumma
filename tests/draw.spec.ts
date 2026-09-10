@@ -3,11 +3,11 @@ import {
 	handArrow,
 	handBin,
 	handBracket,
-	handBack,
 	handBurger,
 	handCheck,
 	handCross,
 	handLine,
+	handList,
 	handMoon,
 	handOval,
 	handPath,
@@ -445,28 +445,43 @@ describe('handArrow', () => {
 	});
 });
 
-describe('handBack', () => {
+describe('handList', () => {
 	const SIZE = 22;
 
-	it('points left, and level rather than on the diagonal', () => {
-		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
-		const [start] = points;
-		const tip = points[2];
+	it('is the burger with a dash at the head of each row', () => {
+		const d = handList(SIZE, { seed: seedFrom('menu') });
 
-		expect(tip.x).toBeLessThan(start.x);
-		// Level: the shaft ends at the height it started at.
-		expect(tip.y).toBeCloseTo(start.y, 6);
+		// Three rows, two strokes each: the dash and the line it heads.
+		expect(d.match(/M /g)).toHaveLength(6);
 	});
 
-	it('has a head that meets the point of the shaft', () => {
-		const points = endpoints(handBack(SIZE, { seed: 2, wobble: 0 }));
-		const tip = points[2];
-		expect(points.some((p, i) => i > 2 && p.x === tip.x && p.y === tip.y)).toBe(true);
+	it('stacks its rows the way the burger stacks its bars', () => {
+		const rows = [...new Set(endpoints(handList(SIZE, { seed: 3 })).map((p) => p.y))];
+		const bars = [...new Set(endpoints(handBurger(SIZE, { seed: 3 })).map((p) => p.y))];
+
+		// The same three heights: it is the same mark with something added to it,
+		// not a second drawing of three lines that happens to sit nearby.
+		expect([...rows].sort()).toStrictEqual([...bars].sort());
 	});
 
-	it('stays inside its box, so the button never clips it', () => {
+	it('parts each dash from its line, and never lets the two touch', () => {
+		const rows = new Map<number, number[]>();
+		for (const { x, y } of endpoints(handList(SIZE, { seed: 3, wobble: 0 }))) {
+			rows.set(y, [...(rows.get(y) ?? []), x]);
+		}
+
+		expect(rows.size).toBe(3);
+		for (const [y, xs] of rows) {
+			const sorted = [...xs].sort((a, b) => a - b);
+			// The dash ends before the line begins, by a readable amount.
+			const gap = sorted[2] - sorted[1];
+			expect(gap, `row ${y}`).toBeGreaterThan(1);
+		}
+	});
+
+	it('keeps every stroke inside the box it is drawn in', () => {
 		for (const seed of [1, 7, 99, 1234]) {
-			for (const { x, y } of endpoints(handBack(SIZE, { seed, wobble: 1 }))) {
+			for (const { x, y } of endpoints(handList(SIZE, { seed, wobble: 1 }))) {
 				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
 				expect(x, `seed ${seed}`).toBeLessThanOrEqual(SIZE);
 				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
@@ -475,12 +490,20 @@ describe('handBack', () => {
 		}
 	});
 
-	it('is stable for a seed', () => {
-		expect(handBack(SIZE, { seed: 4 })).toBe(handBack(SIZE, { seed: 4 }));
+	it('wobbles each dash apart from the line it heads', () => {
+		// Sharing a seed would draw the two as one stroke cut in half, and the
+		// gap would read as a break rather than as a space.
+		const strokes = handList(SIZE, { seed: 5, wobble: 1.4 }).split('M ').filter(Boolean);
+
+		expect(new Set(strokes).size).toBe(strokes.length);
 	});
 
-	it('is not the outbox arrow laid on its side', () => {
-		expect(handBack(SIZE, { seed: 4 })).not.toBe(handArrow(SIZE, { seed: 4 }));
+	it('is stable for a seed, so it never re-jitters on a render', () => {
+		expect(handList(SIZE, { seed: 8 })).toBe(handList(SIZE, { seed: 8 }));
+	});
+
+	it('is not the burger, which is the same rows without the dashes', () => {
+		expect(handList(SIZE, { seed: 4 })).not.toBe(handBurger(SIZE, { seed: 4 }));
 	});
 });
 

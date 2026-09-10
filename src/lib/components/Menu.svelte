@@ -25,7 +25,7 @@
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
 	import { formatCode, normaliseCode } from '$lib/crypto/derive';
-	import { handBack } from '$lib/draw/hand';
+	import { handList } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
@@ -112,14 +112,17 @@
 	 * The same size as the burger, in the same place, because it is the same
 	 * corner of the same sheet seen from the other side.
 	 *
-	 * An arrow back rather than a ✕. A cross closes something that was put on
-	 * top; nothing was put on top here — the paper was turned over, and what
-	 * this does is turn it back. It is also the one mark on the panel that has
-	 * to say where a tap goes rather than what a thing is.
+	 * And now the same mark: the burger with a dash put at the head of each of
+	 * its rows, which is a list. A cross was wrong first — nothing was put on
+	 * top here, the paper was turned over — and the arrow back that replaced it
+	 * was wrong in a quieter way: it said where the tap goes, where every other
+	 * mark in this app says what a thing is. What is on the other side of the
+	 * paper is the list, and the button a finger left from is the button it
+	 * comes back to, so it should still be recognisably that button.
 	 */
 	const CLOSE = 22;
 
-	const back = $derived(handBack(CLOSE, { seed: seedFrom('backtolist'), wobble: 0.8 }));
+	const mark = $derived(handList(CLOSE, { seed: seedFrom('backtolist'), wobble: 0.8 }));
 
 	const summary = $derived(statusText(sync.status, sync.unsent, refused));
 	const valid = $derived(normaliseCode(entered) !== null);
@@ -447,14 +450,14 @@
 	>
 		<svg viewBox="0 0 {CLOSE} {CLOSE}" width={CLOSE} height={CLOSE} aria-hidden="true">
 			<!--
-				The same two strokes drawn twice: once in the paper, wide, and then
-				in the ink on top. It is the mark's own shape held clear of whatever
+				The same strokes drawn twice: once in the paper, wide, and then in
+				the ink on top. It is the mark's own shape held clear of whatever
 				has scrolled under it, rather than a box of ground around it — a
 				square of paper cut the line it landed on in half, and the panel has
 				no rectangles on it anywhere else.
 			-->
-			<path d={back} class="drawn knockout" />
-			<path d={back} class="drawn" />
+			<path d={mark} class="drawn knockout" />
+			<path d={mark} class="drawn" />
 		</svg>
 	</button>
 
