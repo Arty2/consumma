@@ -197,9 +197,9 @@ device that had one list before has one list again.
 | Top right      | Tap the burger         | The same turn, without the drag                            |
 | Top right      | Hold the burger        | Turns the debug switch on and off — see below              |
 | The code field | Tap it while empty     | Pastes the code from the clipboard, if there is one there  |
-| Top left       | Tap the mark           | Syncs. It is only there when there is something to say     |
-| The list name  | Tap                    | Opens the lists under it, once there is a second one       |
-| The list name  | Two taps               | Straight to the next list, without opening anything        |
+| Top right      | Tap the sync mark      | Syncs. It is only there when there is something to say     |
+| Top left       | Tap the list name      | Opens the lists under it, once there is a second one       |
+| Top left       | Two taps on the name   | Straight to the next list, without opening anything        |
 | The menu       | Tap the theme mark     | Theme: the opposite of the phone, then following it again  |
 | A message      | Tap `UNDO?`            | Puts back what the message is about                        |
 | A message      | Throw it up or right   | Dismisses it. Down is the sheet's scroll, left is the turn |
@@ -217,7 +217,13 @@ anything away. Take them and they go to the list being joined; leave them and
 they stay on the list they are on, which stays on this device beside the one
 arriving. The switcher then shows both.
 
-The theme lives on the back of the sheet, beside the name of the list — the
+Both sides of the paper carry the same row: the name of the list at the left,
+where the writing starts, and the marks at the right. On the sheet those are
+sync and the burger; on the back, the theme and the way back to the list. The
+name has the same room on either side, so turning the paper over does not move
+it.
+
+The theme lives on the back of the sheet — it and the name of the list are the
 two things in the app that are about this device rather than about the
 writing. Turning the paper to reach it shows the answer on the way back.
 

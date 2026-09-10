@@ -651,10 +651,18 @@ function groupTargetAt(x: number, y: number, movingId: string): GroupDrop | null
 }
 
 /**
- * Whether the pointer is anywhere about the switcher: on the pill, on the
- * column of lists it opens, or in the corner between the two.
+ * Whether the pointer is on the switcher: on the pill, or on the column of
+ * lists it opens.
+ *
+ * Measured rather than hit-tested, so that what is under the column — the
+ * sheet's own titles — cannot answer for a point that is over it, and so that
+ * the two parts are one target rather than two.
  *
  * One box round every part of it, rather than each part answering for itself.
+ * The pill is as wide as its own words and the column below it is wider, so
+ * the two leave a corner of nothing between them — and a finger going
+ * diagonally from one into the other passed through that corner, shutting the
+ * column it was reaching into.
  */
 function overSwitcher(x: number, y: number): boolean {
 	const parts = document.querySelectorAll<HTMLElement>('[data-switcher]');

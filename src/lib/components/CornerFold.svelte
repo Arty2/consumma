@@ -8,7 +8,7 @@
 	 * The paper's top-right corner, turned down while a group is in hand.
 	 *
 	 * It is only ever there during that one gesture, and it takes the room the
-	 * theme and the burger leave: neither of those has anything to say to a
+	 * sync mark and the burger leave: neither of those has anything to say to a
 	 * group being carried, so they go, and what appears in their place is the
 	 * one thing that has. A group let go on the fold is removed, tasks and all,
 	 * with the same undo the header's own mark leaves.
@@ -40,7 +40,7 @@
 	const RIGHT = SIZE - EDGE / 2;
 	/**
 	 * How far along each edge the fold reaches. Equal, so the corner comes over
-	 * square, and about as much room as the two buttons it stands in for took.
+	 * square, and about as much room as the two marks it stands in for took.
 	 */
 	const LEG = 60;
 

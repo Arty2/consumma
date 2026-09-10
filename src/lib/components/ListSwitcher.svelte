@@ -399,9 +399,24 @@
 	 * The flex item that lives in the corner row (sheet) or flows at the top
 	 * of the panel (menu).
 	 */
+	/*
+	 * The name of the list, first in the row and free to run as far as the two
+	 * marks at the other end of it — which since the theme left for the back of
+	 * the sheet is a touch target further than it used to.
+	 *
+	 * As wide as its own words, not as wide as the room: `min-width: 0` is what
+	 * lets it shrink below them when there is not enough, which is what makes
+	 * the ellipsis possible. Filling the line instead would draw the loop of a
+	 * drop target round half a sheet of nothing, and hang a column of lists
+	 * across the titles a carried group is aimed at.
+	 *
+	 * No margin on the left: the switcher is the first thing in the row now,
+	 * and its words start where every other word on the paper starts rather
+	 * than a few pixels inside them.
+	 */
 	.wrap.sheet {
 		position: relative;
-		margin-inline: 0.4rem;
+		margin-inline: 0 0.4rem;
 		min-width: 0;
 	}
 
@@ -478,12 +493,12 @@
 
 	/*
 	 * A block-level child doesn't inherit a flex parent's shrunk box just
-	 * because the parent shrank — `.wrap.sheet` narrows via flex-shrink, but
-	 * without this the pill still sizes to its own content and overflows past
-	 * it. The menu's pill is centred in a wide, unconstrained column and
-	 * never needs to shrink, so this stays scoped to the sheet.
+	 * because the parent shrank — the wrap narrows via flex-shrink, but without
+	 * this the pill still sizes to its own content and overflows past it. Both
+	 * faces now, since both wraps are flex items taking what is left of their
+	 * row.
 	 */
-	.wrap.sheet .pill {
+	.pill {
 		width: 100%;
 	}
 
@@ -518,13 +533,12 @@
 	 * that stays, because it is a control rather than something written.
 	 */
 	/*
-	 * The switcher shares its row with the theme now (see `.settings` in
-	 * Menu.svelte), so it takes what is left of the line rather than sizing to
-	 * its own words — `min-width: 0` is what lets a flex item shrink below the
-	 * width of the text inside it, which is what makes the ellipsis possible.
+	 * The same on the other face, with the theme mark and the ✕'s own reserved
+	 * column at the end of the row where the sheet has the sync mark and the
+	 * burger — so the name has exactly the same room on both sides of the
+	 * paper, and turning it over does not move the pill.
 	 */
 	.wrap.menu {
-		flex: 1 1 auto;
 		min-width: 0;
 	}
 
@@ -550,32 +564,6 @@
 		 * left too, as every line of writing in this app is.
 		 */
 		text-align: left;
-		/*
-		 * One number, two users — the pill and the rule under it. A touch
-		 * target held back on the right alone, because that is the side the ✕
-		 * is on and the pill now starts hard against the left.
-		 */
-		--pill-max: calc(100% - var(--touch));
-	}
-
-	/*
-	 * The rule is measured off the label's own text, but the box it is measured
-	 * in is what caps that measurement — TextRule's hidden copy is `max-width:
-	 * 100%`, so left to the full panel a long name reported the panel's width
-	 * and the rule ran a touch target past the pill. A pen underlines the
-	 * word, not the row.
-	 */
-	.switcher.menu :global(.ruled) {
-		max-width: var(--pill-max);
-	}
-
-	/*
-	 * Never wide enough to reach the ✕ it shares a row with. An inline-flex
-	 * box sizes to its own content however little room is left, so without
-	 * this a long enough name ran straight under the mark.
-	 */
-	.switcher.menu .pill {
-		max-width: var(--pill-max);
 	}
 
 	/*
@@ -705,11 +693,16 @@
 	 * in it would move the list under a finger that is steering by what it can
 	 * see, which is the same reason the sheet's landing rule has no height.
 	 *
-	 * Never wider than the paper it lies on. It hangs from the pill's own left
-	 * edge, and the pill starts a sync mark's width into the row, so the cap is
-	 * the row's own width less that — the arithmetic `--corner-x` and `--touch`
-	 * already describe the corner with. A name too long for what is left is cut
-	 * with an ellipsis, exactly as it is on the pill above.
+	 * As wide as the names in it, between a floor and the paper's own width. It
+	 * hangs from the pill's own left edge, and the pill starts where the row
+	 * does, so the cap is simply the row's width — the arithmetic `--corner-x`
+	 * already describes the corner with. A name too long for it is cut with an
+	 * ellipsis, exactly as it is on the pill above.
+	 *
+	 * At least as wide as the pill, so that everything below the pill is over
+	 * the column: narrower, and the room under the right-hand end of the name
+	 * belongs to neither, which is a hole for a finger going down into the
+	 * lists to fall through.
 	 */
 	.dropdown.sheet {
 		position: absolute;
@@ -717,7 +710,7 @@
 		left: 0;
 		z-index: 2;
 		min-width: max(100%, 11rem);
-		max-width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x) - var(--touch));
+		max-width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x));
 		padding-bottom: 0.4rem;
 	}
 

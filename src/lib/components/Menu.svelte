@@ -479,9 +479,11 @@
 			-->
 			<div class="settings">
 				<!--
-					The theme, beside the name of the list it will redraw.
+					Which list this is, then the theme, then the ✕ — the same shape
+					the sheet's own corner row has, and the same widths: a name
+					taking the line, one thin mark, and the corner control.
 
-					It stood in the sheet's own corner, next to the burger, on the
+					The theme stood in the sheet's corner, next to the burger, on the
 					reasoning that a control for how the sheet looks cannot be buried
 					under a panel that covers the sheet. What that missed is that the
 					panel is not over the sheet — it is the other side of it, and
@@ -489,13 +491,9 @@
 					back. So it is here, where every other thing about this device
 					rather than about the writing already is, and the sheet's corner
 					is left to the two things that are about the list.
-
-					To the left of the switcher, and level with it: the two are one
-					row of settings, and the ✕ across from them is the third thing on
-					that line.
 				-->
-				<div class="theme-slot"><ThemeButton /></div>
 				<ListSwitcher context="menu" onafterselect={close} />
+				<div class="theme-slot"><ThemeButton /></div>
 			</div>
 
 			<!--
@@ -1080,16 +1078,32 @@
 	}
 
 	/*
-	 * The row the panel opens on: the theme, then which list this is. Aligned
-	 * to the top rather than the middle, because the switcher carries a rule
-	 * under its pill and a bottom margin of its own — centring the pair would
-	 * hang the theme's glyph off the middle of all of that instead of level
-	 * with the words.
+	 * The row the panel opens on: which list this is, then the theme, then the
+	 * room the ✕ stands in.
+	 *
+	 * That room has to be reserved rather than shared. The ✕ is placed like
+	 * every corner control in the app — `right: var(--corner-x)`, which is
+	 * exactly where this scroller's own content stops — so it lies over the
+	 * last touch target's width of the line, and anything laid out into that
+	 * width ends up underneath it. The padding holds it back, and what is left
+	 * is a switcher exactly as wide as the one on the other face, which has the
+	 * sync mark and the burger at the end of its row instead.
+	 *
+	 * Aligned to the top rather than the middle, because the switcher carries a
+	 * rule under its pill and a bottom margin of its own — centring the pair
+	 * would hang the theme's glyph off the middle of all of that instead of
+	 * level with the words.
 	 */
 	.settings {
 		display: flex;
 		align-items: flex-start;
-		gap: 0.2rem;
+		/*
+		 * The same gap the switcher keeps from the marks beside it on the sheet
+		 * (`.wrap.sheet`'s own right margin), so the pill comes out the same
+		 * width on both faces rather than nearly.
+		 */
+		gap: 0.4rem;
+		padding-right: var(--touch);
 	}
 
 	/*
@@ -1099,6 +1113,12 @@
 	 */
 	.theme-slot {
 		flex: none;
+		/*
+		 * At the end of the row, where the sheet keeps its own two marks. The
+		 * name is as wide as its words and this is as far from them as the line
+		 * allows, so the two faces read the same way round.
+		 */
+		margin-left: auto;
 		margin-top: var(--corner-lead);
 	}
 

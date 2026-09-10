@@ -317,6 +317,38 @@ test('the sheet’s own pill opens the same column the menu does', async ({ page
 	await expect(dropdown(page)).toHaveCount(0);
 });
 
+test('the switcher is the same row on both sides of the paper', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+	await addTask(page, 'Milk');
+
+	/*
+	 * The name of the list first, where the writing starts, and the marks at
+	 * the far end — sync and the burger on the sheet, the theme and the ✕ on
+	 * the back. Same shape, same widths, so turning the paper over does not
+	 * move the one thing in the row made of words.
+	 */
+	const front = (await switcherPill(page).boundingBox())!;
+	const burger = (await page.getByRole('button', { name: /^Menu/ }).boundingBox())!;
+	const writing = (await page.locator('section[data-group] .title').first().boundingBox())!;
+
+	expect(front.x).toBeCloseTo(writing.x, 0);
+	expect(front.x + front.width).toBeLessThanOrEqual(burger.x);
+
+	await openMenu(page);
+	const dialog = page.getByRole('dialog', { name: 'Menu' });
+	const back = (await dialog.locator('button[aria-haspopup="listbox"]').boundingBox())!;
+	const theme = (await dialog.getByRole('button', { name: /^Theme/ }).boundingBox())!;
+	const close = (await dialog.getByRole('button', { name: 'Close' }).boundingBox())!;
+
+	expect(back.x).toBeCloseTo(front.x, 0);
+	expect(back.width).toBeCloseTo(front.width, 0);
+
+	// The thin mark between the name and the corner control, on this face too.
+	expect(theme.x).toBeGreaterThanOrEqual(back.x + back.width);
+	expect(theme.x + theme.width).toBeLessThanOrEqual(close.x + 1);
+});
+
 test('the menu keeps its ✕ reachable once the switcher shares its row', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await newList(page);

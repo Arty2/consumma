@@ -1739,6 +1739,35 @@ relative` rather than a transform, which does not apply to an inline box.
       In `rotate` rather than in `transform`, which carries the arrival and the
       throw: the two must not have to know about each other.
 
+123.  **Both faces of the paper carry the same row.** The sheet's corner had one
+      mark at each end — sync alone at the far left, the burger at the far
+      right — with the name of the list squeezed between them. With the theme
+      gone to the back there was a touch target of room going spare, and the
+      obvious thing to do with it was give it to the only part of the row made
+      of words.
+
+      So the name goes first, where every other word on the paper starts, and
+      both marks go to the end together. The back of the sheet is laid out to
+      match: the name, then the theme, then the ✕. The panel reserves the ✕'s
+      own column with a padding rather than letting the theme share it — the ✕
+      is placed like every corner control at `right: var(--corner-x)`, which is
+      exactly where the scroller's content stops, so anything laid out into
+      that width ends up underneath it. The two pills come out the same width
+      to the pixel, and turning the paper over does not move the name.
+
+      **As wide as its words, not as wide as the room.** Filling the line was
+      tried and is wrong twice over: the drop target's loop came out drawn
+      round half a sheet of nothing, and the column of lists — which is at
+      least as wide as the pill, so that everything under the pill is over the
+      column — lay across the first two titles of the sheet, which are titles a
+      carried group is aimed at.
+
+      **And the row holds its own height now.** It was held up by whichever
+      mark happened to be standing in it, the pill being an inline-flex box in
+      a line box ten pixels shorter — so the row shrank the moment a group was
+      lifted and both marks left, and the whole sheet stepped up ten pixels
+      under the finger carrying it.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

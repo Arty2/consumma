@@ -512,21 +512,26 @@
 		{/if}
 
 		<!--
-			Sync on its own at the left, because it is the one that comes and goes;
-			the switcher sits between it and the burger, which is always there and
-			on the right, where the thumb already knows to find it. Only ever here
-			once there is a second list to choose between — see ListSwitcher.
+			Which list this is, first and taking the rest of the line; then the two
+			marks, at the end, where the thumb already knows to find them.
 
-			The theme used to sit beside the burger. It is a setting rather than a
-			thing done to the list, and settings are what the back of the sheet is
-			for — so it went there, beside the switcher, which is the other thing
-			in the panel that is about this device rather than about the writing.
+			The sync mark stood alone at the far left while the theme sat beside
+			the burger — one thing at each end and the switcher squeezed between
+			them. With the theme moved to the back of the sheet the mark takes the
+			room it left, which puts both of them together at the right and gives
+			the line back to the name of the list. That name is the only thing in
+			the row made of words, and it now starts where every other word on the
+			paper starts.
+
+			Same shape on the other face: the switcher, one thin mark, then the
+			corner control — see `.settings` in Menu.svelte, which reserves the ✕'s
+			own column so the pill comes out the same width on both sides.
 		-->
 		<div class="corner">
-			<SyncButton />
 			<ListSwitcher />
 			{#if !carrying}
 				<div class="controls">
+					<SyncButton />
 					<MenuButton onopen={openMenu} ondebug={() => diagnostics.toggle()} />
 				</div>
 			{/if}
@@ -834,17 +839,32 @@
 		align-items: center;
 		padding-top: var(--corner-lead);
 		margin-bottom: 0.5rem;
+		/*
+		 * A touch target tall, whatever happens to be standing in it.
+		 *
+		 * It used to be held up by whichever mark was there — they are `--touch`
+		 * boxes and the switcher's pill, oddly, is not: it is an inline-flex box
+		 * in a line box a good ten pixels shorter. So the row shrank the moment
+		 * a group was lifted and both marks left, and the whole sheet stepped up
+		 * ten pixels under the finger that was carrying it. The row is a line of
+		 * controls and it is that tall whether or not any of them is on it.
+		 */
+		min-height: var(--touch);
 	}
 
 	/*
-	 * `margin-left: auto` rather than `space-between` on the row: the sync
-	 * button is not there at all when there is nothing to sync, and
-	 * space-between with one child left pushes that child to the *left* — which
-	 * put the burger under the thumb's left hand on an untouched sheet.
+	 * The two marks, held together at the end of the row.
 	 *
-	 * One button in it now that the theme has moved to the back of the sheet,
-	 * and it stays a box of its own: what it is doing is holding the right-hand
-	 * end of the row, which is a job about the row rather than about the burger.
+	 * `margin-left: auto` rather than `space-between`: the switcher is not on
+	 * the page at all until there is a second list, and space-between with one
+	 * child left pushes that child to the *left* — which put the burger under
+	 * the thumb's left hand on an untouched sheet.
+	 *
+	 * The sync mark is in here rather than beside it, so the pair stays at the
+	 * right whether or not the switcher is there to push them. It also means
+	 * both leave together while a group is carried, which is right: neither has
+	 * anything to say to a group in hand, and the corner they stand in is the
+	 * one that folds down to take it.
 	 */
 	.controls {
 		display: flex;
