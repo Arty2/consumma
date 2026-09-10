@@ -44,7 +44,10 @@ export const NEW_LIST = '__newlist__';
  * same field, and an index is exactly what it would have found there.
  */
 export type GroupDrop =
-	{ kind: 'order'; index: number } | { kind: 'list'; listId: string } | { kind: 'fold' };
+	| { kind: 'order'; index: number }
+	| { kind: 'switcher' }
+	| { kind: 'list'; listId: string }
+	| { kind: 'fold' };
 
 const EDGE = 60;
 const EDGE_SPEED = 12;
@@ -144,6 +147,18 @@ export class DragState {
 	/** Over the corner, which is where a group goes to be got rid of. */
 	get overFold(): boolean {
 		return this.groupTarget?.kind === 'fold';
+	}
+
+	/**
+	 * Over the switcher, or over one of the lists it has opened to show.
+	 *
+	 * The switcher is a drop target that answers by unfolding rather than by
+	 * taking the group: letting go on the pill itself does nothing. The lists
+	 * are only shown while this holds, because a column standing open for the
+	 * whole of a drag covers the sheet the group is being carried across.
+	 */
+	get overSwitcher(): boolean {
+		return this.groupTarget?.kind === 'switcher' || this.groupTarget?.kind === 'list';
 	}
 
 	reset(): void {
@@ -587,6 +602,16 @@ function groupTargetAt(x: number, y: number, movingId: string): GroupDrop | null
 		HTMLElement | undefined;
 
 	if (row?.dataset.list) return { kind: 'list', listId: row.dataset.list };
+
+	/*
+	 * Asked after the rows it opens, because they are inside it: over a list the
+	 * answer is that list, and everywhere else on the switcher — the pill, the
+	 * gaps between the rows — the answer is the switcher itself, which is what
+	 * keeps the column open while a finger crosses it.
+	 */
+	if (elements.some((el) => el instanceof HTMLElement && el.dataset.switcher !== undefined)) {
+		return { kind: 'switcher' };
+	}
 
 	const own = document.querySelector<HTMLElement>(`[data-group="${movingId}"]`);
 	if (own) {

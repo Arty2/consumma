@@ -415,6 +415,73 @@ export function handScribble(width: number, height: number, options: HandOptions
 	return handPath(points, { ...options, wobble: options.wobble ?? 0.9 });
 }
 
+/**
+ * A bin, for the corner the paper folds away to show.
+ *
+ * Not the scribble, and that is the whole point of it. A scribble is what a
+ * hand does to a line it wants rid of — it is a mark made *on* something, and
+ * it belongs beside the thing it strikes out. The corner is not a mark; it is
+ * a place, and what a place to be rid of things looks like is a bin. The two
+ * never appear together, and neither could stand in for the other: a scribble
+ * on an empty corner would be a mark with nothing under it, and a bin beside a
+ * row would be a picture where every other mark on the sheet is a gesture.
+ *
+ * Four strokes, and one of them unlifted: a pen draws the body in a single
+ * run down one wall, across the bottom and up the other, then rules the lid,
+ * then the tab above it, then the ribs. The walls lean in and the ribs lean
+ * with them, or the ribs read as bars in front of a box rather than as the
+ * moulding of the thing.
+ */
+export function handBin(width: number, height: number, options: HandOptions): string {
+	/** Where the lid sits, and so where the body starts. */
+	const lid = height * 0.24;
+	const inner = height - lid;
+
+	const body = handPath(
+		[
+			{ x: width * 0.1, y: lid },
+			{ x: width * 0.21, y: height },
+			{ x: width * 0.79, y: height },
+			{ x: width * 0.9, y: lid }
+		],
+		options
+	);
+
+	const rim = handPath(
+		[
+			{ x: 0, y: lid },
+			{ x: width, y: lid }
+		],
+		{ ...options, seed: options.seed + 131 }
+	);
+
+	const tab = handPath(
+		[
+			{ x: width * 0.35, y: lid },
+			{ x: width * 0.37, y: height * 0.05 },
+			{ x: width * 0.63, y: height * 0.05 },
+			{ x: width * 0.65, y: lid }
+		],
+		{ ...options, seed: options.seed + 271 }
+	);
+
+	/** Two, leaning the way the wall nearest each of them leans. */
+	const ribs = [0.37, 0.63]
+		.map((at, i) => {
+			const lean = (at - 0.5) * 0.16;
+			return handPath(
+				[
+					{ x: width * at, y: lid + inner * 0.14 },
+					{ x: width * (at - lean), y: lid + inner * 0.86 }
+				],
+				{ ...options, seed: options.seed + 613 + i * 97 }
+			);
+		})
+		.join(' ');
+
+	return `${body} ${rim} ${tab} ${ribs}`;
+}
+
 /** The chevron on a group title. */
 export function handChevron(size: number, collapsed: boolean, options: HandOptions): string {
 	const w = size * 0.62;

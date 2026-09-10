@@ -1530,15 +1530,30 @@ relative` rather than a transform, which does not apply to an inline box.
       What appears in their place is the paper's own corner, turned down. It is
       drawn the way the tear is — the ground is closed past the fold and filled
       with paper, so the torn edge and the side edge are cut on the diagonal
-      rather than drawn over — and it carries the app's one delete mark, faint
-      while it is only an offer and full ink once the group is over it. A corner
-      is either turned down or it is not, so that too appears without an
-      animation.
+      rather than drawn over. A corner is either turned down or it is not, so
+      that too appears without an animation.
 
-      The hit area is the flap and not the box it is drawn in. The top of the
-      list is directly under the corner, and carrying a group up there to make
-      it first must not land on a delete; clipped to the fold itself, what is
-      left over the writing is a sliver at the paper's own edge.
+      **The corner brings its own edges over with it.** The paper's corner is
+      reflected across the crease, and what the reflection carries is the two
+      edges the sheet was cut with: the torn top edge arrives running down from
+      the crease's top end, and the side edge arrives running in from its
+      bottom one, drawn with the same `handTear` and `handVertical` the paper's
+      own edges use. Left as a plain triangle it was a corner guillotined off
+      and laid back down — the one thing this sheet has never been.
+
+      **The mark on it is a bin, and it stands in the room the fold clears.**
+      Every other delete in the app is the scribble, and this is the one place
+      that would be wrong: a scribble is a mark made _on_ a thing and belongs
+      beside the row it strikes out, where a corner with the paper off it is
+      not a mark at all but a place. What a place to be rid of things looks
+      like is a bin, and it sits past the crease, which is the one part of this
+      sheet nothing can ever be written on. Faint while it is only an offer and
+      full ink once the group is over it.
+
+      The hit area is the fold's own square — the flap and the room it has
+      cleared — stopping at the crease's two ends rather than at the box the
+      fold is drawn in. The top of the list is directly under the corner, and
+      that is as far as a delete may reach towards it.
 
       The fold takes a group whatever state it is in, which is the one rule the
       header's own mark does not follow. That mark is drawn beside a list
@@ -1547,31 +1562,49 @@ relative` rather than a transform, which does not apply to an inline box.
       place that means gone, and it leaves the same ten-second undo.
 
 115.  **A group carried onto the switcher moves lists, and the switcher unfolds
-      to say where it can go.** While a group is in hand the pill opens into a
-      column: every list but the one the group is already on, and a row that
-      makes a list on the spot. It is the same pair of offers a task already
-      has one level down, where it can be dropped into a group or onto the row
-      that invents one — `NEW_LIST` is a sentinel list id for exactly the
-      reason `NEW_GROUP` is a sentinel group id.
+      to say where it can go.** The pill wears a dashed box while a group is in
+      hand — that is what a dashed box means here, somewhere it can be put down
+      — and carrying the group onto it opens a column: every list but the one
+      the group is already on, and a row that makes a list on the spot. It is
+      the same pair of offers a task already has one level down, where it can
+      be dropped into a group or onto the row that invents one — `NEW_LIST` is
+      a sentinel list id for exactly the reason `NEW_GROUP` is a sentinel group
+      id.
 
-      The switcher is on the page for this even where there is only one list.
-      Otherwise the way to a second one by carrying a group there would be
-      missing from precisely the device that has never had one. It is withheld
-      while a sync is in flight, because a list minted then could not be
-      written to safely and a control that is not going to answer is better not
-      offered.
+      **The lists are not shown until the group reaches the switcher.** Open
+      for the whole of a drag, the column lies across the sheet the group is
+      being carried over: it covers the titles a drop between two groups is
+      aimed at, and it answers the hit test before they do — a way of moving a
+      group between lists that broke moving one within a list. So it opens the
+      way a finger opens anything, by arriving, and shuts again the moment the
+      group goes back to the sheet.
+
+      That needs `data-switcher` on the column as well as on the wrap the pill
+      is in. `elementsFromPoint` answers with the boxes under the point rather
+      than with the chain of elements around it, so a column hanging below the
+      pill is not the pill's ancestor as far as the hit test is concerned:
+      without the second one, crossing from the pill into a gap between two
+      rows read as leaving the switcher and the column shut under the finger on
+      its way to a list.
+
+      Letting go on the pill itself does nothing. The switcher answers a group
+      by unfolding; only a list takes one.
+
+      It is on the page for this even where there is only one list. Otherwise
+      the way to a second one by carrying a group there would be missing from
+      precisely the device that has never had one. It is withheld while a sync
+      is in flight, because a list minted then could not be written to safely
+      and a control that is not going to answer is better not offered.
 
       The column is out of the flow. A column that opened in it would move the
       list under the finger, and the finger is steering by what it can see —
-      the same reason the landing rule has no height. It has no frame and no
-      ground of its own: each row carries a drawn box instead, so what lies
-      over the writing is a few boxes laid on the paper rather than one white
-      card taking a bite out of it. The box is faint while it is only an offer
-      and full ink once the group is over it, which is how the add row's own
-      box already reads and how the corner's mark reads a few inches away. Only
-      the box changes weight — the name it holds has to stay legible either
-      way, so this is not the dashed rule the sheet draws between two rows: a
-      list is a place, not a boundary.
+      the same reason the landing rule has no height. It is the menu's own
+      dropdown, rows and ground and all, because that is what a list of lists
+      already looks like here; the row under the group is marked by its box
+      going dashed, which is what the switcher above it is already wearing.
+      Only the box changes — the name it holds has to stay legible either way,
+      so this is not the dashed rule the sheet draws between two rows: a list
+      is a place, not a boundary.
 
       **The undo is two ordinary changes, not a rewind.** Onto a list that was
       already there, the group is taken back out of it and put back here: that

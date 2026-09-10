@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	handArrow,
+	handBin,
 	handBracket,
 	handBack,
 	handBurger,
@@ -299,6 +300,60 @@ describe('handBurger', () => {
 
 	it('is stable for a seed, so it never re-jitters on a render', () => {
 		expect(handBurger(SIZE, { seed: 8 })).toBe(handBurger(SIZE, { seed: 8 }));
+	});
+});
+
+describe('handBin', () => {
+	const W = 22;
+	const H = 26;
+
+	/*
+	 * The one delete in the app that is not the scribble, because the corner it
+	 * stands in is a place rather than a mark. What has to hold about it is what
+	 * has to hold about every drawn glyph: it stays in its box, it is one hand's
+	 * work rather than one stroke repeated, and it comes back the same.
+	 */
+	it('stays inside the box it is drawn in', () => {
+		for (const seed of [1, 7, 99, 1234]) {
+			for (const { x, y } of endpoints(handBin(W, H, { seed, wobble: 0.9 }))) {
+				expect(x, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(x, `seed ${seed}`).toBeLessThanOrEqual(W);
+				expect(y, `seed ${seed}`).toBeGreaterThanOrEqual(0);
+				expect(y, `seed ${seed}`).toBeLessThanOrEqual(H);
+			}
+		}
+	});
+
+	it('is the body, the lid, the tab and two ribs — five strokes', () => {
+		expect(handBin(W, H, { seed: seedFrom('bin') }).match(/M /g)).toHaveLength(5);
+	});
+
+	it('draws the body in one unlifted run down, across and up', () => {
+		const body = handBin(W, H, { seed: 4, wobble: 0 }).split('M ')[1];
+		const points = endpoints(`M ${body}`);
+
+		expect(points).toHaveLength(4);
+		// Down one wall, across the bottom, up the other.
+		expect(points[1].y).toBeGreaterThan(points[0].y);
+		expect(points[2].x).toBeGreaterThan(points[1].x);
+		expect(points[3].y).toBeLessThan(points[2].y);
+	});
+
+	it('leans its walls in, so it is a bin rather than a box', () => {
+		const points = endpoints(`M ${handBin(W, H, { seed: 4, wobble: 0 }).split('M ')[1]}`);
+
+		// The foot is inside the shoulder on both sides.
+		expect(points[1].x).toBeGreaterThan(points[0].x);
+		expect(points[2].x).toBeLessThan(points[3].x);
+	});
+
+	it('wobbles each stroke independently rather than repeating one', () => {
+		const strokes = handBin(W, H, { seed: 5, wobble: 1.2 }).split('M ').filter(Boolean);
+		expect(new Set(strokes).size).toBe(strokes.length);
+	});
+
+	it('is stable for a seed, so it never re-jitters on a render', () => {
+		expect(handBin(W, H, { seed: 8 })).toBe(handBin(W, H, { seed: 8 }));
 	});
 });
 

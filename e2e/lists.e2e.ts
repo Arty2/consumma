@@ -383,13 +383,26 @@ async function liftGroup(page: Page, name: string) {
 	await page.waitForTimeout(CARRY_MS);
 }
 
-/** Carry it to a target and let go there. */
-async function dropOn(page: Page, target: string, at?: { dx: number; dy: number }) {
-	const box = (await page.locator(target).boundingBox())!;
+/** Carry it over something, without letting go. */
+async function carryTo(page: Page, target: string, at?: { dx: number; dy: number }) {
+	const box = (await page.locator(target).first().boundingBox())!;
 	const point = at ?? { dx: box.width / 2, dy: box.height / 2 };
 
 	await page.mouse.move(box.x + point.dx, box.y + point.dy, { steps: 10 });
+}
+
+/** Carry it to a target and let go there. */
+async function dropOn(page: Page, target: string, at?: { dx: number; dy: number }) {
+	await carryTo(page, target, at);
 	await page.mouse.up();
+}
+
+/**
+ * The lists are not shown until the group reaches the switcher, so getting to
+ * one is two movements: onto the pill, which unfolds it, and then onto a row.
+ */
+function pill(page: Page) {
+	return page.locator('button[aria-haspopup="listbox"]');
 }
 
 /** Well inside the flap, which is the half of the corner past the crease. */
@@ -421,8 +434,17 @@ test('while a group is carried the corner answers for it', async ({ page }) => {
 	await expect(page.locator('[data-fold]')).toHaveCount(1);
 
 	// And the switcher is on the page even at one list, because the way to a
-	// second one is to carry a group onto it.
+	// second one is to carry a group onto it — but the lists themselves are
+	// not, or the column would lie across the sheet the group is crossing.
+	await expect(pill(page)).toBeVisible();
+	await expect(page.locator('[data-newlist]')).toHaveCount(0);
+
+	// They open when the group arrives, and shut again when it leaves.
+	await carryTo(page, 'button[aria-haspopup="listbox"]');
 	await expect(page.locator('[data-newlist]')).toHaveCount(1);
+
+	await carryTo(page, 'section[data-group]');
+	await expect(page.locator('[data-newlist]')).toHaveCount(0);
 
 	await page.mouse.up();
 
@@ -463,6 +485,7 @@ test('a group carried onto NEW LIST makes one, and goes to it', async ({ page })
 	await addGroup(page, 'Market', 1);
 
 	await liftGroup(page, 'Market');
+	await carryTo(page, 'button[aria-haspopup="listbox"]');
 	await dropOn(page, '[data-newlist]');
 
 	await expect(page.getByRole('status').last()).toContainText('Moved to a new list.');
@@ -491,6 +514,7 @@ test('undoing a move to a new list unmakes the list it invented', async ({ page 
 	await addGroup(page, 'Market', 1);
 
 	await liftGroup(page, 'Market');
+	await carryTo(page, 'button[aria-haspopup="listbox"]');
 	await dropOn(page, '[data-newlist]');
 	await undo(page);
 
@@ -526,6 +550,7 @@ test('a group carried onto another list moves there, and the undo leaves both', 
 	await addGroup(page, 'Market', 1);
 
 	await liftGroup(page, 'Market');
+	await carryTo(page, 'button[aria-haspopup="listbox"]');
 	await dropOn(page, '[data-list]');
 
 	await expect(page.getByRole('status').last()).toContainText('Moved to “Larder”.');

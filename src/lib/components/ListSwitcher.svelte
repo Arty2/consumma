@@ -39,17 +39,30 @@
 	/*
 	 * A group is in hand, and this is where it can be put down.
 	 *
-	 * The pill unfolds into the lists this group could go to, and it is on the
-	 * page for that even where there is only one list — otherwise the way to
-	 * make a second one by carrying a group there would be missing from exactly
-	 * the device that has never had one. The theme and the burger leave at the
-	 * same moment (see +page.svelte), so the corner is being redrawn anyway.
+	 * The pill is drawn as a drop target — a dashed box round it, which is what
+	 * a dashed box means everywhere else here — and it is on the page for that
+	 * even where there is only one list, or the way to make a second one by
+	 * carrying a group there would be missing from exactly the device that has
+	 * never had one. The theme and the burger leave at the same moment (see
+	 * +page.svelte), so the corner is being redrawn anyway.
 	 *
 	 * Not while a sync is in flight: a list minted then could not be written to
 	 * safely, `lists.adopt()` refuses, and a control that is not going to answer
 	 * is better not offered.
 	 */
 	const carrying = $derived(context === 'sheet' && drag.groupId !== null && !sync.busy);
+
+	/**
+	 * And the lists themselves, which are only shown once the group reaches the
+	 * pill.
+	 *
+	 * A column standing open for the whole of a drag is a column lying across
+	 * the sheet the group is being carried over: it covers the titles a drop
+	 * between two groups is aimed at, and it answers the hit test before they
+	 * do. So the switcher opens the way a finger opens anything — by arriving
+	 * — and closes again the moment the group is taken back to the list.
+	 */
+	const unfolded = $derived(carrying && drag.overSwitcher);
 
 	const shown = $derived(context === 'menu' ? true : lists.visible || carrying);
 
@@ -185,6 +198,40 @@
 	</svg>
 {/snippet}
 
+{#snippet dropRows()}
+	<!--
+		The same rows the dropdown shows, read rather than tapped: no role, no
+		handlers, and the whole column hidden from a screen reader, because there
+		is no way to reach it but by carrying something. What marks the one under
+		the finger is a dashed box, which is what the pill itself is wearing —
+		here it means the same thing it means there.
+	-->
+	{#each elsewhere as entry (entry.id)}
+		{@render divider()}
+		{@const rowName = nameOf(entry)}
+		{@const rowCode = codeOf(entry)}
+		<div class="row drop caps" data-list={entry.id}>
+			{#if drag.isListLanding(entry.id)}
+				<HandRect seed={`listdrop-${entry.id}`} dashed wobble={1.2} radius={3} />
+			{/if}
+			<span class="name" lang={langOf(rowName)}>{rowName}</span>
+			<span class="code">{rowCode ?? '¢'}</span>
+		</div>
+	{/each}
+
+	{#if elsewhere.length > 0}{@render divider()}{/if}
+
+	<div class="row drop new caps boxed" data-newlist>
+		<HandRect
+			seed="listrownew-carry"
+			wobble={1.4}
+			radius={3}
+			dashed={drag.isListLanding(NEW_LIST)}
+		/>
+		{t.lists.new}
+	</div>
+{/snippet}
+
 {#snippet rows()}
 	<!--
 		A line above every row, the first one included: the list reads as a set
@@ -226,8 +273,18 @@
 {/snippet}
 
 {#if shown}
-	<div class="wrap {context}" bind:this={root}>
+	<div class="wrap {context}" bind:this={root} data-switcher={context === 'sheet' ? '' : undefined}>
 		<div class="switcher {context}">
+			<!--
+				A dashed box round the switcher while a group is in hand: this is
+				somewhere it can be put down. It encloses the pill and the rule under
+				it, because those two are the switcher — the rule is the pill's own
+				underline and a box drawn between them would part them.
+			-->
+			{#if carrying}
+				<HandRect seed="listdroptarget" dashed wobble={1.4} radius={4} />
+			{/if}
+
 			<!--
 				Two spans rather than the one string the rule is measured from: the
 				name is the part that may run long and the only part allowed to give,
@@ -279,30 +336,17 @@
 			reach it but by carrying something — the same as every landing rule on
 			the sheet.
 		-->
-		{#if carrying}
-			<div class="carry" aria-hidden="true">
-				{#each elsewhere as entry (entry.id)}
-					{@const rowName = nameOf(entry)}
-					<div class="carry-row caps" data-list={entry.id}>
-						<HandRect
-							seed={`listcarry-${entry.id}`}
-							wobble={1.4}
-							radius={3}
-							faint={!drag.isListLanding(entry.id)}
-						/>
-						<span class="name" lang={langOf(rowName)}>{rowName}</span>
-					</div>
-				{/each}
-
-				<div class="carry-row caps" data-newlist>
-					<HandRect
-						seed="listcarrynew"
-						wobble={1.4}
-						radius={3}
-						faint={!drag.isListLanding(NEW_LIST)}
-					/>
-					<span class="name">{t.lists.new}</span>
-				</div>
+		{#if unfolded}
+			<!--
+				`data-switcher` again, and not only on the wrap above: what the hit
+				test gets back is the boxes under the point rather than the chain of
+				elements around it, so a column hanging below the pill is not the
+				pill's ancestor as far as it is concerned. Without this, crossing
+				from the pill into a gap between two rows read as leaving the
+				switcher, and the column shut under the finger on its way to a list.
+			-->
+			<div class="dropdown carry" data-switcher bind:clientWidth={dropdownWidth} aria-hidden="true">
+				{@render dropRows()}
 			</div>
 		{/if}
 
@@ -355,6 +399,7 @@
 	 * nothing below opens from the wrong place.
 	 */
 	.switcher.sheet {
+		position: relative;
 		translate: 0 -5px;
 	}
 
@@ -500,12 +545,20 @@
 		gap: 0.5rem;
 	}
 
-	.dropdown.menu {
+	/*
+	 * Both columns of rows: the one the menu opens on a tap, and the one a
+	 * carried group opens by arriving. Same rows, same ground — a column with
+	 * nothing behind it has the sheet's own writing reading through the names.
+	 */
+	.dropdown {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 		padding-top: 0.5rem;
 		background: var(--paper);
+	}
+
+	.dropdown.menu {
 		width: 100%;
 	}
 
@@ -593,57 +646,32 @@
 	 * aimed at, not read.
 	 */
 	/*
-	 * The column a carried group is offered, hanging under the pill and out of
+	 * The lists a carried group is offered, hanging under the pill and out of
 	 * the flow — a column that opened in it would move the list under the
 	 * finger, and the finger is steering by what it can see, which is the same
 	 * reason the sheet's landing rule has no height.
 	 *
-	 * No ground and no frame of its own. Each row carries its own, so what lies
-	 * over the writing is a few drawn boxes laid on the paper rather than one
-	 * white card taking a bite out of it.
+	 * The same column the menu's own dropdown draws, ground and all: it opens
+	 * over the first title on the sheet, and a set of rows with nothing behind
+	 * them would have the writing reading through the names.
 	 */
-	.carry {
+	.dropdown.carry {
 		position: absolute;
 		top: 100%;
 		left: 0;
 		z-index: 2;
 		min-width: max(100%, 11rem);
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-		padding-top: 0.4rem;
-		pointer-events: none;
+		padding-bottom: 0.5rem;
 	}
 
 	/*
-	 * A place to put something down, drawn as a box because that is what it is.
-	 * Faint while it is only an offer and full ink once the group is over it —
-	 * the rule the add row's own box follows, and the one the corner's mark
-	 * follows a few inches away. Only the box changes weight; the name it holds
-	 * has to stay legible either way.
-	 *
-	 * Its own ground, so the writing underneath does not read through the words.
-	 * Nothing here is tapped, so nothing here answers a tap — but it does have
-	 * to be hit-tested, which the column above turns off for the gaps between.
+	 * Nothing here is tapped, so nothing here answers a tap. The one under the
+	 * finger is marked the way the switcher itself is while it holds a group: a
+	 * dashed box. The row that makes a list keeps the box it already has and
+	 * dashes it instead of growing a second one.
 	 */
-	.carry-row {
+	.row.drop {
 		position: relative;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		min-height: var(--touch);
-		padding: 0 0.8rem;
-		background: var(--paper);
-		pointer-events: auto;
 		cursor: default;
-		user-select: none;
-		-webkit-user-select: none;
-	}
-
-	.carry-row .name {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		translate: 0 var(--cap-lift);
 	}
 </style>

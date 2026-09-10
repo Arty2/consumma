@@ -372,6 +372,13 @@
 			return;
 		}
 
+		/*
+		 * The switcher itself, rather than one of the lists it opened to show.
+		 * It answers a group arriving by unfolding, and there is nothing on the
+		 * pill to let go of — the group stays where it is.
+		 */
+		if (drop.kind === 'switcher') return;
+
 		sendTo(id, drop.listId);
 	}
 

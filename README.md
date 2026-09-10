@@ -127,9 +127,10 @@ the moment there is something written in it.
 | The title         | Two taps, `F2`     | Opens the name, leaving the group folded as it found it         |
 | The title         | Hold briefly       | Opens the name too — a buzz says when to let go                 |
 | The title         | Hold on            | Picks the whole group up; everything folds while it is carried  |
+| A carried group   | Over the list name | Opens the lists it could go to                                  |
 | A carried group   | Drop on a list     | Moves it to that list, with everything in it                    |
 | A carried group   | Drop on `NEW LIST` | Makes a list on this device and puts it there                   |
-| A carried group   | Drop on the corner | Removes it, with everything in it                               |
+| A carried group   | Drop on the fold   | Removes it, with everything in it                               |
 | The `(…)` icon    | Tap                | Folds the group, for anyone who would rather aim at it          |
 | The `(…)` icon    | Hold               | Folds **every** group — or opens them all, if none is left open |
 | The name field    | `Enter`            | Commits — and on an empty group, opens its first task           |
@@ -164,17 +165,21 @@ spot and becomes its first, arriving unnamed.
 
 While a group is in hand the corner answers for it. The theme and the burger
 go — neither has anything to say to a group being carried — and the paper's
-top-right corner turns down in their place, with the same scribble on it that
-deletes anything else here. Let the group go on that fold and it is removed,
-tasks and all, done or not, with the usual ten-second `UNDO?`.
+top-right corner turns down in their place, torn edge and all, showing a bin
+in the room it clears. Let the group go on that fold and it is removed, tasks
+and all, done or not, with the usual ten-second `UNDO?`.
 
-The list name stays, and opens into the lists the group could go to instead:
-one row per list, and `NEW LIST` under them. Drop it on a list and the group
-moves there whole — its tasks, their words, and their half-done ticks. Drop it
-on `NEW LIST` and a list is made on this device with that group on it, named
-after the group, and it stays on this device until it is synced. The switcher
-is there for this even when there is only one list, since that is the device
-with most to gain from a second; it is not offered while a sync is in flight.
+The list name stays, with a dashed box round it: that is somewhere the group
+can be put down too. Carry it there and the lists open under the name — one
+row per list, and `NEW LIST` under them — and they close again if the group is
+taken back to the sheet, so the column is never lying across a list being
+carried over. The row under the group is dashed the way the switcher itself
+is. Drop it on a list and the group moves there whole — its tasks, their
+words, and their half-done ticks. Drop it on `NEW LIST` and a list is made on
+this device with that group on it, named after the group, and it stays on this
+device until it is synced. The switcher is there for this even when there is
+only one list, since that is the device with most to gain from a second; it is
+not offered while a sync is in flight.
 
 Undo puts things back the way they were. A group moved to a list that already
 existed comes back here and leaves that list exactly as it found it; a group

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { handPath, handScribble, SCRIBBLE } from '$lib/draw/hand';
+	import { handBin, handPath, handTear, handVertical } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag } from '$lib/dnd/drag.svelte';
 
@@ -9,7 +9,7 @@
 	 * It is only ever there during that one gesture, and it takes the room the
 	 * theme and the burger leave: neither of those has anything to say to a
 	 * group being carried, so they go, and what appears in their place is the
-	 * one thing that has. A group let go on the flap is removed, tasks and all,
+	 * one thing that has. A group let go on the fold is removed, tasks and all,
 	 * with the same undo the header's own mark leaves.
 	 *
 	 * Nothing here is animated. A corner is either turned down or it is not,
@@ -27,8 +27,7 @@
 	 * the same reason they are written out here — a path is drawn in user
 	 * units and cannot read a custom property.
 	 *
-	 * `.catch` below is clipped to the same diagonal these describe. Move one
-	 * and move the other.
+	 * `.catch` below is the fold's own square. Move one and move the other.
 	 */
 	const SIZE = 84;
 	const TEAR = 16;
@@ -38,14 +37,28 @@
 	/** Where the side's stroke runs, which is where the paper actually stops. */
 	const RIGHT = SIZE - EDGE / 2;
 	/**
-	 * How far along each edge the fold reaches. Equal, so the flap is square,
-	 * and about as much room as the two buttons it stands in for took.
+	 * How far along each edge the fold reaches. Equal, so the corner comes over
+	 * square, and about as much room as the two buttons it stands in for took.
 	 */
 	const LEG = 60;
 
-	/** Where the fold meets the torn top edge, and where it meets the side. */
-	const A = { x: SIZE - EDGE / 2 - LEG, y: TOP };
+	/**
+	 * The three corners of the flap.
+	 *
+	 * `A` and `C` are where the crease meets the torn top edge and the side, and
+	 * `P` is the paper's own corner after it has come over — reflected across
+	 * the crease, which for equal legs lands it on the opposite corner of the
+	 * fold's square.
+	 *
+	 * What that reflection carries with it is the point of this: the torn top
+	 * edge arrives running **down** from `A`, and the side edge arrives running
+	 * **left** from `C`. A folded corner shows the two edges it was cut with, in
+	 * the places the fold puts them — a plain triangle would be a corner
+	 * guillotined off and laid back down.
+	 */
+	const A = { x: RIGHT - LEG, y: TOP };
 	const C = { x: RIGHT, y: TOP + LEG };
+	const P = { x: RIGHT - LEG, y: TOP + LEG };
 
 	/**
 	 * What is past the fold, which is not paper.
@@ -54,12 +67,12 @@
 	 * that side with paper, so the marks running into it are cut rather than
 	 * drawn over. Here what is cut is the torn edge and the side edge, and they
 	 * are cut *on the diagonal* — the closing segment runs from the far corner
-	 * straight through both ends of the fold line, so a tooth reaching past it
-	 * ends on the fold rather than on a vertical a hand never drew.
+	 * straight through both ends of the crease, so a tooth reaching past it ends
+	 * on the fold rather than on a vertical a hand never drew.
 	 *
-	 * Closed well past the box, because the marks it cuts do not stop at the
-	 * box either: the tear's teeth dip a full half-height below their midline
-	 * and the side's stroke carries a round cap beyond its own end.
+	 * Closed well past the box, because the marks it cuts do not stop at the box
+	 * either: the tear's teeth dip a full half-height below their midline and
+	 * the side's stroke carries a round cap beyond its own end.
 	 */
 	const OVER = 24;
 	const slope = (C.y - A.y) / (C.x - A.x);
@@ -67,44 +80,75 @@
 
 	const ground = `M ${far.x} ${far.y} L ${SIZE + OVER} ${-OVER} L ${SIZE + OVER} ${C.y} L ${C.x} ${C.y} Z`;
 
+	/**
+	 * The back of the sheet, which is opaque.
+	 *
+	 * Filled after the ground and before anything is drawn on it, so the writing
+	 * it has come down over is under paper rather than showing through, and so a
+	 * tooth of the tear that reached past the crease near `A` is covered by the
+	 * flap it now belongs to.
+	 */
+	const flap = `M ${A.x} ${A.y} L ${P.x} ${P.y} L ${C.x} ${C.y} Z`;
+
 	const crease = handPath([A, C], { seed: seedFrom('cornerfold'), wobble: 1.1 });
 
-	/*
-	 * The app's one delete drawing, at the app's one delete seed — the same
-	 * mark that is on a done task and on a finished group's header, because it
-	 * means the same thing here. Faint while it is only an offer and full ink
-	 * once the group is over it, which is the rule the add row's own box
-	 * follows.
-	 */
-	const scribble = handScribble(SCRIBBLE.w, SCRIBBLE.h, {
-		seed: seedFrom(SCRIBBLE.seed),
-		wobble: 0.7
+	/** The torn top edge, come over: same tear, same height, on its side. */
+	const torn = handTear(LEG, TEAR, {
+		seed: seedFrom('foldtear'),
+		teeth: Math.max(4, Math.round(LEG / 16))
 	});
 
-	/**
-	 * Centred in the flap, which for a right triangle is up towards the corner
-	 * — and far enough off the crease that the mark keeps its air at the one
-	 * corner of its box that comes nearest to it.
+	/** And the side edge, come over: the same wobble SideEdge draws with. */
+	const side = handVertical(LEG, { seed: seedFrom('foldside'), wobble: 2.2, every: 55, x: 0 });
+
+	/*
+	 * A bin, and not the scribble every other delete in the app is drawn with.
+	 *
+	 * The scribble is a mark made *on* a thing — it belongs beside the row it
+	 * strikes out, and on an empty corner it would be a mark with nothing under
+	 * it. What the corner is, once the paper has come off it, is a place; and
+	 * what a place to be rid of things looks like is a bin. It stands in the
+	 * room the fold clears, which is not paper and so is the one part of this
+	 * sheet nothing else can ever be written on.
+	 *
+	 * Faint while it is only an offer and full ink once the group is over it,
+	 * which is the rule the add row's own box follows.
 	 */
-	const MARK = { x: 52.5, y: 17 };
+	const BIN = { w: 22, h: 26, x: 55, y: 8 };
+	const bin = handBin(BIN.w, BIN.h, { seed: seedFrom('foldbin'), wobble: 0.9 });
 </script>
 
 <div class="fold" aria-hidden="true">
 	<svg class="paint" viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE}>
 		<path d={ground} class="ground" />
+		<path d={flap} class="ground" />
+
+		<!--
+			The two edges the corner was cut with, where the fold has put them: the
+			tear turned a quarter to run down from the crease's top end, and the
+			side turned the other way to run in from its bottom one. Each is
+			translated so the line it draws down the middle of its own box lands on
+			the flap's edge rather than beside it.
+		-->
+		<g transform="translate({A.x} {A.y}) rotate(90) translate(0 {-TOP})">
+			<path d={torn} class="drawn" />
+		</g>
+		<g transform="translate({P.x} {P.y}) rotate(-90)">
+			<path d={side} class="drawn" />
+		</g>
+
 		<path d={crease} class="drawn" />
-		<g transform="translate({MARK.x} {MARK.y})">
-			<path d={scribble} class="drawn" class:drawn--faint={!drag.overFold} />
+
+		<g transform="translate({BIN.x} {BIN.y})">
+			<path d={bin} class="drawn" class:drawn--faint={!drag.overFold} />
 		</g>
 	</svg>
 
 	<!--
-		The flap, and only the flap.
-
-		A square target would be twice the paper it is drawn on, and the top of
-		the list is directly under it — carrying a group up to make it first
-		would land on a delete. Clipped to the fold itself, what is left over the
-		list is a sliver at the paper's own edge.
+		The fold's own square, which is the flap and the room it has cleared —
+		everything a finger would call the corner, and nothing beyond it. The top
+		of the list is directly under it, so it stops where the fold stops: at the
+		crease's own two ends, and not at the box the fold is drawn in.
 	-->
 	<div class="catch" data-fold></div>
 </div>
@@ -135,15 +179,17 @@
 	}
 
 	/*
-	 * The same diagonal the crease is drawn along, give or take the wobble:
-	 * (19.5, 8) to (79.5, 68), carried out to the box's own corners so
-	 * everything past the fold is included. `SIZE` is the 84px below.
+	 * The square the crease cuts across: from the tear's own top down to the
+	 * flap's far corner, and in from the paper's edge by the length of the
+	 * crease. `SIZE` is the 84px above, `LEG` the 60 below.
 	 */
 	.catch {
 		position: absolute;
-		inset: 0;
+		top: 0;
+		right: 0;
+		width: 64.5px;
+		height: 68px;
 		pointer-events: auto;
-		clip-path: polygon(19.5px 0, 100% 0, 100% 68px, 19.5px 8px);
 	}
 
 	.ground {
