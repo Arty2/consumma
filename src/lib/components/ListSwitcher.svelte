@@ -404,6 +404,30 @@
 	}
 
 	/*
+	 * The drop target's box, drawn a few pixels out from the switcher rather
+	 * than around its exact bounds.
+	 *
+	 * HandRect fills whatever it is in, and what this one is in is the pill and
+	 * the rule under it — so flush, its bottom stroke lay along the rule and it
+	 * read as one more line under the words rather than as a box round them. A
+	 * hand drawing a box round something on paper leaves room; the numbers are
+	 * enough to part the two strokes and no more, and the sides stay within the
+	 * margin the switcher already keeps from the sync mark beside it.
+	 *
+	 * Written as a size rather than as offsets, which is not a preference: an
+	 * `<svg>` is a replaced element, so `width: auto` resolves to its own
+	 * intrinsic 300 × 150 and `inset` is ignored — the box came out the size of
+	 * a postcard laid across the top of the sheet. The same trap `SideEdge`
+	 * documents at the other end of the paper.
+	 */
+	.switcher.sheet :global(svg.rect) {
+		top: -5px;
+		left: -6px;
+		width: calc(100% + 12px);
+		height: calc(100% + 9px);
+	}
+
+	/*
 	 * Bold on the pill rather than on the name alone, so the code beside it is
 	 * set the same way — the two are one label, read as one thing. It reads
 	 * closer to the stroke weight of the icons it sits beside in the corner
