@@ -10,7 +10,6 @@
 	import Sheet from '$lib/components/Sheet.svelte';
 	import SideEdge from '$lib/components/SideEdge.svelte';
 	import SyncButton from '$lib/components/SyncButton.svelte';
-	import ThemeButton from '$lib/components/ThemeButton.svelte';
 	import Toast from '$lib/components/Toast.svelte';
 	import TornEdge from '$lib/components/TornEdge.svelte';
 	import { copy, paste } from '$lib/clipboard';
@@ -116,6 +115,20 @@
 	 * over it would be the corner arguing with the hand.
 	 */
 	const carrying = $derived(drag.groupId !== null);
+
+	/*
+	 * Nothing is picked up off a sheet that is moving.
+	 *
+	 * The turn and a lift take about the same half-second, so a press held
+	 * through a swipe came up carrying a row of a page that was edge-on or
+	 * already face down — and steering by a hit test reading boxes off it. The
+	 * page is the only thing that knows the paper is in motion, so it is the
+	 * page that says so; `pressDrag` asks at the press.
+	 */
+	const moving = $derived(flip !== null || dragging || settling);
+	$effect(() => {
+		drag.turning = moving;
+	});
 
 	/*
 	 * Where the reader is, in the sheet's own coordinates.
@@ -500,17 +513,20 @@
 
 		<!--
 			Sync on its own at the left, because it is the one that comes and goes;
-			the switcher sits between it and the two that are always there, which
-			stay together on the right, where the thumb already knows to find the
-			burger. Only ever here once there is a second list to choose between —
-			see ListSwitcher.
+			the switcher sits between it and the burger, which is always there and
+			on the right, where the thumb already knows to find it. Only ever here
+			once there is a second list to choose between — see ListSwitcher.
+
+			The theme used to sit beside the burger. It is a setting rather than a
+			thing done to the list, and settings are what the back of the sheet is
+			for — so it went there, beside the switcher, which is the other thing
+			in the panel that is about this device rather than about the writing.
 		-->
 		<div class="corner">
 			<SyncButton />
 			<ListSwitcher />
 			{#if !carrying}
 				<div class="controls">
-					<ThemeButton />
 					<MenuButton onopen={openMenu} ondebug={() => diagnostics.toggle()} />
 				</div>
 			{/if}
@@ -825,6 +841,10 @@
 	 * button is not there at all when there is nothing to sync, and
 	 * space-between with one child left pushes that child to the *left* — which
 	 * put the burger under the thumb's left hand on an untouched sheet.
+	 *
+	 * One button in it now that the theme has moved to the back of the sheet,
+	 * and it stays a box of its own: what it is doing is holding the right-hand
+	 * end of the row, which is a job about the row rather than about the burger.
 	 */
 	.controls {
 		display: flex;

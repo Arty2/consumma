@@ -221,7 +221,6 @@ export const en = {
 
 	lists: {
 		label: 'Lists',
-		switch: 'Switch list',
 		new: 'New list',
 		/** A list that has never left this device has no code to show. */
 		localOnly: 'Local only, never synced',

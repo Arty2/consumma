@@ -9,6 +9,7 @@ import {
 	handCross,
 	handLine,
 	handMoon,
+	handOval,
 	handPath,
 	handRect,
 	handRefresh,
@@ -300,6 +301,53 @@ describe('handBurger', () => {
 
 	it('is stable for a seed, so it never re-jitters on a render', () => {
 		expect(handBurger(SIZE, { seed: 8 })).toBe(handBurger(SIZE, { seed: 8 }));
+	});
+});
+
+describe('handOval', () => {
+	const W = 90;
+	const H = 40;
+
+	/*
+	 * The mark that says a carried group can be let go here. A loop rather than
+	 * a box, because a box is a frame put round the words and a loop is
+	 * somebody's pen going round them once.
+	 */
+	it('comes back to where it started, and a little past it', () => {
+		const points = endpoints(handOval(W, H, { seed: 3, wobble: 0 }));
+		const first = points[0];
+		const last = points.at(-1)!;
+
+		// Round, so the end is near the start — and past it, so the pen crosses
+		// its own line the way a hand closing a loop does rather than stopping
+		// dead on it.
+		expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeLessThan(W / 4);
+		expect(last).not.toStrictEqual(first);
+	});
+
+	it('keeps to the box it is drawn in, give or take the tilt', () => {
+		for (const seed of [1, 7, 99]) {
+			for (const { x, y } of endpoints(handOval(W, H, { seed, wobble: 1, tilt: -3 }))) {
+				// A tilted ellipse reaches past its own box at two corners, and
+				// `overflow: visible` is what lets it — but only just.
+				expect(x, `seed ${seed}`).toBeGreaterThan(-H / 4);
+				expect(x, `seed ${seed}`).toBeLessThan(W + H / 4);
+				expect(y, `seed ${seed}`).toBeGreaterThan(-W / 8);
+				expect(y, `seed ${seed}`).toBeLessThan(H + W / 8);
+			}
+		}
+	});
+
+	it('is one unlifted stroke, because a hand does not lift to draw a ring', () => {
+		expect(handOval(W, H, { seed: 5 }).match(/M /g)).toHaveLength(1);
+	});
+
+	it('is off level, and levelling it draws something else', () => {
+		expect(handOval(W, H, { seed: 5, tilt: 0 })).not.toBe(handOval(W, H, { seed: 5, tilt: -3 }));
+	});
+
+	it('is stable for a seed, so it never re-jitters on a render', () => {
+		expect(handOval(W, H, { seed: 8 })).toBe(handOval(W, H, { seed: 8 }));
 	});
 });
 

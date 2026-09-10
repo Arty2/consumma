@@ -68,6 +68,18 @@ export class DragState {
 	 */
 	from = $state<DropTarget | null>(null);
 
+	/**
+	 * The paper is turning, and nothing may be picked up off it while it is.
+	 *
+	 * A lift takes most of a second and the turn takes about the same, so a
+	 * press held through a swipe came up holding a row of a sheet that was
+	 * edge-on or already face down — and the hit test it then steered by was
+	 * reading boxes off a page mid-rotation. Set by the page, which is the only
+	 * thing that knows the paper is moving; asked at the press, because that is
+	 * where a gesture can still be refused without taking anything back.
+	 */
+	turning = $state(false);
+
 	/** The group currently lifted, if any. Never both at once. */
 	groupId = $state<string | null>(null);
 	groupTarget = $state<GroupDrop | null>(null);
@@ -354,6 +366,7 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 
 	function onpointerdown(event: PointerEvent) {
 		if (event.button !== 0) return;
+		if (drag.turning) return;
 		if (!hooks().enabled()) return;
 
 		dropped = false;
@@ -605,13 +618,19 @@ function groupTargetAt(x: number, y: number, movingId: string): GroupDrop | null
 
 	/*
 	 * Asked after the rows it opens, because they are inside it: over a list the
-	 * answer is that list, and everywhere else on the switcher — the pill, the
-	 * gaps between the rows — the answer is the switcher itself, which is what
-	 * keeps the column open while a finger crosses it.
+	 * answer is that list, and anywhere else about the switcher the answer is
+	 * the switcher itself, which is what keeps the column open while a finger
+	 * crosses it.
+	 *
+	 * Measured rather than hit-tested, which is the one place here that is. The
+	 * pill and the column it opens are two boxes with a corner of nothing
+	 * between them — the column hangs below the pill and is several times as
+	 * wide — and a finger going diagonally from one to the other passes through
+	 * that corner. Hit-testing, the switcher was left for those few pixels and
+	 * the column shut under the hand on its way to a list. One box round the
+	 * two of them has no gap to fall through.
 	 */
-	if (elements.some((el) => el instanceof HTMLElement && el.dataset.switcher !== undefined)) {
-		return { kind: 'switcher' };
-	}
+	if (overSwitcher(x, y)) return { kind: 'switcher' };
 
 	const own = document.querySelector<HTMLElement>(`[data-group="${movingId}"]`);
 	if (own) {
@@ -629,6 +648,32 @@ function groupTargetAt(x: number, y: number, movingId: string): GroupDrop | null
 	}
 
 	return { kind: 'order', index: sections.length };
+}
+
+/**
+ * Whether the pointer is anywhere about the switcher: on the pill, on the
+ * column of lists it opens, or in the corner between the two.
+ *
+ * One box round every part of it, rather than each part answering for itself.
+ */
+function overSwitcher(x: number, y: number): boolean {
+	const parts = document.querySelectorAll<HTMLElement>('[data-switcher]');
+	if (parts.length === 0) return false;
+
+	let left = Infinity;
+	let right = -Infinity;
+	let top = Infinity;
+	let bottom = -Infinity;
+
+	for (const part of parts) {
+		const box = part.getBoundingClientRect();
+		left = Math.min(left, box.left);
+		right = Math.max(right, box.right);
+		top = Math.min(top, box.top);
+		bottom = Math.max(bottom, box.bottom);
+	}
+
+	return x >= left && x <= right && y >= top && y <= bottom;
 }
 
 /** Where a group sits now, counted among its siblings including itself. */

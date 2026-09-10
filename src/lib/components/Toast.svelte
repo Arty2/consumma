@@ -187,6 +187,23 @@
 		 * arrangement the panel uses to stay centred while it turns.
 		 */
 		translate: -50% 0;
+		/*
+		 * Laid on the sheet by hand rather than set down square on it.
+		 *
+		 * Everything else at the top of the paper is ruled to the row — the
+		 * marks, the writing, the tear — so a message that lined up with all of
+		 * it read as another part of the page rather than as a note dropped over
+		 * it. A degree is enough: the top right corner lifts by a few pixels and
+		 * nothing else about the bar changes.
+		 *
+		 * About a point just inside its own left edge, which is where a hand
+		 * holding a slip of paper would have it, so the far end is what moves.
+		 * `rotate` rather than `transform`, because `transform` carries the
+		 * arrival and the throw and the two must not have to know about each
+		 * other.
+		 */
+		rotate: -1deg;
+		transform-origin: 15% 50%;
 		display: flex;
 		align-items: center;
 		/*

@@ -1646,6 +1646,99 @@ relative` rather than a transform, which does not apply to an inline box.
       corner is a sideways drag by definition, and it showed at once. The
       question is asked again on the first move.
 
+117.  **The theme moved to the back of the sheet.** It sat in the corner beside
+      the burger on the reasoning that a control for how the sheet looks
+      cannot be buried under a panel that covers the sheet. That reasoning
+      described a drawer; the panel is the other side of the same piece of
+      paper, and turning it over to reach the switch shows the answer on the
+      way back.
+
+      So it is beside the switcher, which is the other thing in the panel that
+      is about this device rather than about the writing, and level with the ✕
+      across from them. The sheet's own corner is left to the two things that
+      are about the list: what is unsent, and the way in.
+
+      It stays a glyph rather than gaining a drawn box. Every worded button in
+      the menu is boxed; the three marks — the ✕, the switcher's pill and this
+      — are not, because a box round a picture of the sun is a button round a
+      drawing.
+
+118.  **The switcher's column is what a tap opens too, and the modal is gone.**
+      The sheet's pill opened a full-screen modal and the menu's opened a
+      column in place, which is two answers to one question — and then a
+      carried group opened a third. A modal is for something that has to be
+      settled before anything else happens; choosing which list you are on is a
+      glance at four names, and covering the sheet to show them made a decision
+      out of it.
+
+      One column now, in both homes and for both gestures. Escape and a tap
+      outside close it, which is what the menu's copy always did: there is
+      nothing in a list of names to hold Tab inside, and locking body scroll
+      for four rows is a much bigger door than this needs.
+
+      **Never wider than the paper.** It hangs from the pill's own left edge and
+      the pill starts a sync mark's width into the row, so the cap is the row's
+      width less that — and a name too long for what is left is cut with an
+      ellipsis, exactly as the pill above it cuts one.
+
+      The rows are shorter than they were and carry their own padding rather
+      than a height floor: less at the sides than above and below, because the
+      padding is what the line under a row rules off and a word wants more room
+      over it than beside it.
+
+119.  **The marks a drop offers are a loop and a dashed line.** Both were drawn
+      boxes, and both were wrong for the same reason: a box is a frame put
+      round something, and a frame round a name reads as the name having been
+      selected rather than as a place to put something down.
+
+      The switcher wears a loop instead — `handOval`, off level, which is
+      somebody's pen going round a word once. A list says where a group would
+      land by its own line going dashed: the rule under a name belongs to that
+      name, and a dash is what says "here" everywhere else on the sheet.
+
+      That also settled a hit-testing bug. The pill and the column it opens are
+      two boxes with a corner of nothing between them — the column hangs below
+      and is several times as wide — and a finger crossing diagonally from one
+      to the other fell through that corner, shutting the column it was
+      reaching into. The drag reads the two as one box round the pair now,
+      measured rather than hit-tested.
+
+120.  **The bin is ink, and it boils when a group is over it.** It was drawn
+      faint until then, on the rule the add row's box follows — but that box is
+      a suggestion of a task that is not there yet, where this is a bin that is
+      there whether or not anything is going into it, and a faint one read as a
+      control not yet available.
+
+      What says a group is over it is the mark boiling: the same hand redrawing
+      the same drawing four times over that the sync button works by. It is the
+      one thing on this sheet that means _live under your finger_, which is
+      exactly what a drop target wants to say and what a change of weight
+      cannot. The technique moved into `src/lib/draw/boil.svelte.ts` in the
+      same change — two marks drawing it twice is two techniques as soon as one
+      of them is retuned.
+
+      It is never dotted. The dots are the sync marks saying they are mid-flight;
+      the bin is saying "here", which is a different sentence.
+
+121.  **Nothing is picked up off a sheet that is moving.** A lift takes most of
+      a second and a turn takes about the same, so a press held through a swipe
+      came up carrying a row of a page that was edge-on or already face down —
+      and steering by a hit test reading boxes off it mid-rotation.
+
+      The page sets `drag.turning` for as long as the paper is turning, sliding
+      or swinging home, and `pressDrag` refuses a press while it holds. Refused
+      rather than swallowed: the release is still a tap, because a press that
+      never became a lift never became anything else either.
+
+122.  **The toast is laid on the sheet rather than set square on it.** A degree
+      off level, about a point just inside its own left edge, so the far corner
+      lifts. Everything else at the top of the paper is ruled to the row — the
+      marks, the writing, the tear — and a message that lined up with all of it
+      read as another part of the page rather than as a note dropped over it.
+
+      In `rotate` rather than in `transform`, which carries the arrival and the
+      throw: the two must not have to know about each other.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

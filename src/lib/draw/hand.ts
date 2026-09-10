@@ -416,6 +416,51 @@ export function handScribble(width: number, height: number, options: HandOptions
 }
 
 /**
+ * A loop drawn round something, the way a hand rings a word on paper.
+ *
+ * Not a box. A box is a thing with corners and reads as a frame put round the
+ * words; a loop is somebody's pen going round them once, which is what a place
+ * to drop something in wants to say. It is tilted a little for the same reason
+ * — a hand circling a word does not level the ellipse first.
+ *
+ * The pen carries on a little past where it started, because it does: closing
+ * exactly on the first point is a shape, and crossing it is a gesture.
+ */
+export function handOval(
+	width: number,
+	height: number,
+	options: HandOptions & { tilt?: number }
+): string {
+	const cx = width / 2;
+	const cy = height / 2;
+	const tilt = ((options.tilt ?? 0) * Math.PI) / 180;
+	const cos = Math.cos(tilt);
+	const sin = Math.sin(tilt);
+
+	/*
+	 * Twelve is enough for handPath's bends to read as a curve rather than as a
+	 * polygon, and few enough that the wobble lands on the shape rather than
+	 * sanding it smooth.
+	 */
+	const steps = 12;
+	/** How far past the start the pen goes, in steps. */
+	const over = 0.7;
+
+	const at = (turn: number): Pt => {
+		const a = (turn / steps) * Math.PI * 2;
+		const x = Math.cos(a) * (width / 2);
+		const y = Math.sin(a) * (height / 2);
+		return { x: cx + x * cos - y * sin, y: cy + x * sin + y * cos };
+	};
+
+	const points: Pt[] = [];
+	for (let i = 0; i <= steps; i++) points.push(at(i));
+	points.push(at(steps + over));
+
+	return handPath(points, options);
+}
+
+/**
  * A bin, for the corner the paper folds away to show.
  *
  * Not the scribble, and that is the whole point of it. A scribble is what a

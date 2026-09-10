@@ -217,16 +217,19 @@ test('the toast still lands on the corner row with the switcher sharing it', asy
 	const where = await page.evaluate(() => {
 		const toast = document.querySelector('.toast')!.getBoundingClientRect();
 		const burger = document.querySelector('[aria-label^="Menu"]')!.getBoundingClientRect();
-		return { top: toast.top, cornerTop: burger.top };
+		return {
+			middle: (toast.top + toast.bottom) / 2,
+			cornerMiddle: (burger.top + burger.bottom) / 2
+		};
 	});
 
 	/*
-	 * The switcher rides this row too, and none of the three moves the line the
-	 * toast stands on — bar the few pixels of `--toast-lead` that keep its drawn
-	 * box off the burger's own ink.
+	 * The switcher rides this row too, and neither of them moves the line the
+	 * toast stands on. Read middle against middle, because the bar is laid on
+	 * the sheet a degree off level (see Toast.svelte) and a top-to-top reading
+	 * would be measuring the tilt.
 	 */
-	expect(where.top - where.cornerTop).toBeGreaterThanOrEqual(0);
-	expect(where.top - where.cornerTop).toBeLessThan(6);
+	expect(Math.abs(where.middle - where.cornerMiddle)).toBeLessThan(8);
 });
 
 test('a dropdown row switches with the keyboard, not just a tap', async ({ page }) => {
@@ -286,21 +289,32 @@ test('a single tap still opens the dropdown, after the pause that leaves room fo
 	await expect(dropdown(page)).toBeVisible();
 });
 
-test('opening the sheet’s own pill covers the page, the same as SYNC or IMPORT', async ({
-	page
-}) => {
+test('the sheet’s own pill opens the same column the menu does', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await newList(page);
 
+	/*
+	 * It used to open a full-screen Modal here and a small column in the menu,
+	 * which is two answers to one question — and a modal is for something that
+	 * has to be settled before anything else happens, where choosing which list
+	 * you are on is a glance at four names.
+	 */
 	await switcherPill(page).click();
-	const modal = page.getByRole('dialog', { name: 'Switch list' });
-	await expect(modal).toBeVisible();
 	await expect(dropdown(page)).toBeVisible();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
 
-	// A real modal, not a small popover: Escape closes it, the same as every
-	// other panel in the app.
+	// Nothing covers the sheet: the list it opened over is still there.
+	await expect(page.getByRole('button', { name: 'Add a task' }).first()).toBeVisible();
+
+	// Escape closes it, the same as every other thing that opens in this app.
 	await page.keyboard.press('Escape');
-	await expect(modal).toHaveCount(0);
+	await expect(dropdown(page)).toHaveCount(0);
+
+	// And so does a tap anywhere off it.
+	await switcherPill(page).click();
+	await expect(dropdown(page)).toBeVisible();
+	await page.locator('main').click({ position: { x: 10, y: 300 } });
+	await expect(dropdown(page)).toHaveCount(0);
 });
 
 test('the menu keeps its ✕ reachable once the switcher shares its row', async ({ page }) => {
@@ -427,10 +441,9 @@ test('while a group is carried the corner answers for it', async ({ page }) => {
 
 	await liftGroup(page, 'Market');
 
-	// The two that have nothing to say to a group in hand are gone, with no
-	// animation to sit through, and the corner is turned down in their place.
+	// The burger has nothing to say to a group in hand, so it goes — with no
+	// animation to sit through — and the corner is turned down in its place.
 	await expect(page.getByRole('button', { name: 'Menu' })).toHaveCount(0);
-	await expect(page.getByRole('button', { name: /^Theme/ })).toHaveCount(0);
 	await expect(page.locator('[data-fold]')).toHaveCount(1);
 
 	// And the switcher is on the page even at one list, because the way to a

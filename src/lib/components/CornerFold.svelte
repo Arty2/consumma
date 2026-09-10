@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { boil, boiling } from '$lib/draw/boil.svelte';
 	import { handBin, handPath, handTear, handVertical } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag } from '$lib/dnd/drag.svelte';
@@ -12,10 +13,11 @@
 	 * one thing that has. A group let go on the fold is removed, tasks and all,
 	 * with the same undo the header's own mark leaves.
 	 *
-	 * Nothing here is animated. A corner is either turned down or it is not,
-	 * and the two states are half a second apart under a finger that is already
-	 * moving — a fold that grew would be a mark doing something a fold does
-	 * not.
+	 * The fold itself is not animated. A corner is either turned down or it is
+	 * not, and the two states are half a second apart under a finger that is
+	 * already moving — a fold that grew would be a mark doing something a fold
+	 * does not. The bin standing in it is the one thing here that moves, and
+	 * only while a group is over it.
 	 */
 
 	/*
@@ -111,11 +113,20 @@
 	 * room the fold clears, which is not paper and so is the one part of this
 	 * sheet nothing else can ever be written on.
 	 *
-	 * Faint while it is only an offer and full ink once the group is over it,
-	 * which is the rule the add row's own box follows.
+	 * Full ink, always. It was drawn faint while it was only an offer, on the
+	 * rule the add row's box follows — but that box is a suggestion of a thing
+	 * that is not there yet, where this is a bin that is there whether or not
+	 * anything is going into it. A faint one read as a control not yet
+	 * available, which is the opposite of what the fold is saying.
+	 *
+	 * What says a group is over it is the mark boiling — the same hand redrawing
+	 * the same bin four times over that the sync button works by, and the only
+	 * thing on this sheet that means *this is live under your finger*. See
+	 * src/lib/draw/boil.svelte.ts.
 	 */
 	const BIN = { w: 22, h: 26, x: 55, y: 8 };
-	const bin = handBin(BIN.w, BIN.h, { seed: seedFrom('foldbin'), wobble: 0.9 });
+	const bin = boil('foldbin', (o) => handBin(BIN.w, BIN.h, o));
+	const boiled = boiling(() => drag.overFold);
 </script>
 
 <div class="fold" aria-hidden="true">
@@ -140,7 +151,7 @@
 		<path d={crease} class="drawn" />
 
 		<g transform="translate({BIN.x} {BIN.y})">
-			<path d={bin} class="drawn" class:drawn--faint={!drag.overFold} />
+			<path d={bin[boiled.frame]} class="drawn" />
 		</g>
 	</svg>
 

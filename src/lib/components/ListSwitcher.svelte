@@ -1,6 +1,6 @@
 <script lang="ts">
+	import HandOval from './HandOval.svelte';
 	import HandRect from './HandRect.svelte';
-	import Modal from './Modal.svelte';
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { handChevron, handLine } from '$lib/draw/hand';
@@ -160,14 +160,12 @@
 		pick(id);
 	}
 
-	// Outside tap or Escape closes it — only the menu's own copy, which stays
-	// a small popover in flow rather than a full panel: there is nothing here
-	// to hold Tab inside, and locking body scroll for one row of buttons
-	// would be a much bigger door than this needs. The sheet's copy is a real
-	// Modal now and answers Escape (and everything else a panel has to)
-	// through the same `use:trap` every other modal shares.
+	// Outside tap or Escape closes it, in both homes: the sheet's copy is the
+	// same popover the menu's is now, rather than a full panel. There is
+	// nothing in a column of names to hold Tab inside, and locking body scroll
+	// for four rows would be a much bigger door than this needs.
 	$effect(() => {
-		if (!open || context !== 'menu') return;
+		if (!open) return;
 
 		function onpointerdown(event: PointerEvent) {
 			if (root && !root.contains(event.target as Node)) open = false;
@@ -186,7 +184,7 @@
 	});
 </script>
 
-{#snippet divider()}
+{#snippet divider(dashed = false)}
 	<svg
 		class="divider"
 		viewBox="0 0 {dropdownWidth} 3"
@@ -194,7 +192,7 @@
 		height="3"
 		aria-hidden="true"
 	>
-		{#if dividerPath}<path d={dividerPath} class="drawn" />{/if}
+		{#if dividerPath}<path d={dividerPath} class="drawn" class:drawn--dashed={dashed} />{/if}
 	</svg>
 {/snippet}
 
@@ -202,26 +200,27 @@
 	<!--
 		The same rows the dropdown shows, read rather than tapped: no role, no
 		handlers, and the whole column hidden from a screen reader, because there
-		is no way to reach it but by carrying something. What marks the one under
-		the finger is a dashed box, which is what the pill itself is wearing —
-		here it means the same thing it means there.
+		is no way to reach it but by carrying something.
+
+		What marks the one under the finger is its own line going dashed — the
+		rule under a name is that name's line, and a dash is what says "here"
+		everywhere else on the sheet. A box drawn round the words instead read as
+		the name having been selected, which is a different thing entirely, and
+		put a second rectangle inside a column that already rules itself off.
 	-->
+	{@render divider()}
+
 	{#each elsewhere as entry (entry.id)}
-		{@render divider()}
 		{@const rowName = nameOf(entry)}
 		{@const rowCode = codeOf(entry)}
-		<div class="row drop caps" data-list={entry.id}>
-			{#if drag.isListLanding(entry.id)}
-				<HandRect seed={`listdrop-${entry.id}`} dashed wobble={1.2} radius={3} />
-			{/if}
+		<div class="row caps" data-list={entry.id}>
 			<span class="name" lang={langOf(rowName)}>{rowName}</span>
 			<span class="code">{rowCode ?? '¢'}</span>
 		</div>
+		{@render divider(drag.isListLanding(entry.id))}
 	{/each}
 
-	{#if elsewhere.length > 0}{@render divider()}{/if}
-
-	<div class="row drop new caps boxed" data-newlist>
+	<div class="row new caps boxed" data-newlist>
 		<HandRect
 			seed="listrownew-carry"
 			wobble={1.4}
@@ -234,13 +233,18 @@
 
 {#snippet rows()}
 	<!--
-		A line above every row, the first one included: the list reads as a set
-		of ruled entries rather than as a heading with rules under it, and the
+		A line under every row, and one over the first: the list reads as a set of
+		ruled entries rather than as a heading with rules under it, and the
 		topmost row needs its own line to be closed off at the top the way the
 		rest are.
+
+		Under rather than over, which is the same set of lines counted from the
+		other end — but it is the line under a name that belongs to that name, and
+		that is the one a carried group dashes to say where it would land.
 	-->
+	{@render divider()}
+
 	{#each sorted as entry (entry.id)}
-		{@render divider()}
 		{@const rowName = nameOf(entry)}
 		{@const rowCode = codeOf(entry)}
 		<div
@@ -262,9 +266,8 @@
 				>{rowCode ?? '¢'}</span
 			>
 		</div>
+		{@render divider()}
 	{/each}
-
-	{#if sorted.length > 0}{@render divider()}{/if}
 
 	<button type="button" class="row new caps boxed" onclick={onnew}>
 		<HandRect seed={`listrownew-${context}`} wobble={1.4} radius={3} />
@@ -276,13 +279,18 @@
 	<div class="wrap {context}" bind:this={root} data-switcher={context === 'sheet' ? '' : undefined}>
 		<div class="switcher {context}">
 			<!--
-				A dashed box round the switcher while a group is in hand: this is
-				somewhere it can be put down. It encloses the pill and the rule under
+				A loop drawn round the switcher while a group is in hand: this is
+				somewhere it can be put down. It rings the pill and the rule under
 				it, because those two are the switcher — the rule is the pill's own
-				underline and a box drawn between them would part them.
+				underline and a mark drawn between them would part them.
+
+				A loop rather than a box, and off level: a box is a frame put round
+				the words, where this is somebody's pen going round them once, which
+				is what a place to drop something into wants to say. Dashed, because
+				that is what says "here" everywhere else on the sheet.
 			-->
 			{#if carrying}
-				<HandRect seed="listdroptarget" dashed wobble={1.4} radius={4} />
+				<HandOval seed="listdroptarget" dashed wobble={1.4} />
 			{/if}
 
 			<!--
@@ -338,40 +346,44 @@
 		-->
 		{#if unfolded}
 			<!--
-				`data-switcher` again, and not only on the wrap above: what the hit
-				test gets back is the boxes under the point rather than the chain of
-				elements around it, so a column hanging below the pill is not the
-				pill's ancestor as far as it is concerned. Without this, crossing
-				from the pill into a gap between two rows read as leaving the
-				switcher, and the column shut under the finger on its way to a list.
+				`data-switcher` again, and not only on the wrap above: the drag reads
+				the switcher as one box round every part of it (see `overSwitcher` in
+				dnd/drag.svelte.ts), and this column is the other part. Without it
+				the box is the pill alone, and a finger going from the pill down to a
+				list leaves the switcher on the way — shutting the column it is
+				reaching into.
 			-->
-			<div class="dropdown carry" data-switcher bind:clientWidth={dropdownWidth} aria-hidden="true">
+			<div
+				class="dropdown {context}"
+				data-switcher
+				bind:clientWidth={dropdownWidth}
+				aria-hidden="true"
+			>
 				{@render dropRows()}
 			</div>
 		{/if}
 
 		<!--
-			The sheet's copy is a real Modal, the same as SYNC/SHARE/IMPORT — full
-			screen, its own frame and ✕, closed by Escape or the drag-down grip —
-			rather than a small popover, so a listbox lives inside it for the
-			ARIA semantics the rows still want. The menu's copy stays in flow: it
-			already lives inside a trapped panel, and a modal opened over a modal
-			is the keyboard trap CLAUDE.md rules out.
+			One column, in both homes.
+
+			The sheet's copy used to be a real Modal — full screen, its own frame
+			and ✕ — on the reasoning that a panel is what this app opens things in.
+			But a modal is for something that has to be answered before anything
+			else happens, and choosing which list you are on is not that: it is the
+			same short list of names the menu already drops open in place, and
+			covering the sheet to show four of them made a decision out of a
+			glance. It is also the column a carried group is offered, and having
+			the tap open one thing and a drag another meant two answers to the same
+			question.
+
+			So: a popover under the pill, on the sheet as in the menu. Escape and
+			an outside tap close it, which is what the effect above is for; there
+			is nothing here to hold Tab inside, and locking body scroll for a row
+			of names would be a much bigger door than this needs.
 		-->
-		{#if open && context === 'sheet'}
-			<Modal title={t.lists.switch} seed={`listswitch-${context}`} onclose={() => (open = false)}>
-				<div
-					class="listbox"
-					role="listbox"
-					aria-label={t.lists.label}
-					bind:clientWidth={dropdownWidth}
-				>
-					{@render rows()}
-				</div>
-			</Modal>
-		{:else if open}
+		{#if open && !unfolded}
 			<div
-				class="dropdown menu"
+				class="dropdown {context}"
 				role="listbox"
 				aria-label={t.lists.label}
 				bind:clientWidth={dropdownWidth}
@@ -416,11 +428,11 @@
 	 *
 	 * Written as a size rather than as offsets, which is not a preference: an
 	 * `<svg>` is a replaced element, so `width: auto` resolves to its own
-	 * intrinsic 300 × 150 and `inset` is ignored — the box came out the size of
+	 * intrinsic 300 × 150 and `inset` is ignored — the mark came out the size of
 	 * a postcard laid across the top of the sheet. The same trap `SideEdge`
 	 * documents at the other end of the paper.
 	 */
-	.switcher.sheet :global(svg.rect) {
+	.switcher.sheet :global(svg.oval) {
 		top: -5px;
 		left: -6px;
 		width: calc(100% + 12px);
@@ -505,6 +517,17 @@
 	 * is written on it and all of it moves together. The ✕ is the only thing
 	 * that stays, because it is a control rather than something written.
 	 */
+	/*
+	 * The switcher shares its row with the theme now (see `.settings` in
+	 * Menu.svelte), so it takes what is left of the line rather than sizing to
+	 * its own words — `min-width: 0` is what lets a flex item shrink below the
+	 * width of the text inside it, which is what makes the ellipsis possible.
+	 */
+	.wrap.menu {
+		flex: 1 1 auto;
+		min-width: 0;
+	}
+
 	.switcher.menu {
 		/*
 		 * Level with the ✕ across the panel from it, which is the whole of why
@@ -556,29 +579,20 @@
 	}
 
 	/*
-	 * The rows, wherever they live: inside the sheet's Modal, sized by the
-	 * modal's own `.body` (max-width 34rem, centred, the same column every
-	 * other modal writes in), or in flow in the menu, full width of the
-	 * panel — see the sticky pill above. Left-aligned in both: a row is read
-	 * the way every other line in this app is, not centred like the menu's
-	 * own prose around it.
-	 */
-	.listbox {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	/*
-	 * Both columns of rows: the one the menu opens on a tap, and the one a
-	 * carried group opens by arriving. Same rows, same ground — a column with
-	 * nothing behind it has the sheet's own writing reading through the names.
+	 * One column of rows, wherever it is opened from: a tap on the pill, in
+	 * either home, or a group carried onto it. Same rows, same ground — a
+	 * column with nothing behind it has the sheet's own writing reading through
+	 * the names.
+	 *
+	 * No gap between the children. The rows keep their own padding and the
+	 * lines rule them off, so a name and the line under it are one thing rather
+	 * than two with air between them — which matters now that the line is what
+	 * says where a carried group would land.
 	 */
 	.dropdown {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		padding-top: 0.5rem;
+		padding-top: 0.4rem;
 		background: var(--paper);
 	}
 
@@ -587,18 +601,25 @@
 	}
 
 	/*
-	 * Shorter than --touch: a row here is read and tapped once, not held, and
-	 * a column of full touch-height rows read as a second menu rather than a
-	 * short list. `.row.new` matches it below, overriding the `.boxed` floor
-	 * it would otherwise inherit, so the drawn button reads as one more row
-	 * rather than a taller thing bolted on the end.
+	 * Shorter than --touch: a row here is read and tapped once, not held, and a
+	 * column of full touch-height rows read as a second menu rather than a
+	 * short list. `.row.new` matches it below, overriding the `.boxed` floor it
+	 * would otherwise inherit, so the drawn button reads as one more row rather
+	 * than a taller thing bolted on the end.
+	 *
+	 * The height is the padding now rather than a floor under it, because the
+	 * padding is what the line under the row is ruling off: it belongs to the
+	 * row, so a name never sits hard against the mark that says where a group
+	 * would land. Less at the sides than above and below, and deliberately not
+	 * the same — a word wants more room over it than beside it, which is why
+	 * every margin in this app that reads well is uneven.
 	 */
 	.row {
 		display: flex;
 		align-items: center;
 		gap: 0.6rem;
 		width: 100%;
-		min-height: 2.25rem;
+		padding: 0.35rem 0.25rem;
 		text-align: left;
 		cursor: pointer;
 		user-select: none;
@@ -650,8 +671,8 @@
 	 */
 	.row.new {
 		justify-content: center;
-		min-height: 2.25rem;
-		margin-top: 0.75rem;
+		min-height: 2rem;
+		margin-top: 0.6rem;
 	}
 
 	.divider {
@@ -679,13 +700,25 @@
 	 * over the first title on the sheet, and a set of rows with nothing behind
 	 * them would have the writing reading through the names.
 	 */
-	.dropdown.carry {
+	/*
+	 * Above the sheet it opens over, and out of the flow: a column that opened
+	 * in it would move the list under a finger that is steering by what it can
+	 * see, which is the same reason the sheet's landing rule has no height.
+	 *
+	 * Never wider than the paper it lies on. It hangs from the pill's own left
+	 * edge, and the pill starts a sync mark's width into the row, so the cap is
+	 * the row's own width less that — the arithmetic `--corner-x` and `--touch`
+	 * already describe the corner with. A name too long for what is left is cut
+	 * with an ellipsis, exactly as it is on the pill above.
+	 */
+	.dropdown.sheet {
 		position: absolute;
 		top: 100%;
 		left: 0;
 		z-index: 2;
 		min-width: max(100%, 11rem);
-		padding-bottom: 0.5rem;
+		max-width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x) - var(--touch));
+		padding-bottom: 0.4rem;
 	}
 
 	/*

@@ -20,6 +20,7 @@
 	import Perforation from './Perforation.svelte';
 	import SideEdge from './SideEdge.svelte';
 	import TextRule from './TextRule.svelte';
+	import ThemeButton from './ThemeButton.svelte';
 	import TornEdge from './TornEdge.svelte';
 	import { trap } from '$lib/a11y/trap';
 	import { copy, share } from '$lib/clipboard';
@@ -476,7 +477,26 @@
 				dropdown, when open, is ordinary content and scrolls like everything
 				else beneath it.
 			-->
-			<ListSwitcher context="menu" onafterselect={close} />
+			<div class="settings">
+				<!--
+					The theme, beside the name of the list it will redraw.
+
+					It stood in the sheet's own corner, next to the burger, on the
+					reasoning that a control for how the sheet looks cannot be buried
+					under a panel that covers the sheet. What that missed is that the
+					panel is not over the sheet — it is the other side of it, and
+					turning the paper to reach the switch shows the answer on the way
+					back. So it is here, where every other thing about this device
+					rather than about the writing already is, and the sheet's corner
+					is left to the two things that are about the list.
+
+					To the left of the switcher, and level with it: the two are one
+					row of settings, and the ✕ across from them is the third thing on
+					that line.
+				-->
+				<div class="theme-slot"><ThemeButton /></div>
+				<ListSwitcher context="menu" onafterselect={close} />
+			</div>
 
 			<!--
 				The panel's sections are told apart by a tear across the paper, the
@@ -1057,6 +1077,29 @@
 	 */
 	.body {
 		text-align: center;
+	}
+
+	/*
+	 * The row the panel opens on: the theme, then which list this is. Aligned
+	 * to the top rather than the middle, because the switcher carries a rule
+	 * under its pill and a bottom margin of its own — centring the pair would
+	 * hang the theme's glyph off the middle of all of that instead of level
+	 * with the words.
+	 */
+	.settings {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.2rem;
+	}
+
+	/*
+	 * The same offset the switcher's pill takes, so both sit on the line the ✕
+	 * is on. See `.switcher.menu` in ListSwitcher.svelte, which explains where
+	 * the number comes from.
+	 */
+	.theme-slot {
+		flex: none;
+		margin-top: var(--corner-lead);
 	}
 
 	/*
