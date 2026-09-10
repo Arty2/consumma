@@ -121,21 +121,21 @@ the moment there is something written in it.
 
 ### A group
 
-| Where             | Gesture            | What happens                                                    |
-| ----------------- | ------------------ | --------------------------------------------------------------- |
-| The title         | Tap                | Folds the group                                                 |
-| The title         | Two taps, `F2`     | Opens the name, leaving the group folded as it found it         |
-| The title         | Hold briefly       | Opens the name too — a buzz says when to let go                 |
-| The title         | Hold on            | Picks the whole group up; everything folds while it is carried  |
-| A carried group   | Over the list name | Opens the lists it could go to                                  |
-| A carried group   | Drop on a list     | Moves it to that list, with everything in it                    |
-| A carried group   | Drop on `NEW LIST` | Makes a list on this device and puts it there                   |
-| A carried group   | Drop on the fold   | Removes it, with everything in it                               |
-| A carried group   | Over the corner    | The bin comes alive, so the fold says what letting go would do  |
-| The `(…)` icon    | Tap                | Folds the group, for anyone who would rather aim at it          |
-| The `(…)` icon    | Hold               | Folds **every** group — or opens them all, if none is left open |
-| The name field    | `Enter`            | Commits — and on an empty group, opens its first task           |
-| The new-group `…` | `Enter`            | Makes the group and opens its first task                        |
+| Where             | Gesture              | What happens                                                    |
+| ----------------- | -------------------- | --------------------------------------------------------------- |
+| The title         | Tap                  | Folds the group                                                 |
+| The title         | Two taps, `F2`       | Opens the name, leaving the group folded as it found it         |
+| The title         | Hold briefly         | Opens the name too — a buzz says when to let go                 |
+| The title         | Hold on              | Picks the whole group up; everything folds while it is carried  |
+| A carried group   | Over the list name   | Opens the lists it could go to                                  |
+| A carried group   | Drop on a list       | Moves it to that list, with everything in it                    |
+| A carried group   | Drop on `+ NEW LIST` | Makes a list on this device and puts it there                   |
+| A carried group   | Drop on the fold     | Removes it, with everything in it                               |
+| A carried group   | Over the corner      | The bin comes alive, so the fold says what letting go would do  |
+| The `(…)` icon    | Tap                  | Folds the group, for anyone who would rather aim at it          |
+| The `(…)` icon    | Hold                 | Folds **every** group — or opens them all, if none is left open |
+| The name field    | `Enter`              | Commits — and on an empty group, opens its first task           |
+| The new-group `…` | `Enter`              | Makes the group and opens its first task                        |
 
 The title's press has two lengths in it, and a buzz at each: hold it and let
 go at the first to open the name, or keep holding through the second to carry
@@ -173,15 +173,15 @@ done or not, with the usual ten-second `UNDO?`.
 
 The list name stays, with a loop drawn round it: that is somewhere the group
 can be put down too. Carry it there and the lists open under the name — one
-row per list, and `NEW LIST` under them — and they close again if the group is
-taken back to the sheet, so the column is never lying across a list being
-carried over. The line under a list goes dashed when the group is over it.
-Drop it on a list and the group moves there whole — its tasks, their words,
-and their half-done ticks. Drop it on `NEW LIST` and a list is made on this
-device with that group on it, named after the group, and it stays on this
-device until it is synced. The switcher is there for this even when there is
-only one list, since that is the device with most to gain from a second; it is
-not offered while a sync is in flight.
+row for every list but the one you are on, and `+ NEW LIST` last — and they
+close again if the group is taken back to the sheet, so the column is never
+lying across a list being carried over. The line under a row goes dashed when
+the group is over it. Drop it on a list and the group moves there whole — its
+tasks, their words, and their half-done ticks. Drop it on `+ NEW LIST` and a
+list is made on this device with that group on it, named after the group, and
+it stays on this device until it is synced. The switcher is there for this
+even when there is only one list, since that is the device with most to gain
+from a second; it is not offered while a sync is in flight.
 
 Undo puts things back the way they were. A group moved to a list that already
 existed comes back here and leaves that list exactly as it found it; a group
@@ -198,7 +198,7 @@ device that had one list before has one list again.
 | Top right      | Hold the burger        | Turns the debug switch on and off — see below              |
 | The code field | Tap it while empty     | Pastes the code from the clipboard, if there is one there  |
 | Top right      | Tap the sync mark      | Syncs. It is only there when there is something to say     |
-| Top left       | Tap the list name      | Opens the lists under it, once there is a second one       |
+| Top left       | Tap the list name      | Opens the other lists under it, and `+ NEW LIST` last      |
 | Top left       | Two taps on the name   | Straight to the next list, without opening anything        |
 | The menu       | Tap the theme mark     | Theme: the opposite of the phone, then following it again  |
 | A message      | Tap `UNDO?`            | Puts back what the message is about                        |

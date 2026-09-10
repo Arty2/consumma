@@ -1812,6 +1812,35 @@ relative` rather than a transform, which does not apply to an inline box.
       bundle and a second answer sitting there waiting to be picked by
       somebody who does not know why the first one lost.
 
+126.  **The switcher's column is the lists you are not on.** It listed every
+      list including the open one, marked selected. But the pill a centimetre
+      above it is already the answer to "which list am I on" — so the column
+      said it a second time, and said it as a row that looked exactly like the
+      ones that go somewhere and did nothing at all when tapped. What a list of
+      places is for is the places you are not.
+
+      It follows that nothing in the column is ever selected now. That is
+      written out rather than dropped, because the `option` role requires the
+      attribute; a column where the answer is always "no" is a hint that this
+      is closer to a menu than a listbox, and if it is ever given real
+      arrow-key roving it should become one.
+
+      **And `+ NEW LIST` is the last row rather than a button.** A drawn box
+      round centred words made the one control in the column look like a
+      control — which made the rows above it look like something else, when
+      every one of them is the same kind of thing: somewhere to go. So it is a
+      row, left where their names are and ruled off underneath like theirs. The
+      `+` sits where the others have their first letter and is all the
+      difference the row needs; it is `aria-hidden`, so what is read aloud
+      stays the plain words.
+
+      **The column's width is stated, not fitted.** Left to its contents, the
+      column a tap opens and the column a carried group opens came out
+      different widths — and even holding the same rows, a code appearing or a
+      name arriving would move the edge. A drop target that changes width under
+      the finger steering at it is a worse thing than a long name losing its
+      tail, and the pill above it already cuts one with the same ellipsis.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

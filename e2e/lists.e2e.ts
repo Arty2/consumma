@@ -76,15 +76,19 @@ test('New list makes a second, blank list and the switcher appears', async ({ pa
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 });
 
-test('the dropdown lists every remembered list, the open one marked', async ({ page }) => {
+test('the dropdown lists every list but the one already open', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await newList(page);
 
 	await switcherPill(page).click();
-	const rows = dropdown(page).getByRole('option');
 
-	await expect(rows).toHaveCount(2);
-	await expect(dropdown(page).getByRole('option', { selected: true })).toHaveCount(1);
+	/*
+	 * Two lists, one row: the pill directly above says which list this is, so a
+	 * column that repeated it answered "which one am I on" twice a centimetre
+	 * apart, one of those a row that did nothing when tapped.
+	 */
+	await expect(dropdown(page).getByRole('option')).toHaveCount(1);
+	await expect(dropdown(page).getByRole('option', { selected: true })).toHaveCount(0);
 	await expect(dropdown(page).getByRole('button', { name: /new list/i })).toBeVisible();
 });
 
@@ -97,14 +101,14 @@ test('switching keeps each list to its own tasks', async ({ page }) => {
 
 	// The row that is not the one currently open is the first list.
 	await switcherPill(page).click();
-	await dropdown(page).getByRole('option', { selected: false }).click();
+	await dropdown(page).getByRole('option').first().click();
 
 	await expect(task(page, 'Bread')).toBeVisible();
 	await expect(task(page, 'Milk')).toHaveCount(0);
 
 	// And back again.
 	await switcherPill(page).click();
-	await dropdown(page).getByRole('option', { selected: false }).click();
+	await dropdown(page).getByRole('option').first().click();
 
 	await expect(task(page, 'Milk')).toBeVisible();
 	await expect(task(page, 'Bread')).toHaveCount(0);
@@ -120,7 +124,7 @@ test('switching keeps each list its own collapsed groups', async ({ page }) => {
 	await expect(page.getByRole('button', { name: 'Collapse group' })).toBeVisible();
 
 	await switcherPill(page).click();
-	await dropdown(page).getByRole('option', { selected: false }).click();
+	await dropdown(page).getByRole('option').first().click();
 
 	// Back on the first list, still collapsed.
 	await expect(page.getByRole('button', { name: 'Expand group' })).toBeVisible();
@@ -238,7 +242,7 @@ test('a dropdown row switches with the keyboard, not just a tap', async ({ page 
 	await addTask(page, 'Milk');
 
 	await switcherPill(page).click();
-	await dropdown(page).getByRole('option', { selected: false }).focus();
+	await dropdown(page).getByRole('option').first().focus();
 	await page.keyboard.press('Enter');
 
 	await expect(task(page, 'Bread')).toBeVisible();
@@ -259,7 +263,8 @@ test('a third list can be made from the menu without the sheet’s own pill caus
 	await addTask(page, 'Eggs');
 
 	await switcherPill(page).click();
-	await expect(dropdown(page).getByRole('option')).toHaveCount(3);
+	// Three lists, and the two this is not.
+	await expect(dropdown(page).getByRole('option')).toHaveCount(2);
 });
 
 test('double-tapping the pill cycles to the next list, without opening the dropdown', async ({
@@ -369,7 +374,7 @@ test('a list nobody wrote on is forgotten as soon as it is left', async ({ page 
 
 	// Back to the written one without putting anything on the blank one.
 	await switcherPill(page).click();
-	await dropdown(page).getByRole('option', { selected: false }).click();
+	await dropdown(page).getByRole('option').first().click();
 
 	await expect(task(page, 'Bread')).toBeVisible();
 

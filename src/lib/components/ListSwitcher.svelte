@@ -1,6 +1,5 @@
 <script lang="ts">
 	import HandOval from './HandOval.svelte';
-	import HandRect from './HandRect.svelte';
 	import TextRule from './TextRule.svelte';
 	import { langOf } from '$lib/doc/lang';
 	import { handChevron, handLine } from '$lib/draw/hand';
@@ -220,15 +219,11 @@
 		{@render divider(drag.isListLanding(entry.id))}
 	{/each}
 
-	<div class="row new caps boxed" data-newlist>
-		<HandRect
-			seed="listrownew-carry"
-			wobble={1.4}
-			radius={3}
-			dashed={drag.isListLanding(NEW_LIST)}
-		/>
-		{t.lists.new}
+	<div class="row new caps" data-newlist>
+		<span class="plus" aria-hidden="true">+</span>
+		<span class="name">{t.lists.new}</span>
 	</div>
+	{@render divider(drag.isListLanding(NEW_LIST))}
 {/snippet}
 
 {#snippet rows()}
@@ -241,17 +236,29 @@
 		Under rather than over, which is the same set of lines counted from the
 		other end — but it is the line under a name that belongs to that name, and
 		that is the one a carried group dashes to say where it would land.
+
+		Every list but the one this already is — `elsewhere`, the same rows the
+		carried column offers. The pill a centimetre above says which list this
+		is, and a column that repeated it put the answer to "which one am I on"
+		in two places at once, one of them a row that did nothing when tapped.
+		What the column is for is the lists it is not.
 	-->
 	{@render divider()}
 
-	{#each sorted as entry (entry.id)}
+	{#each elsewhere as entry (entry.id)}
 		{@const rowName = nameOf(entry)}
 		{@const rowCode = codeOf(entry)}
+		<!--
+			Never selected, and stated rather than left off: the role requires the
+			attribute, and the honest answer is now always no. The list this
+			already is has left the column, so none of what is left is the one
+			being read — which is exactly what the pill above it is for.
+		-->
 		<div
 			class="row caps"
 			role="option"
 			tabindex="0"
-			aria-selected={entry.id === lists.current}
+			aria-selected="false"
 			onclick={() => pick(entry.id)}
 			onkeydown={(event) => onrowkeydown(event, entry.id)}
 		>
@@ -269,10 +276,11 @@
 		{@render divider()}
 	{/each}
 
-	<button type="button" class="row new caps boxed" onclick={onnew}>
-		<HandRect seed={`listrownew-${context}`} wobble={1.4} radius={3} />
-		{t.lists.new}
+	<button type="button" class="row new caps" onclick={onnew}>
+		<span class="plus" aria-hidden="true">+</span>
+		<span class="name">{t.lists.new}</span>
 	</button>
+	{@render divider()}
 {/snippet}
 
 {#if shown}
@@ -678,18 +686,40 @@
 	}
 
 	/*
-	 * Ink, not faint. It is the one thing here that makes something rather
-	 * than choosing between things already made, and a drawn box around dimmed
-	 * words read as a button that was not available yet.
+	 * One more row, and not a button bolted on the end of them.
 	 *
-	 * Set apart from the rows above by more room than they keep between
-	 * themselves, so it reads as the end of the list rather than one more
-	 * entry in it.
+	 * It was centred words inside a drawn rectangle, which made the one thing
+	 * in this column that is a control *look* like one — and so made every row
+	 * above it look like something else, when they are all the same kind of
+	 * thing: somewhere to go. So it is a row: left where their names are, ruled
+	 * off underneath like theirs, no box and no extra room above.
+	 *
+	 * What says the place is not there yet is the `+`, standing where the other
+	 * rows have their first letter. That is the whole of the difference, and it
+	 * is enough — a mark in the position a name would be is read before it is
+	 * looked at.
 	 */
 	.row.new {
-		justify-content: center;
-		min-height: 2rem;
-		margin-top: 0.6rem;
+		justify-content: flex-start;
+		/*
+		 * Tighter than the gap the other rows keep between a name and its code,
+		 * because this is not that: those are two things at either end of a row,
+		 * where the `+` and the words are one label with a space in it. At the
+		 * rows' own gap the mark stood off in a column of its own and read as a
+		 * fourth thing the column was ruling off.
+		 */
+		gap: 0.3rem;
+	}
+
+	/*
+	 * Lifted like the rows' own spans, for the same reason they are: Graphe's
+	 * caps ride high in their line box, so anything set beside them on the
+	 * middle of a flex row comes out above it.
+	 */
+	.row.new .plus,
+	.row.new .name {
+		flex: none;
+		translate: 0 var(--cap-lift);
 	}
 
 	.divider {
@@ -733,12 +763,27 @@
 	 * belongs to neither, which is a hole for a finger going down into the
 	 * lists to fall through.
 	 */
+	/*
+	 * **One width, whichever way it was opened.** It was a `min-width` with the
+	 * box left to fit its contents, so the column a tap opens and the column a
+	 * carried group opens came out different widths — they hold the same rows
+	 * now, but a name arriving or a code appearing would still move the edge,
+	 * and a drop target that changes width under the finger steering at it is
+	 * the wrong kind of surprise. A stated width, capped by the paper, and a
+	 * name too long for it is cut with the same ellipsis the pill above uses.
+	 * Losing the tail of one long name costs less than a column that moves.
+	 *
+	 * At least as wide as the pill, so everything under the pill is over the
+	 * column: narrower, and the room under the right-hand end of the name
+	 * belongs to neither, which is a hole for a finger going down into the
+	 * lists to fall through.
+	 */
 	.dropdown.sheet {
 		position: absolute;
 		top: 100%;
 		left: 0;
 		z-index: 2;
-		min-width: max(100%, 11rem);
+		width: max(100%, 11rem);
 		max-width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x));
 		padding-bottom: 0.4rem;
 	}
