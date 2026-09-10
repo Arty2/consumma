@@ -10,6 +10,7 @@
 	import { LIMITS } from '$lib/doc/limits';
 	import { handLine } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { taken } from '$lib/feel';
 	import { drag, NEW_GROUP, NEW_LIST, type DropTarget, type GroupDrop } from '$lib/dnd/drag.svelte';
 	import { emptyDoc, type State, type Task } from '$lib/doc/types';
 	import { t } from '$lib/i18n';
@@ -368,6 +369,14 @@
 		 * group already in hand, thrown at the one place that means gone.
 		 */
 		if (drop.kind === 'fold') {
+			/*
+			 * The same two beats a group struck out in the gutter answers with —
+			 * dot dot, something is gone. Called here rather than left to
+			 * `removeGroup`, because the header's own mark already says it at its
+			 * own site and the corner is not a button: nothing else on the way in
+			 * would say anything at all.
+			 */
+			taken();
 			removeGroup(id, title, false);
 			return;
 		}
@@ -442,11 +451,21 @@
 		lists.writeDoc(target, carried.to);
 		sheet.replace(carried.from);
 
+		/*
+		 * And that list now has something on it nobody has looked at. The mark
+		 * beside its name is the only thing left saying so once the message has
+		 * gone — the group itself is off this sheet and onto one that is not on
+		 * the screen.
+		 */
+		lists.arrived(target);
+
 		ui.announce(made ? t.sheet.movedToNewList : t.sheet.movedToList({ list: name }));
 
 		ui.say(
 			made ? t.toast.movedToNewList : t.toast.movedToList({ what: t.lists.named({ name }) }),
 			undoing(() => {
+				lists.takenBack(target);
+
 				if (made) {
 					lists.forget(target);
 				} else {

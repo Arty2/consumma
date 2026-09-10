@@ -537,6 +537,61 @@ test('a group let go on the fold is removed, tasks and all, with an undo', async
 	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
 });
 
+test('the corner answers a group arriving, and answers again when it takes it', async ({
+	page
+}) => {
+	/*
+	 * Every other offer on the sheet changes weight under the finger. The corner
+	 * cannot — what says a group is over the bin is the mark boiling, which is a
+	 * change of drawing rather than of weight — so the phone says it too.
+	 *
+	 * `navigator.vibrate` is absent on desktop and refused outright by iOS
+	 * Safari, so none of this can be seen by looking at the app.
+	 */
+	await page.addInitScript(() => {
+		(window as unknown as { buzzes: (number | number[])[] }).buzzes = [];
+		Object.defineProperty(navigator, 'vibrate', {
+			value: (pattern: number | number[]) => {
+				(window as unknown as { buzzes: (number | number[])[] }).buzzes.push(pattern);
+				return true;
+			},
+			configurable: true
+		});
+	});
+	await page.reload();
+
+	const buzzes = () =>
+		page.evaluate(() => (window as unknown as { buzzes: (number | number[])[] }).buzzes);
+	const clear = () =>
+		page.evaluate(() => ((window as unknown as { buzzes: (number | number[])[] }).buzzes = []));
+
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+
+	await liftGroup(page, 'Market');
+
+	// One tap as it arrives, and one only: a finger held over the corner would
+	// otherwise buzz on every move the browser reported, which is a rhythm.
+	await clear();
+	await carryTo(page, '[data-fold]', ON_THE_FOLD);
+	expect(await buzzes()).toStrictEqual([10]);
+
+	await carryTo(page, '[data-fold]', { dx: ON_THE_FOLD.dx + 4, dy: ON_THE_FOLD.dy + 4 });
+	expect(await buzzes()).toStrictEqual([10]);
+
+	// Off it and back on says it again — it is the arrival that is being told,
+	// not the state.
+	await carryTo(page, '[data-newgroup]');
+	await carryTo(page, '[data-fold]', ON_THE_FOLD);
+	expect(await buzzes()).toStrictEqual([10, 10]);
+
+	// And letting go is the same two beats a group struck out in the gutter
+	// answers with: dot dot, something is gone.
+	await clear();
+	await page.mouse.up();
+	expect(await buzzes()).toStrictEqual([[10, 60, 10]]);
+});
+
 test('a group carried onto NEW LIST makes one, and goes to it', async ({ page }) => {
 	await addTask(page, 'Bread');
 	await addGroup(page, 'Market', 1);
@@ -584,6 +639,64 @@ test('undoing a move to a new list unmakes the list it invented', async ({ page 
 	await expect(switcherPill(page)).toHaveCount(0);
 	const keys = await page.evaluate(() => Object.keys(localStorage));
 	expect(keys.filter((key) => key.startsWith('consumma:lists'))).toStrictEqual([]);
+});
+
+test('a list something was carried onto wears an asterisk for the session', async ({ page }) => {
+	/*
+	 * A group sent to another list is the one change here that cannot then be
+	 * looked at — it is off this sheet and onto one that is not on the screen.
+	 * The message says where it went and then goes; the mark beside the name is
+	 * what is left saying which of the names now has something new under it.
+	 */
+	await addTask(page, 'Bread');
+	await addGroup(page, 'Market', 1);
+
+	await liftGroup(page, 'Market');
+	await carryTo(page, 'button[aria-haspopup="listbox"]');
+	await dropOn(page, '[data-newlist]');
+
+	await switcherPill(page).click();
+	const row = dropdown(page).getByRole('option').first();
+	await expect(row).toContainText('*');
+	// Read aloud it is the fact rather than the punctuation.
+	await expect(row).toHaveAccessibleName(/Something new arrived/);
+
+	// And it stays there once you go and look, since it is bounded by the
+	// session rather than by having been seen.
+	await row.click();
+	expect(await titles(page)).toStrictEqual(['Market']);
+	await expect(switcherPill(page)).toContainText('*');
+
+	// Written nowhere: a mark saying "new" that survived a week of closing the
+	// browser would be saying something else.
+	await page.reload();
+	await expect(switcherPill(page)).not.toContainText('*');
+});
+
+test('undoing the move takes the asterisk back off', async ({ page }) => {
+	await addTask(page, 'Bread');
+	await newList(page);
+	await addTask(page, 'Milk');
+
+	await switcherPill(page).click();
+	await dropdown(page)
+		.getByRole('option', { name: /My list/i })
+		.click();
+	await addGroup(page, 'Market', 1);
+
+	await liftGroup(page, 'Market');
+	await carryTo(page, 'button[aria-haspopup="listbox"]');
+	await dropOn(page, '[data-list]');
+
+	await switcherPill(page).click();
+	await expect(dropdown(page).getByRole('option').first()).toContainText('*');
+	await page.keyboard.press('Escape');
+
+	await undo(page);
+
+	// Nothing is on that list that was not on it before, so nothing there is new.
+	await switcherPill(page).click();
+	await expect(dropdown(page).getByRole('option').first()).not.toContainText('*');
 });
 
 test('a group carried onto another list moves there, and the undo leaves both', async ({

@@ -233,6 +233,13 @@ export const en = {
 		/** A list that has never left this device has no code to show. */
 		localOnly: 'Local only, never synced',
 		/*
+		 * What the asterisk beside a list's name says. A group carried onto
+		 * another list is the one change here that cannot then be looked at, so
+		 * the mark stands until the tab is closed — and read aloud it has to be
+		 * the fact rather than the punctuation.
+		 */
+		arrived: 'Something new arrived',
+		/*
 		 * A list's name, quoted, wherever the app says it back — the same rule
 		 * a group's name follows, and for the same reason: a list is named
 		 * after its first group, so it is a title somebody typed and the

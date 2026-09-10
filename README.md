@@ -186,8 +186,10 @@ While a group is in hand the corner answers for it. The burger goes — it has
 nothing to say to a group being carried — and the paper's top-right corner
 turns down in its place, torn edge and all, showing a bin in the room it
 clears. The bin comes alive under a group held over it, the way the sync mark
-does while it works. Let the group go there and it is removed, tasks and all,
-done or not, with the usual ten-second `UNDO?`.
+does while it works, and the phone taps once as the group reaches it, since
+the corner is the one offer here that cannot answer by changing weight. Let
+the group go there and it is removed, tasks and all, done or not — two beats
+from the phone, and the usual ten-second `UNDO?`.
 
 The list name stays, with a loop drawn round it: that is somewhere the group
 can be put down too. Carry it there and the lists open under the name — one
@@ -201,10 +203,17 @@ it stays on this device until it is synced. The switcher is there for this
 even when there is only one list, since that is the device with most to gain
 from a second; it is not offered while a sync is in flight.
 
-Undo puts things back the way they were. A group moved to a list that already
-existed comes back here and leaves that list exactly as it found it; a group
-moved to a list the drop invented brings the list back down with it, and a
-device that had one list before has one list again.
+A list a group has been carried onto wears an asterisk before its name, in the
+switcher and on the pill, for as long as the tab stays open. It is the one
+change here that cannot be looked at afterwards — the group is on a list that
+is not on the screen — and the message saying where it went is gone in ten
+seconds. It stays after you have been to look, and it is written nowhere, so a
+reload clears it.
+
+Undo puts things back the way they were, asterisk included. A group moved to a
+list that already existed comes back here and leaves that list exactly as it
+found it; a group moved to a list the drop invented brings the list back down
+with it, and a device that had one list before has one list again.
 
 ### The sheet, and the back of it
 

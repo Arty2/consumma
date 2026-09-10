@@ -65,6 +65,13 @@
 
 	const shown = $derived(context === 'menu' ? true : lists.visible || carrying);
 
+	/**
+	 * The mark itself. A character rather than a drawing, the way the `+` on the
+	 * last row and the `¢` in the code column are: it stands in a line of
+	 * writing, at the size of the writing, and Graphe draws its own.
+	 */
+	const FRESH = '*';
+
 	const CHEVRON = 12;
 	const chevron = $derived(
 		handChevron(CHEVRON, !open, { seed: seedFrom(`listswitch-${context}`), wobble: 0.8 })
@@ -78,7 +85,15 @@
 	 * pill reads: the two are set in separate spans with a gap between them
 	 * (see the markup), and a plain space is what stands in for that gap here.
 	 */
-	const label = $derived(activeCode ? `${activeName} ${activeCode}` : activeName);
+	/**
+	 * Whether something has been carried onto this list since the page opened,
+	 * and so whether its name wears the asterisk — see `arrivals` in
+	 * state/lists.svelte.ts for why it is only ever this reading of the app.
+	 */
+	const activeFresh = $derived(lists.current !== null && lists.isNew(lists.current));
+	const label = $derived(
+		[activeFresh ? FRESH : null, activeName, activeCode].filter((part) => part).join(' ')
+	);
 
 	const sorted = $derived([...lists.entries].sort((a, b) => b.lastUsedAt - a.lastUsedAt));
 
@@ -100,6 +115,11 @@
 
 	function nameOf(entry: ListEntry): string {
 		return entry.id === lists.current ? activeName : lists.nameOf(entry);
+	}
+
+	/** The same question for a row in the column. */
+	function isFresh(entry: ListEntry): boolean {
+		return lists.isNew(entry.id);
 	}
 
 	function codeOf(entry: ListEntry): string | null {
@@ -213,7 +233,9 @@
 		{@const rowName = nameOf(entry)}
 		{@const rowCode = codeOf(entry)}
 		<div class="row caps" data-list={entry.id}>
-			<span class="name" lang={langOf(rowName)}>{rowName}</span>
+			<span class="name" lang={langOf(rowName)}
+				>{#if isFresh(entry)}<span aria-hidden="true">{FRESH}&nbsp;</span>{/if}{rowName}</span
+			>
 			<span class="code">{rowCode ?? '¢'}</span>
 		</div>
 		{@render divider(drag.isListLanding(entry.id))}
@@ -262,7 +284,29 @@
 			onclick={() => pick(entry.id)}
 			onkeydown={(event) => onrowkeydown(event, entry.id)}
 		>
-			<span class="name" lang={langOf(rowName)}>{rowName}</span>
+			<!--
+				Something has been carried onto this list since the page opened, and
+				once the message has gone this is the whole of what says so.
+
+				Inside the name rather than beside it: it is a mark and a word with
+				a space between them, the way the `+` and the words on the last row
+				are, and out here it would be a flex item taking the gap this row
+				keeps between two things at its opposite ends — which is what stood
+				the `+` off in a column of its own before it was tightened. In here
+				it also cannot be reached by the ellipsis, which eats the end.
+
+				It pushes the name along rather than being given room of its own on
+				every row, which is the rule a task's count follows: a row without
+				one starts where its words start.
+
+				Named in words and the character hidden, which is what the code
+				column does with its own mark two lines down — an asterisk read
+				aloud is a piece of punctuation rather than a fact.
+			-->
+			<span class="name" lang={langOf(rowName)}
+				>{#if isFresh(entry)}<span aria-label={t.lists.arrived}>{FRESH}&nbsp;</span
+					>{/if}{rowName}</span
+			>
 			<!--
 				A code once it has one; until then a mark saying it hasn't, rather
 				than leaving the slot blank — a row with nothing there read as
@@ -321,7 +365,10 @@
 				onclick={ontap}
 				ondblclick={onsecondtap}
 			>
-				<span class="label" lang={langOf(activeName)}>{activeName}</span>
+				<span class="label" lang={langOf(activeName)}
+					>{#if activeFresh}<span aria-label={t.lists.arrived}>{FRESH}&nbsp;</span
+						>{/if}{activeName}</span
+				>
 				{#if activeCode}<span class="tail">{activeCode}</span>{/if}
 				<svg
 					class="chevron"

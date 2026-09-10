@@ -757,7 +757,23 @@ export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) 
 			drag.groupTarget = landing(x, y);
 		},
 		move(x, y) {
+			/*
+			 * One tap as the group reaches the corner, and one only.
+			 *
+			 * Every other offer on the sheet answers a finger arriving by
+			 * changing weight under it — a rule going dashed, a line going
+			 * heavier — and the corner cannot: what says a group is over the bin
+			 * is the mark boiling, which is a change of drawing rather than of
+			 * weight and is the slowest thing on the sheet to read. So the phone
+			 * says it as well, at the moment of arrival.
+			 *
+			 * On the edge and not on the state, or a finger held over the corner
+			 * would buzz on every move the browser reported for as long as it
+			 * stayed there, which is a rhythm, and a rhythm is a notification.
+			 */
+			const was = drag.overFold;
 			drag.groupTarget = landing(x, y);
+			if (drag.overFold && !was) buzz();
 		},
 		drop() {
 			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);

@@ -1974,6 +1974,75 @@ relative` rather than a transform, which does not apply to an inline box.
       whatever state it is in and still counts tasks rather than done ones, and
       both still leave the ten-second `UNDO?`.
 
+129.  **The corner buzzes when a group reaches it, and again when it takes
+      one.** Every other offer on the sheet answers a finger arriving by
+      changing weight under it — a rule going dashed, a line drawn heavier —
+      and the corner is the one that cannot: what says a group is over the bin
+      is the mark boiling, which is a change of drawing rather than of weight
+      and is the slowest thing on the sheet to read. It is also the one target
+      a finger reaches by leaving the writing entirely, so the eye is furthest
+      from where the answer is. The phone says it instead: one tap on arrival,
+      and `taken()` — dot dot, something is gone — on the drop.
+
+      Neither is a new pattern. They are the first and second of the three
+      lengths in `feel.ts`, and the two beats are exactly what a group struck
+      out in the gutter already answers with, so the two ways of getting rid of
+      a group now feel the same as well as reading the same.
+
+      **On the edge, never on the state.** A finger held over the corner would
+      otherwise buzz on every pointer move the browser reported, and a run of
+      taps with a rhythm to it is a notification — which this app does not
+      send. So `dragGroup`'s `move` reads `overFold` before and after and fires
+      only where it turns true; carrying the group off and back says it again,
+      because it is the arrival being told rather than the state.
+
+      The drop's answer is called at the drop site rather than inside
+      `removeGroup`, which the header's mark reaches through too: that mark
+      says its own two beats at its own site, on the rule that every control
+      answers explicitly rather than through one listener told where to stand
+      aside. The corner is not a control — it is a place — so without a call of
+      its own nothing on that path would have said anything at all.
+
+130.  **A list a group was carried onto wears an asterisk until the tab is
+      closed.** Sending a group to another list is the one change a person
+      makes here that they cannot then look at: it is off this sheet and onto
+      one that is not on the screen. The message says where it went and is gone
+      in ten seconds, and after that nothing said which of four names now had
+      something new under it — the switcher looked exactly as it had before the
+      group moved.
+
+      **Session state, written nowhere.** It is a fact about this reading of
+      the app rather than about the list, so it belongs to the tab and dies
+      with it — a mark saying "new" that survived a week of closing the browser
+      would be saying something else. It is not the other devices' business
+      either, which is the rule the collapsed groups and the theme already
+      follow. An array of arrivals rather than a set of ids, because two groups
+      can be sent to one list and taking one of them back does not mean nothing
+      arrived; the undo removes one entry, and a list unmade by the undo of a
+      drop that invented it loses its entries with the rest of itself.
+
+      **It stays after you have been to look.** The alternative — clearing it
+      on arrival at that list — was tempting and is a different promise: it
+      would make the mark mean "unseen" rather than "something came here this
+      session", and then a glance at the wrong list would spend it. The session
+      is the boundary that was asked for and it is the one a person can state.
+
+      **A character, and inside the name.** Graphe draws its own asterisk —
+      measured, not assumed, the way `[` was found missing — so it needs no
+      drawing, exactly as the `+` on the last row and the `¢` in the code
+      column need none. It sits inside the name's own span rather than beside
+      it: as a flex item of its own it takes the row's gap, which is the gap
+      between two things at opposite ends of a row and is precisely what stood
+      the `+` off in a column of its own before that row was tightened. Inside,
+      it is a mark and a word with a space between them, it cannot be reached
+      by the ellipsis, and one arrangement serves the pill and both columns.
+
+      It pushes the name along rather than being given a column of its own on
+      every row — the rule a task's count follows, and for the same reason:
+      reserving the space would indent every list to line up a mark most of
+      them do not have. Read aloud it is the fact and not the punctuation,
+      which is what the code column does with its own mark two lines down.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT
