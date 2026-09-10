@@ -47,7 +47,7 @@ test('the only backgrounds in the app are drawn underlines, on links and titles'
 }) => {
 	await page.getByRole('button', { name: 'Add a task' }).first().click();
 	const field = page.getByRole('textbox', { name: 'New task' });
-	await field.fill('Recipe https://heracl.es/projects/2024/consumma tonight');
+	await field.fill('Recipe https://heracl.es/projects/2024/listula tonight');
 	await field.press('Enter');
 	await page.keyboard.press('Escape');
 
@@ -80,7 +80,7 @@ test('the link underline is ink, and turns over with the theme', async ({ page }
 	await page.emulateMedia({ colorScheme: 'light' });
 	await page.getByRole('button', { name: 'Add a task' }).first().click();
 	const field = page.getByRole('textbox', { name: 'New task' });
-	await field.fill('Recipe https://heracl.es/consumma tonight');
+	await field.fill('Recipe https://heracl.es/listula tonight');
 	await field.press('Enter');
 	await page.keyboard.press('Escape');
 
@@ -337,7 +337,7 @@ test('Greek loses its tonos in caps, and keeps it everywhere else', async ({ pag
 });
 
 test('the underline under a title is as wide as the title, not the row', async ({ page }) => {
-	const title = page.getByRole('button', { name: 'My list' });
+	const title = page.getByRole('button', { name: 'Listula' });
 
 	const image = await title.evaluate((el) => getComputedStyle(el).backgroundImage);
 	expect(image).toContain('data:image/svg+xml');
@@ -430,7 +430,7 @@ test('one ellipsis, set one way, wherever it stands for something not there yet'
 	 * created empty, so this is the only route to it — and it is the same
 	 * absence as the other two, not a different kind.
 	 */
-	const title = page.getByRole('button', { name: 'My list' });
+	const title = page.getByRole('button', { name: 'Listula' });
 	await title.dblclick();
 	const field = page.getByRole('textbox', { name: 'Group title' });
 	await field.fill('');
@@ -557,7 +557,7 @@ test('the credit names the version, the project and both authors', async ({ page
 	// comment: bump one and the other has to follow.
 	const { version } = JSON.parse(readFileSync('package.json', 'utf8'));
 	await expect(credit).toContainText(`v${version}`);
-	await expect(credit).toContainText('heracl.es/consumma');
+	await expect(credit).toContainText('heracl.es/listula');
 
 	// The two authors are held together by a hard space, so a narrow screen can
 	// never break the line between them and leave one of them hanging alone.

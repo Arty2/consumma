@@ -93,7 +93,7 @@ test('it is installable: a manifest, a theme colour, and drawn icons', async ({ 
 
 	const parsed = await manifest.json();
 	// No slash: that belongs to the address, not to the app on a home screen.
-	expect(parsed.name).toBe('consumma');
+	expect(parsed.name).toBe('listula');
 	expect(parsed.display).toBe('standalone');
 	/*
 	 * Black, and both of them.

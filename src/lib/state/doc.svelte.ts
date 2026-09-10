@@ -92,7 +92,7 @@ export class Sheet {
 		 * empty state.
 		 *
 		 * Stored in sentence case and displayed in caps, like every other title:
-		 * the uppercase is CSS only, so the markdown export reads "## My list"
+		 * the uppercase is CSS only, so the markdown export reads "## Listula"
 		 * rather than shouting.
 		 *
 		 * Quietly: it is the shape of an empty sheet, not something anyone put

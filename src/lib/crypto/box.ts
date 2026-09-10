@@ -12,7 +12,7 @@ import { LIMITS } from '$lib/doc/limits';
  * tell a compressed payload from an uncompressed one — so the choice has to be
  * recorded somewhere. One byte buys a future change of compression or cipher
  * parameters without orphaning every existing list, which is the same
- * insurance `consumma:v1` buys on the salt.
+ * insurance the frozen `consumma:v1` buys on the salt.
  */
 
 export const ENVELOPE_VERSION = 1;

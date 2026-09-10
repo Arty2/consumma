@@ -53,7 +53,8 @@ Numbers in brackets are the section of the build plan a decision came from.
     our own origin, but there is no rate limiter behind it, so guessing is
     bounded only by request rate and PBKDF2 cost — at 32 bits that is days of
     work for someone determined. Twelve characters make it roughly 65,000 times
-    more. The salt stays frozen at `consumma:v1`. [reopened §12.20]
+    more. The salt stays frozen at `consumma:v1` — through the rename too;
+    see §131. [reopened §12.20]
 
 18. **Sync is entirely manual.** No poll interval, no visibility or reconnect
     triggers, no push debounce, no queue that flushes. One `syncNow()` on the
@@ -199,9 +200,11 @@ Numbers in brackets are the section of the build plan a decision came from.
     width, so the placeholder still reads as the same thing one step earlier —
     a short stub under three dots that grows as a title is typed.
 
-29. **The app is named `/consumma`**, in the manifest, the tab title and the
+29. **The app is named `/listula`**, in the manifest, the tab title and the
     iOS home-screen name. Nowhere on the sheet: §12.14's no-chrome rule is
-    unchanged, and the name is still absent from the page itself.
+    unchanged, and the name is still absent from the page itself. It was
+    `/consumma` until §131 renamed it; where the old name survives in the code
+    it is an address rather than a name, and §131 says which.
 
     The credit in the footer is the one exception to "the only words on the
     sheet are the ones someone wrote", and it sits below the torn edge rather
@@ -2042,6 +2045,33 @@ relative` rather than a transform, which does not apply to an inline box.
       reserving the space would indent every list to line up a mark most of
       them do not have. Read aloud it is the fact and not the punctuation,
       which is what the code column does with its own mark two lines down.
+
+131.  **The app is called listula, and two strings kept the old name on
+      purpose.** _Listula_ is the diminutive of _lista_, the medieval Latin for
+      a list: a little list, which is what this is. It was consumma, from
+      _consummare_, to complete — a name about ticking the last thing off
+      rather than about the thing being ticked, and the reading that fits the
+      app is the list rather than the finishing of it. The name moved
+      everywhere it is read: the manifest, the tab title, the iOS home-screen
+      name, the project page and the source. The opening group moved with it
+      and is now called Listula rather than "My list" — it is a name for a
+      little list, so it is already the word for what that group is, and it is
+      a default the person is free to type over.
+
+      What did **not** move is the PBKDF2 salt, `consumma:v1`, and the
+      `consumma:` prefix on every localStorage key. Both are addresses and not
+      names. The salt was frozen the day the first list was created and §17
+      says so: the code is the only shared secret, so the same code under a
+      different salt derives a different roomId and every list already out
+      there becomes unreachable — a rename would take away the lists of the
+      people the rename was for. The storage prefix is the same fact on the
+      device rather than on the server: renaming it does not move a list, it
+      hides one, and the app opens on a blank sheet with the writing still on
+      the disk under keys nothing reads. Either can change the day someone
+      writes the migration that carries the data across — a v2 salt tried
+      before v1, a read of the old keys and a write of the new — and not
+      before. Both are commented where they are declared, so the next reader
+      finds the reason before the inconsistency.
 
 ## Known limits
 

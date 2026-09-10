@@ -99,7 +99,7 @@
 </script>
 
 <svelte:head>
-	<title>/consumma</title>
+	<title>/listula</title>
 	<!--
 		Served from static/ rather than imported, so it stays a URL. Vite inlines
 		small assets as data: URIs, which `img-src 'self'` refuses.

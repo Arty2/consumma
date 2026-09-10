@@ -90,7 +90,8 @@ describe('derivation', () => {
 	});
 
 	it('has the salt frozen', () => {
-		// Changing this silently orphans every list that already exists.
+		// Changing this silently orphans every list that already exists — the
+		// consumma → listula rename included, which is why it still reads so.
 		expect(SALT).toBe('consumma:v1');
 	});
 });
@@ -215,16 +216,16 @@ describe('codeFrom', () => {
 	const CODE = 'a1b2c3d4e5f6';
 
 	it('takes the code out of a pasted invitation', () => {
-		expect(codeFrom(`https://consumma.example\n${'a1b2 c3d4 e5f6'}`)).toBe(CODE);
+		expect(codeFrom(`https://listula.example\n${'a1b2 c3d4 e5f6'}`)).toBe(CODE);
 	});
 
 	it('is not fooled by a domain made of hex letters', () => {
 		/*
-		 * The trap this exists for. Strip the non-hex out of "consumma.cafe" and
-		 * it reads as cafe — a URL becomes a code that is wrong and looks right,
+		 * The trap this exists for. Strip the non-hex out of "listula.cafe" and
+		 * it reads as acafe — a URL becomes a code that is wrong and looks right,
 		 * and the person is sent to a list that does not exist.
 		 */
-		expect(codeFrom('https://consumma.cafe')).toBeNull();
+		expect(codeFrom('https://listula.cafe')).toBeNull();
 		expect(codeFrom('deadbeefcafe.example.com')).toBeNull();
 		expect(codeFrom('https://abcdef123456.example')).toBeNull();
 	});
@@ -251,7 +252,7 @@ describe('codeFrom', () => {
 
 	it('has nothing to give when there is no code', () => {
 		expect(codeFrom('')).toBeNull();
-		expect(codeFrom('https://consumma.example')).toBeNull();
+		expect(codeFrom('https://listula.example')).toBeNull();
 		expect(codeFrom('a1b2c3')).toBeNull();
 		// Too long is not a code either, even though it starts like one.
 		expect(codeFrom('a1b2c3d4e5f6a7')).toBeNull();

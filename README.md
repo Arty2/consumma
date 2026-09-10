@@ -1,4 +1,4 @@
-# /consumma
+# /listula
 
 A local-first, multiplayer grocery and task list, as a web app.
 
@@ -12,9 +12,9 @@ built with the kind of attention to detail and small delights of something
 drawn by hand rather than assembled from a component library. The sheet is a
 sheet, and the only words on it are the ones someone wrote.
 
-- Project page: [heracl.es/consumma](https://heracl.es/consumma)
-- Demo: [consumma.vercel.app](https://consumma.vercel.app)
-- Source: [github.com/arty2/consumma](https://github.com/arty2/consumma)
+- Project page: [heracl.es/listula](https://heracl.es/listula)
+- Demo: [listula.vercel.app](https://listula.vercel.app)
+- Source: [github.com/arty2/listula](https://github.com/arty2/listula)
 
 It's deployed and working today. The deployment runbook and the rest of the
 technical detail — including how the privacy actually works — live in
@@ -22,8 +22,8 @@ technical detail — including how the privacy actually works — live in
 
 ## The name
 
-"Consumma" comes from the Latin _consummare_, to complete — as in
-_consummatum est_, "it is finished."
+"Listula" is the diminutive of _lista_, the medieval Latin for a list — a
+little list.
 
 ## Running it
 

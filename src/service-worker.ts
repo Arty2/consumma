@@ -13,7 +13,7 @@ import { build, files, prerendered, version } from '$service-worker';
  */
 
 const worker = self as unknown as ServiceWorkerGlobalScope;
-const CACHE = `consumma-${version}`;
+const CACHE = `listula-${version}`;
 /*
  * `prerendered` is the part that is easy to forget: `build` is the hashed
  * assets and `files` is static/, but the page itself is a prerendered route.

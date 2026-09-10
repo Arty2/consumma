@@ -236,7 +236,7 @@ test('EXPORT copies the whole list and says how many', async ({ page, context })
 
 	// The first group has a name now, so the export carries its heading.
 	const clipboard = await page.evaluate(() => navigator.clipboard.readText());
-	expect(clipboard).toBe('## My list\n\n- [x] Bread\n- [ ] Coffee\n');
+	expect(clipboard).toBe('## Listula\n\n- [x] Bread\n- [ ] Coffee\n');
 });
 
 test('EXPORT then IMPORT into an empty list reproduces everything', async ({ page, context }) => {

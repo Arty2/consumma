@@ -35,7 +35,7 @@ const ON_INK: Palette = { paper: '#000000', ink: '#ffffff' };
 // Left whole rather than destructured: `ink` below is a length, not a colour.
 function mark(padding: number, palette: Palette): string {
 	const box = SIZE - padding * 2;
-	const seed = seedFrom('consumma');
+	const seed = seedFrom('listula');
 
 	/*
 	 * Set as a run of three glyphs rather than spread across the box: bracket,

@@ -24,7 +24,7 @@ function task(page: Page, text: string) {
 }
 
 /*
- * Not matched by name: a group titled "My list" carries that same accessible
+ * Not matched by name: a group titled "Listula" carries that same accessible
  * name on its own title button, and the switcher's default first-group name
  * is exactly that. `aria-haspopup` is what only the pill has.
  */
@@ -519,7 +519,7 @@ test('a group let go on the fold is removed, tasks and all, with an undo', async
 	// It counts what went, done or not — the header's own mark is only ever
 	// drawn on a group with nothing left to do, and this one had something.
 	await expect(page.getByRole('status').last()).toContainText('Deleted “Market” and 1 task.');
-	expect(await titles(page)).toStrictEqual(['My list']);
+	expect(await titles(page)).toStrictEqual(['Listula']);
 
 	/*
 	 * And nothing else answered the release. The title the press began on is
@@ -530,11 +530,11 @@ test('a group let go on the fold is removed, tasks and all, with an undo', async
 	await expect(page.getByRole('dialog')).toHaveCount(0);
 
 	await undo(page);
-	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+	expect(await titles(page)).toStrictEqual(['Listula', 'Market']);
 	await expect(task(page, 'Market thing')).toBeVisible();
 
 	await page.reload();
-	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+	expect(await titles(page)).toStrictEqual(['Listula', 'Market']);
 });
 
 test('the corner answers a group arriving, and answers again when it takes it', async ({
@@ -601,7 +601,7 @@ test('a group carried onto NEW LIST makes one, and goes to it', async ({ page })
 	await dropOn(page, '[data-newlist]');
 
 	await expect(page.getByRole('status').last()).toContainText('Moved to a new list.');
-	expect(await titles(page)).toStrictEqual(['My list']);
+	expect(await titles(page)).toStrictEqual(['Listula']);
 
 	// Two lists now, so the pill has earned its place — and the new one is
 	// named after the group that made it, a list's name being its first
@@ -631,7 +631,7 @@ test('undoing a move to a new list unmakes the list it invented', async ({ page 
 	await undo(page);
 
 	// Back where it was, with what was in it.
-	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+	expect(await titles(page)).toStrictEqual(['Listula', 'Market']);
 	await expect(task(page, 'Market thing')).toBeVisible();
 
 	// And the list the drop made is gone with the drop, which puts the device
@@ -680,7 +680,7 @@ test('undoing the move takes the asterisk back off', async ({ page }) => {
 
 	await switcherPill(page).click();
 	await dropdown(page)
-		.getByRole('option', { name: /My list/i })
+		.getByRole('option', { name: /Listula/i })
 		.click();
 	await addGroup(page, 'Market', 1);
 
@@ -715,7 +715,7 @@ test('a group carried onto another list moves there, and the undo leaves both', 
 	// Back to the first, and a group on it to carry.
 	await switcherPill(page).click();
 	await dropdown(page)
-		.getByRole('option', { name: /My list/i })
+		.getByRole('option', { name: /Listula/i })
 		.click();
 	await addGroup(page, 'Market', 1);
 
@@ -724,13 +724,13 @@ test('a group carried onto another list moves there, and the undo leaves both', 
 	await dropOn(page, '[data-list]');
 
 	await expect(page.getByRole('status').last()).toContainText('Moved to “Larder”.');
-	expect(await titles(page)).toStrictEqual(['My list']);
+	expect(await titles(page)).toStrictEqual(['Listula']);
 
 	await undo(page);
 
 	// Back here, whole — and the list it went to is still there, with only
 	// what it always had on it.
-	expect(await titles(page)).toStrictEqual(['My list', 'Market']);
+	expect(await titles(page)).toStrictEqual(['Listula', 'Market']);
 	await expect(task(page, 'Market thing')).toBeVisible();
 
 	await switcherPill(page).click();

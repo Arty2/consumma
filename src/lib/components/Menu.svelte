@@ -743,7 +743,7 @@
 				<p>
 					v{__VERSION__} •
 					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href="https://heracl.es/consumma" target="_blank" rel="noopener noreferrer nofollow"
+					<a href="https://heracl.es/listula" target="_blank" rel="noopener noreferrer nofollow"
 						>{t.menu.creditHome}</a
 					>
 				</p>

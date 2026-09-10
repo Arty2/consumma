@@ -29,7 +29,7 @@ describe('placeOf', () => {
 		 * the words after a link is nowhere near the offset in the string unless
 		 * the link's own length is added back.
 		 */
-		const text = 'Read https://heracl.es/projects/2024/consumma tonight';
+		const text = 'Read https://heracl.es/projects/2024/listula tonight';
 		const parts = pieces(text);
 
 		expect(parts).toHaveLength(3);
@@ -40,7 +40,7 @@ describe('placeOf', () => {
 	});
 
 	it('puts a tap inside an address at the end of it', () => {
-		const text = 'Read https://heracl.es/projects/2024/consumma tonight';
+		const text = 'Read https://heracl.es/projects/2024/listula tonight';
 		const parts = pieces(text);
 
 		expect(text.slice(placeOf(parts[1], 4)!)).toBe(' tonight');
@@ -75,7 +75,7 @@ describe('placeOf', () => {
 
 describe('sourceEnd', () => {
 	it('is the end of the words as written, not as drawn', () => {
-		const text = 'See https://heracl.es/projects/2024/consumma';
+		const text = 'See https://heracl.es/projects/2024/listula';
 
 		expect(sourceEnd(pieces(text))).toBe(text.length);
 	});
