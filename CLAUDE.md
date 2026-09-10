@@ -26,16 +26,19 @@ The vocabulary here is its own, and does not follow semver's names:
 Nothing moves the first number but a decision to call this finished, and that
 is not a thing to infer from a batch of changes.
 
-## The README
+## The gesture reference
 
-`README.md`'s **Using it** section is the only place the app says what it
+`TECHNICAL.md`'s **Gestures** section is the only place the app says what it
 answers to. Nothing on the sheet is labelled, there is no help screen, no
 tooltip and no empty-state copy — that is settled (§12.14) and is not going to
 change — so a gesture that is not written down there is a gesture nobody
-outside this repository can find.
+outside this repository can find. `README.md` keeps only a plain paragraph of
+what the app is and how a list is shared, and links to that section; the
+gestures themselves are not repeated there, or there are two records to keep
+in step and one of them is always wrong.
 
 **A change to any interaction is not finished until that section says so, in
-the same commit.** Not a follow-up, not a later tidy: a README describing an
+the same commit.** Not a follow-up, not a later tidy: a reference describing an
 app that no longer exists is worse than one describing nothing, because it is
 believed. The section says as much of itself, so the promise is on the page.
 
@@ -59,9 +62,9 @@ What counts as an interaction, and so has to be reflected there:
   least discoverable thing in the app.
 
 What does **not** go there: why it is that way, which belongs in
-`DECISIONS.md`, and how it is built, which belongs here or in `TECHNICAL.md`.
-The README says what a finger does and what happens; one clause of reason
-where it stops the reader wondering, and no more.
+`DECISIONS.md`, and how it is built, which belongs here or in the rest of
+`TECHNICAL.md`. The section says what a finger does and what happens; one
+clause of reason where it stops the reader wondering, and no more.
 
 ## Non-negotiable
 
