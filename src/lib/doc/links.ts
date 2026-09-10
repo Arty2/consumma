@@ -92,8 +92,8 @@ function allowed(url: URL): boolean {
  * and which page. So: the host, the first `/`, an ellipsis for the middle, and
  * the last thing the path names.
  *
- *   https://heracl.es/projects/2024/consumma  →  heracl.es/…/consumma
- *   https://heracl.es/consumma                →  heracl.es/consumma
+ *   https://heracl.es/projects/2024/listula  →  heracl.es/…/listula
+ *   https://heracl.es/listula                →  heracl.es/listula
  *   https://heracl.es                         →  heracl.es
  *   mailto:someone@heracl.es                  →  someone@heracl.es
  *

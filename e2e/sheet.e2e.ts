@@ -37,10 +37,10 @@ test.beforeEach(async ({ page }) => {
 
 test('a fresh sheet is one named group, one empty box, and an ellipsis', async ({ page }) => {
 	// Displayed in caps, stored in sentence case — the uppercase is CSS only.
-	const title = page.getByRole('button', { name: 'My list' });
+	const title = page.getByRole('button', { name: 'Listula' });
 	await expect(title).toBeVisible();
 	await expect(title).toHaveCSS('text-transform', 'uppercase');
-	expect(await title.innerText()).toBe('MY LIST');
+	expect(await title.innerText()).toBe('LISTULA');
 
 	await expect(page.getByRole('button', { name: 'Add a task' })).toHaveCount(1);
 	await expect(page.getByRole('button', { name: 'Add a group' })).toBeVisible();
@@ -48,7 +48,7 @@ test('a fresh sheet is one named group, one empty box, and an ellipsis', async (
 });
 
 test('a title being typed looks like the title it becomes', async ({ page }) => {
-	await page.getByRole('button', { name: 'My list' }).dblclick();
+	await page.getByRole('button', { name: 'Listula' }).dblclick();
 
 	const input = page.getByRole('textbox', { name: 'Group title' });
 	await expect(input).toBeVisible();
@@ -68,7 +68,7 @@ test('a title being typed looks like the title it becomes', async ({ page }) => 
 });
 
 test('the new-group placeholder lines up with the group titles', async ({ page }) => {
-	const title = await page.getByRole('button', { name: 'My list' }).boundingBox();
+	const title = await page.getByRole('button', { name: 'Listula' }).boundingBox();
 	const placeholder = await page.getByRole('button', { name: 'Add a group' }).boundingBox();
 
 	// Same left edge: it is the same thing, one step earlier.
@@ -196,7 +196,7 @@ test('the group mark sweeps its done tasks only, and half-done stays', async ({ 
 	 * is offered while the name is open, which is one of the two states that
 	 * put a group in hand rather than in a list.
 	 */
-	await page.getByRole('button', { name: 'My list' }).dblclick();
+	await page.getByRole('button', { name: 'Listula' }).dblclick();
 	await page.getByRole('button', { name: 'Clear done tasks' }).click();
 
 	await expect(task(page, 'Bread')).toHaveCount(0);
@@ -259,7 +259,7 @@ test('the group mark keeps out of a list being read', async ({ page }) => {
 	await page.getByRole('button', { name: 'Expand group' }).click();
 	await expect(clear).toHaveCount(0);
 
-	await page.getByRole('button', { name: 'My list' }).dblclick();
+	await page.getByRole('button', { name: 'Listula' }).dblclick();
 	await expect(clear).toBeVisible();
 });
 
@@ -582,7 +582,7 @@ test('the title renames, the icon collapses, and neither does the other', async 
 	 * every rename began by collapsing the group and every collapse was one slip
 	 * away from an edit box.
 	 */
-	await page.getByRole('button', { name: 'My list' }).dblclick();
+	await page.getByRole('button', { name: 'Listula' }).dblclick();
 	const field = page.getByRole('textbox', { name: 'Group title' });
 	await expect(field).toBeFocused();
 
@@ -638,8 +638,8 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	 * the same word the button that did it uses, and the same word a task's own
 	 * message uses.
 	 */
-	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);
-	await expect(page.getByRole('status').last()).toContainText('Deleted “My list” and 2 done.');
+	await expect(page.getByRole('button', { name: 'Listula' })).toHaveCount(0);
+	await expect(page.getByRole('status').last()).toContainText('Deleted “Listula” and 2 done.');
 });
 
 test('a lift interrupted by the row leaving does not stick', async ({ page }) => {
@@ -724,12 +724,12 @@ test('a long press on a group title picks the whole group up', async ({ page }) 
 			.locator('section[data-group] .title')
 			.evaluateAll((titles) => titles.map((t) => t.textContent!.trim()));
 
-	expect(await order()).toStrictEqual(['My list', 'Market']);
+	expect(await order()).toStrictEqual(['Listula', 'Market']);
 
 	// Held past both thresholds: holding briefly would open the name instead.
 	const title = page.getByRole('button', { name: 'Market' });
 	const from = (await title.boundingBox())!;
-	const to = (await page.getByRole('button', { name: 'My list' }).boundingBox())!;
+	const to = (await page.getByRole('button', { name: 'Listula' }).boundingBox())!;
 
 	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
 	await page.mouse.down();
@@ -741,9 +741,9 @@ test('a long press on a group title picks the whole group up', async ({ page }) 
 	await page.mouse.move(to.x + to.width / 2, to.y + 2, { steps: 12 });
 	await page.mouse.up();
 
-	expect(await order()).toStrictEqual(['Market', 'My list']);
+	expect(await order()).toStrictEqual(['Market', 'Listula']);
 	await page.reload();
-	expect(await order()).toStrictEqual(['Market', 'My list']);
+	expect(await order()).toStrictEqual(['Market', 'Listula']);
 });
 
 test('dropping a task does not open it for editing', async ({ page }) => {
@@ -917,12 +917,12 @@ test('Escape discards an edit rather than committing it', async ({ page }) => {
 	await expect(task(page, 'Sourdough')).toHaveCount(0);
 
 	// The same on a group title.
-	await page.getByRole('button', { name: 'My list' }).dblclick();
+	await page.getByRole('button', { name: 'Listula' }).dblclick();
 	const title = page.getByRole('textbox', { name: 'Group title' });
 	await title.fill('Market');
 	await title.press('Escape');
 
-	await expect(page.getByRole('button', { name: 'My list' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Listula' })).toBeVisible();
 	await expect(page.getByRole('button', { name: 'Market' })).toHaveCount(0);
 });
 
@@ -1117,16 +1117,16 @@ test('removing a group offers it back, with everything that was in it', async ({
 	await task(page, 'Bread').click();
 	await task(page, 'Milk').click();
 
-	await page.getByRole('button', { name: 'My list' }).dblclick();
+	await page.getByRole('button', { name: 'Listula' }).dblclick();
 	await page.getByRole('button', { name: 'Delete group' }).click();
 
-	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);
+	await expect(page.getByRole('button', { name: 'Listula' })).toHaveCount(0);
 	await expect(page.getByRole('checkbox')).toHaveCount(0);
 
 	await page.getByRole('button', { name: 'UNDO?' }).click();
 
 	// The group, its name, and both tasks — not a pile under Loose ends.
-	await expect(page.getByRole('button', { name: 'My list' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Listula' })).toBeVisible();
 	await expect(page.getByRole('checkbox')).toHaveCount(2);
 	await expect(page.getByText('Loose ends')).toHaveCount(0);
 
@@ -1711,7 +1711,7 @@ test('a finger going down the page scrolls it rather than ticking anything', asy
 test('one tap folds a group, and two open its name', async ({ page }) => {
 	await addTask(page, 'Bread');
 
-	const title = page.getByRole('button', { name: 'My list' });
+	const title = page.getByRole('button', { name: 'Listula' });
 	const icon = page.getByRole('button', { name: /^(Collapse|Expand) group/ });
 
 	await title.click();
@@ -2009,20 +2009,20 @@ test('a task drawn over two lines is edited over two lines', async ({ page }) =>
 });
 
 test('an address is shown short, and still goes where it says', async ({ page }) => {
-	await addTask(page, 'Recipe https://heracl.es/projects/2024/consumma tonight');
+	await addTask(page, 'Recipe https://heracl.es/projects/2024/listula tonight');
 
 	const link = page.locator('.tasks a').first();
 
 	// No protocol, and the middle of the path elided — what is wanted is which
 	// site and which page, not every character of how to get there.
-	await expect(link).toHaveText('heracl.es/…/consumma');
+	await expect(link).toHaveText('heracl.es/…/listula');
 
 	// The href keeps all of it: this is a reading, not an edit.
-	await expect(link).toHaveAttribute('href', 'https://heracl.es/projects/2024/consumma');
+	await expect(link).toHaveAttribute('href', 'https://heracl.es/projects/2024/listula');
 
 	// And the text was never touched, so the export still has the whole URL.
 	const exported = await page.evaluate(() => JSON.stringify(localStorage.getItem('consumma:doc')));
-	expect(exported).toContain('https://heracl.es/projects/2024/consumma');
+	expect(exported).toContain('https://heracl.es/projects/2024/listula');
 });
 
 /*
@@ -2032,7 +2032,7 @@ test('an address is shown short, and still goes where it says', async ({ page })
  * on the tab it came from.
  */
 test('a link opens in its own tab, and carries nothing with it', async ({ page }) => {
-	await addTask(page, 'Recipe https://heracl.es/consumma tonight');
+	await addTask(page, 'Recipe https://heracl.es/listula tonight');
 
 	const link = page.locator('.tasks a').first();
 	await expect(link).toHaveAttribute('target', '_blank');
@@ -2074,7 +2074,7 @@ test('the rule a carried group is dropped on is drawn where it will land', async
 	await addGroup(page, 'Market', 1);
 	await addGroup(page, 'Deli', 2);
 
-	const title = page.getByRole('button', { name: 'My list' });
+	const title = page.getByRole('button', { name: 'Listula' });
 	const from = (await title.boundingBox())!;
 
 	await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -2102,8 +2102,8 @@ test('the rule a carried group is dropped on is drawn where it will land', async
 	await page.mouse.up();
 
 	// And that is where it went.
-	const order = await page.getByRole('button', { name: /^(My list|Market|Deli)$/ }).allInnerTexts();
-	expect(order).toStrictEqual(['MARKET', 'MY LIST', 'DELI']);
+	const order = await page.getByRole('button', { name: /^(Listula|Market|Deli)$/ }).allInnerTexts();
+	expect(order).toStrictEqual(['MARKET', 'LISTULA', 'DELI']);
 });
 
 test('nothing is picked up off a sheet that is still moving', async ({ page }) => {

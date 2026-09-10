@@ -17,6 +17,10 @@
  * as part of a rename — silently orphans every existing list, because the same
  * code would derive a different roomId. If it ever has to change, bump to v2
  * and have the client try v2 then fall back to v1.
+ *
+ * The app was called consumma and is called listula; the salt still says
+ * consumma, and that is the rule above being kept rather than a rename that
+ * was missed. A salt is an address, not a name.
  */
 export const SALT = 'consumma:v1';
 
@@ -72,7 +76,7 @@ export function normaliseCode(input: string): string | null {
  * before anything else looks at the characters.
  *
  * It cannot be done by stripping non-hex: a domain is made of letters, and
- * enough of them are hex digits that `consumma.cafe` reads as `cafe`. A URL
+ * enough of them are hex digits that `listula.cafe` reads as `acafe`. A URL
  * would assemble into a code that is wrong and looks right, and send someone
  * to a list that does not exist.
  *

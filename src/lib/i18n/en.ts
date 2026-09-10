@@ -38,11 +38,15 @@ export const en = {
 	 * person is free to change, not a label the app is insisting on — but it is
 	 * worth knowing before a second catalogue exists.
 	 *
+	 * It is the app's own name, which is a little list and so is already the
+	 * word for what the group is. That also makes it the one string here that
+	 * a second catalogue leaves alone: a name is not translated.
+	 *
 	 * `looseEnds` never syncs: it is assembled on read and is only ever an
 	 * accessible name. See src/lib/doc/view.ts.
 	 */
 	doc: {
-		firstGroup: 'My list',
+		firstGroup: 'Listula',
 		looseEnds: 'Loose ends'
 	},
 
@@ -224,7 +228,7 @@ export const en = {
 		 * across a line break with one of them left hanging alone.
 		 */
 		creditOf: 'of Heracles Papatheodorou and\u00a0Claude',
-		creditHome: 'heracl.es/consumma'
+		creditHome: 'heracl.es/listula'
 	},
 
 	lists: {

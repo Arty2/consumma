@@ -15,7 +15,7 @@
  * `at` on a Piece. This is the arithmetic that uses them.
  *
  * The one place the answer is approximate is inside a link's label, and it
- * cannot be otherwise: `heracl.es/…/consumma` has fewer characters than the
+ * cannot be otherwise: `heracl.es/…/listula` has fewer characters than the
  * address it stands for and there is no character-for-character correspondence
  * to find. A tap there puts the caret at the end of that address, which is
  * where somebody adding to the task would want it anyway.

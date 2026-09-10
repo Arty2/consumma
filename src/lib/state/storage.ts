@@ -6,6 +6,14 @@ import { browser } from '$app/environment';
  * The code lives here and nowhere else — never sessionStorage, never a cookie,
  * never a URL (§13, §14). Losing it loses the list, which is why EXPORT exists
  * and why the DELETE confirm shows the code one last time.
+ *
+ * The prefix is `consumma:`, which is what the app used to be called. It is an
+ * address rather than a name — the same reasoning that froze the salt — and a
+ * device that has been here before is holding its list under it. Renaming the
+ * prefix does not move that list, it hides it: the app would open on a blank
+ * sheet with the writing still on the disk under keys nothing reads. If it
+ * ever has to change, it changes with a migration that reads the old keys and
+ * writes the new ones, and not before.
  */
 export const KEYS = {
 	doc: 'consumma:doc',

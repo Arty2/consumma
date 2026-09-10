@@ -10,12 +10,12 @@ describe('abbreviate', () => {
 	});
 
 	it('keeps a single path segment whole', () => {
-		expect(abbreviate(new URL('https://heracl.es/consumma'))).toBe('heracl.es/consumma');
+		expect(abbreviate(new URL('https://heracl.es/listula'))).toBe('heracl.es/listula');
 	});
 
 	it('shows the first slash, an ellipsis, then the last segment', () => {
-		expect(abbreviate(new URL('https://heracl.es/projects/2024/consumma'))).toBe(
-			'heracl.es/…/consumma'
+		expect(abbreviate(new URL('https://heracl.es/projects/2024/listula'))).toBe(
+			'heracl.es/…/listula'
 		);
 	});
 
@@ -27,7 +27,7 @@ describe('abbreviate', () => {
 
 	it('ignores a trailing slash rather than counting it as a segment', () => {
 		expect(abbreviate(new URL('https://heracl.es/'))).toBe('heracl.es');
-		expect(abbreviate(new URL('https://heracl.es/consumma/'))).toBe('heracl.es/consumma');
+		expect(abbreviate(new URL('https://heracl.es/listula/'))).toBe('heracl.es/listula');
 	});
 
 	it('shows a mailto as the address alone', () => {
@@ -43,16 +43,16 @@ describe('pieces', () => {
 	});
 
 	it('keeps the words either side of an address', () => {
-		expect(pieces('SEE https://heracl.es/consumma FIRST')).toStrictEqual([
+		expect(pieces('SEE https://heracl.es/listula FIRST')).toStrictEqual([
 			{ kind: 'text', text: 'SEE ', at: 0 },
 			{
 				kind: 'link',
-				href: 'https://heracl.es/consumma',
-				label: 'heracl.es/consumma',
-				raw: 'https://heracl.es/consumma',
+				href: 'https://heracl.es/listula',
+				label: 'heracl.es/listula',
+				raw: 'https://heracl.es/listula',
 				at: 4
 			},
-			{ kind: 'text', text: ' FIRST', at: 30 }
+			{ kind: 'text', text: ' FIRST', at: 29 }
 		]);
 	});
 

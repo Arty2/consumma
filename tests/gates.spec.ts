@@ -32,7 +32,7 @@ function runGates() {
 }
 
 beforeEach(() => {
-	root = mkdtempSync(join(tmpdir(), 'consumma-gates-'));
+	root = mkdtempSync(join(tmpdir(), 'listula-gates-'));
 
 	// A minimal clean tree: the gates need src/ and static/ to exist.
 	mkdirSync(join(root, 'scripts'), { recursive: true });
