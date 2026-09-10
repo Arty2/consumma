@@ -64,7 +64,7 @@ hand without marking anything ready are in
 
 Nothing on the sheet is labelled, so this is the whole of what it answers to.
 Most of it is one tap doing the common thing; the rest is a long press —
-about half a second — or a second tap inside a third of one.
+about half a second — a second tap inside a third of one, or a pull sideways.
 
 Everything below is a live record: if a gesture here disagrees with the app,
 the app is right and this file is a bug.
@@ -80,10 +80,28 @@ the app is right and this file is a bug.
 | The words      | Two taps           | Marks it done                                             |
 | The words      | Three taps         | Marks it half done                                        |
 | The words      | Four taps          | Back to where it started, and open for editing again      |
+| The words      | Pull it leftwards  | Marks it done                                             |
+| A done task    | Pull it again      | Deletes it, with an undo                                  |
 | The words      | Hold, then drag    | Picks the task up, including into another group           |
 | The words      | `F2`               | Opens the row for editing                                 |
 | A done task    | Tap the mark       | Deletes it, with an undo                                  |
 | Anywhere on it | `Alt+↑` / `Alt+↓`  | Moves it, across group boundaries at the ends             |
+
+Pulling a row leftwards pushes the words towards the box at the head of it,
+and the box takes the tick. The row gives as far as the margin the writing is
+held off the paper's drawn edge by and then stops; the hand carries on, and
+the tick lands where it gets to — under the finger, with a buzz, rather than
+waiting for it to come up. A half-done row is finished off, as tapping its box
+would.
+
+Pull a row that is already done and it goes, with the same ten-second `UNDO?`
+the mark in the gutter leaves — the two ways out of a finished row, one for a
+hand already moving and one for a hand that is not. Neither replaces the
+other: the mark is there through both pulls. Nothing is offered on a row that
+is not done, which is the rule the mark itself follows.
+
+Rightwards is not any of this: that is the sheet turning over, and it only
+takes hold on bare paper.
 
 A run of taps that begins in the last few characters of a task never climbs
 that ladder — reaching for the end of a line means adding to it, so two taps
@@ -168,8 +186,10 @@ While a group is in hand the corner answers for it. The burger goes — it has
 nothing to say to a group being carried — and the paper's top-right corner
 turns down in its place, torn edge and all, showing a bin in the room it
 clears. The bin comes alive under a group held over it, the way the sync mark
-does while it works. Let the group go there and it is removed, tasks and all,
-done or not, with the usual ten-second `UNDO?`.
+does while it works, and the phone taps once as the group reaches it, since
+the corner is the one offer here that cannot answer by changing weight. Let
+the group go there and it is removed, tasks and all, done or not — two beats
+from the phone, and the usual ten-second `UNDO?`.
 
 The list name stays, with a loop drawn round it: that is somewhere the group
 can be put down too. Carry it there and the lists open under the name — one
@@ -183,10 +203,17 @@ it stays on this device until it is synced. The switcher is there for this
 even when there is only one list, since that is the device with most to gain
 from a second; it is not offered while a sync is in flight.
 
-Undo puts things back the way they were. A group moved to a list that already
-existed comes back here and leaves that list exactly as it found it; a group
-moved to a list the drop invented brings the list back down with it, and a
-device that had one list before has one list again.
+A list a group has been carried onto wears an asterisk before its name, in the
+switcher and on the pill, for as long as the tab stays open. It is the one
+change here that cannot be looked at afterwards — the group is on a list that
+is not on the screen — and the message saying where it went is gone in ten
+seconds. It stays after you have been to look, and it is written nowhere, so a
+reload clears it.
+
+Undo puts things back the way they were, asterisk included. A group moved to a
+list that already existed comes back here and leaves that list exactly as it
+found it; a group moved to a list the drop invented brings the list back down
+with it, and a device that had one list before has one list again.
 
 ### The sheet, and the back of it
 

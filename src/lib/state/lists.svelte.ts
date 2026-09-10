@@ -38,6 +38,27 @@ export class Lists {
 	current: string | null = $state(null);
 	loaded = $state(false);
 
+	/**
+	 * The lists something has been carried onto since the page opened.
+	 *
+	 * A group sent to another list is the one change a person makes here that
+	 * they cannot then look at: it is off this sheet and onto one that is not on
+	 * the screen. The message says where it went and then goes, so a moment
+	 * later there is nothing left saying which of four names now has something
+	 * new under it — and this is what the asterisk beside that name is for.
+	 *
+	 * Held here and written nowhere. It is a fact about this reading of the app
+	 * rather than about the list, so it belongs with the tab and dies with it:
+	 * a mark saying "new" that survived a week of closing the browser would be
+	 * saying something else. It is also not the other devices' business, which
+	 * is the same rule the collapsed groups and the theme follow.
+	 *
+	 * One entry per group that landed rather than a set of ids, because two
+	 * groups can be sent to one list and taking one of them back does not mean
+	 * nothing arrived.
+	 */
+	arrivals: string[] = $state([]);
+
 	/** 0, 1, or however many lists are remembered — without ever writing. */
 	count: number = $derived(
 		this.entries.length > 0 ? this.entries.length : read(KEYS.doc) !== null ? 1 : 0
@@ -68,6 +89,22 @@ export class Lists {
 		sheet.switchTo(keys);
 		sync.switchTo(keys);
 		ui.switchTo(keys);
+	}
+
+	/** A group has just landed on that list. */
+	arrived(id: string): void {
+		this.arrivals.push(id);
+	}
+
+	/** And has been taken off it again — one of them, not every one. */
+	takenBack(id: string): void {
+		const at = this.arrivals.indexOf(id);
+		if (at !== -1) this.arrivals.splice(at, 1);
+	}
+
+	/** Whether anything has been carried onto that list since the page opened. */
+	isNew(id: string): boolean {
+		return this.arrivals.includes(id);
 	}
 
 	/** The active list's own name, read live off the document already loaded. */
@@ -275,6 +312,9 @@ export class Lists {
 		if (!entry || entry.legacy || id === this.current) return;
 
 		this.entries = this.entries.filter((candidate) => candidate.id !== id);
+		// Nothing arrived anywhere: there is no longer anywhere for it to have
+		// arrived. This is the undo of a drop that invented the list it landed on.
+		this.arrivals = this.arrivals.filter((arrival) => arrival !== id);
 
 		const keys = keysFor(entry.id);
 		for (const key of [keys.doc, keys.code, keys.version, keys.synced, keys.collapsed]) {

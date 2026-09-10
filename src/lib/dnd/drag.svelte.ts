@@ -80,6 +80,23 @@ export class DragState {
 	 */
 	turning = $state(false);
 
+	/**
+	 * A row is being pulled sideways to be ticked off, and the paper must hold
+	 * still under it.
+	 *
+	 * The same arrangement as `turning`, the other way round. A pull and a turn
+	 * are one movement of the hand told apart by which way it goes, and on a row
+	 * that draws a link they begin on the same element — the words are a plain
+	 * container there rather than a button, so they are not among the controls
+	 * the turn already stands aside for. Without this, a pull that wandered back
+	 * rightwards would start turning the paper out from under the row it was
+	 * still holding.
+	 *
+	 * Not cleared by `reset`: that is called on every release, this one's
+	 * included, and the pull owns it from the first move to the last.
+	 */
+	swiping = $state(false);
+
 	/** The group currently lifted, if any. Never both at once. */
 	groupId = $state<string | null>(null);
 	groupTarget = $state<GroupDrop | null>(null);
@@ -303,6 +320,16 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 	/** Past the shorter of two presses, and not yet past the longer. */
 	let held = false;
 	let pointerId: number | null = null;
+	/**
+	 * Whether the capture on this pointer is ours to let go of.
+	 *
+	 * The row's words carry a second gesture — the pull that ticks a task off —
+	 * and it captures the same pointer on the same node the moment the finger
+	 * moves. Released on the count of the id alone, the movement that ends this
+	 * press would take that gesture's capture away with it, and a pull begun
+	 * before the eighth pixel died on it.
+	 */
+	let captured = false;
 	let scrolling: number | null = null;
 	let edge = 0;
 	/*
@@ -350,9 +377,10 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 		lifted = false;
 		held = false;
 
-		if (pointerId !== null && node.hasPointerCapture(pointerId)) {
+		if (captured && pointerId !== null && node.hasPointerCapture(pointerId)) {
 			node.releasePointerCapture(pointerId);
 		}
+		captured = false;
 		pointerId = null;
 	}
 
@@ -380,7 +408,10 @@ function pressDrag(node: HTMLElement, hooks: () => Hooks) {
 			lifted = true;
 			buzz();
 
-			if (pointerId !== null) node.setPointerCapture(pointerId);
+			if (pointerId !== null) {
+				node.setPointerCapture(pointerId);
+				captured = true;
+			}
 			hooks().lift(event.clientX, event.clientY);
 		}
 
@@ -726,7 +757,23 @@ export const dragGroup: Action<HTMLElement, GroupDragOptions> = (node, initial) 
 			drag.groupTarget = landing(x, y);
 		},
 		move(x, y) {
+			/*
+			 * One tap as the group reaches the corner, and one only.
+			 *
+			 * Every other offer on the sheet answers a finger arriving by
+			 * changing weight under it — a rule going dashed, a line going
+			 * heavier — and the corner cannot: what says a group is over the bin
+			 * is the mark boiling, which is a change of drawing rather than of
+			 * weight and is the slowest thing on the sheet to read. So the phone
+			 * says it as well, at the moment of arrival.
+			 *
+			 * On the edge and not on the state, or a finger held over the corner
+			 * would buzz on every move the browser reported for as long as it
+			 * stayed there, which is a rhythm, and a rhythm is a notification.
+			 */
+			const was = drag.overFold;
 			drag.groupTarget = landing(x, y);
+			if (drag.overFold && !was) buzz();
 		},
 		drop() {
 			if (drag.groupTarget !== null) options.onDrop(drag.groupTarget);

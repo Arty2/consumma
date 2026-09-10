@@ -14,7 +14,8 @@
 	import { seedFrom } from '$lib/draw/rng';
 	import { drag, dragRow, type DropTarget } from '$lib/dnd/drag.svelte';
 	import { DOUBLE_TAP_MS } from '$lib/dnd/longpress';
-	import { taken } from '$lib/feel';
+	import { swipeRow } from '$lib/dnd/swipe';
+	import { finished, taken } from '$lib/feel';
 	import { t } from '$lib/i18n';
 	import { grow } from '$lib/grow';
 
@@ -80,6 +81,11 @@
 	let input = $state<HTMLTextAreaElement | null>(null);
 	/** Set for the length of the pop, so the row leaves rather than vanishes. */
 	let going = $state(false);
+	let row = $state<HTMLLIElement | null>(null);
+	/** How far the hand has pulled this row leftwards, in pixels. */
+	let pull = $state(0);
+	/** Set while the row is going back to where it was, and cleared by it. */
+	let homing = $state(false);
 
 	const lifted = $derived(drag.isLifted(task.id));
 
@@ -485,6 +491,87 @@
 		setTimeout(ondelete, POP_MS);
 	}
 
+	/*
+	 * The row pulled leftwards, towards the box at the head of it.
+	 *
+	 * One pull ticks it off and the next takes it away — the same two things
+	 * that stand at the two ends of a done row, reached from anywhere along it
+	 * without having to aim at either. A half-done row is finished off, since
+	 * that is what the box beside it does too.
+	 *
+	 * The second pull is offered on exactly the rows the delete mark is, and for
+	 * the same reason: getting rid of a task is earned by the task being
+	 * finished with. It does not stand in for that mark, which is still there
+	 * through both pulls — this is the way to it for a hand already moving, and
+	 * that is the way to it for one that is not.
+	 *
+	 * It goes out the way the mark sends it out, so the pop, the answer from the
+	 * phone and the message with the way back are the delete that was already
+	 * here rather than a second one written beside it.
+	 *
+	 * The buzz is the whole of what says either landed — it happens under a
+	 * finger that is still moving, with nothing on the screen where the finger
+	 * is to report it.
+	 */
+	function pulled() {
+		if (task.state === 'done') {
+			pop();
+			return;
+		}
+
+		finished();
+		onstate('done');
+	}
+
+	/*
+	 * Written through the CSSOM rather than with a `style:` directive, because
+	 * the sheet is prerendered and Svelte renders one as a literal `style="…"`
+	 * attribute in the shipped HTML — which `style-src 'self'` refuses. The same
+	 * route the paper's own angle takes, and what e2e/csp.e2e.ts is watching for.
+	 */
+	$effect(() => {
+		row?.style.setProperty('--pull', `${pull}px`);
+	});
+
+	/*
+	 * The row swings back to where it was, which is the paper's own answer to a
+	 * drag that is over — see `.settling` on the sheet.
+	 *
+	 * Asked here rather than left to the stylesheet: `homing` is cleared by the
+	 * animation ending, so a swing that were merely instant would never end and
+	 * the row would stay out of place for good.
+	 */
+	function home() {
+		/*
+		 * Already on its way out, because the pull that just landed was the one
+		 * that takes a done row away. It pops from where the hand left it: two
+		 * animations on one element is one of them winning by the order they
+		 * happen to be written in, and a row swinging back into place while it
+		 * is being deleted is the wrong one to win.
+		 */
+		if (going) return;
+
+		if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			pull = 0;
+			return;
+		}
+
+		homing = true;
+	}
+
+	/*
+	 * The swing home ending, and nothing else that ends on this row. The sparkle
+	 * a tick throws out is drawn inside the checkbox and bubbles up through
+	 * here, and the pop of a row on its way out ends here too — clearing the
+	 * pull on that one would stand the row back up for the frame before it goes.
+	 */
+	function settled(event: AnimationEvent) {
+		if (event.target !== row || !homing) return;
+
+		homing = false;
+		pull = 0;
+	}
+
 	function onrowkeydown(event: KeyboardEvent) {
 		// The keyboard's way in, now that the words are no longer a button. The
 		// same key that opens a group title for renaming.
@@ -569,7 +656,17 @@
 {/snippet}
 
 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-<li class="row" class:lifted class:going data-task={task.id} onkeydown={onrowkeydown}>
+<li
+	class="row"
+	class:lifted
+	class:going
+	class:pulling={pull > 0 && !homing}
+	class:homing
+	data-task={task.id}
+	bind:this={row}
+	onkeydown={onrowkeydown}
+	onanimationend={settled}
+>
 	{#if lifted}
 		<!-- No shadow is available, so the lift is a dashed outline and a tilt. -->
 		<HandRect seed={`lift${task.id}`} dashed wobble={1.2} />
@@ -622,6 +719,7 @@
 			lang={langOf(task.text)}
 			onclick={ontap}
 			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}
+			use:swipeRow={{ onpull: (px) => (pull = px), ontick: pulled, onhome: home }}
 		>
 			{@render marks()}
 		</div>
@@ -643,6 +741,7 @@
 			aria-label={task.text}
 			onclick={ontap}
 			use:dragRow={{ taskId: task.id, groupId, onDrop: ondrop, onEnterGroup }}
+			use:swipeRow={{ onpull: (px) => (pull = px), ontick: pulled, onhome: home }}
 		>
 			{@render marks()}
 		</button>
@@ -712,6 +811,43 @@
 		transform: rotate(1.5deg);
 	}
 
+	/*
+	 * The row giving under a hand pulling it towards its own checkbox.
+	 *
+	 * A `translate` rather than part of a transform, so it composes with the
+	 * tilt a lift puts on the row without either having to know about the other
+	 * — the same arrangement the paper uses for its slide.
+	 *
+	 * How far it may go is stated here rather than in the hand that pushes it,
+	 * because it is a fact about the paper: the row stops where the margin the
+	 * writing is held off the drawn edge by runs out, which is exactly the
+	 * column every delete mark stands in. The hand goes on past that, and the
+	 * rest of the pull is spent against a row that has nowhere left to go —
+	 * which is what pushing a sheet that is already against something feels
+	 * like, and what the tick then lands out of.
+	 */
+	.pulling {
+		translate: calc(-1 * min(var(--pull, 0px), var(--paper-inset))) 0;
+	}
+
+	/*
+	 * And coming back, which is the paper's own answer to a drag that is over.
+	 * It reads `--pull` for its first frame, so there is no jump between the
+	 * hand and the animation.
+	 */
+	.homing {
+		animation: home var(--flip) var(--inertia) forwards;
+	}
+
+	@keyframes home {
+		from {
+			translate: calc(-1 * min(var(--pull, 0px), var(--paper-inset))) 0;
+		}
+		to {
+			translate: 0 0;
+		}
+	}
+
 	/* Out, not away: a short swell and then nothing. */
 	.going {
 		animation: pop 180ms ease-in forwards;
@@ -740,6 +876,16 @@
 
 		.going {
 			animation: none;
+		}
+
+		/*
+		 * Not `none`: `homing` is cleared by this animation ending, and a swing
+		 * with nothing to end would leave the row standing out of place. The
+		 * component never sets the class under reduced motion — this is only
+		 * here so the global clamp cannot be the thing relied on.
+		 */
+		.homing {
+			animation-duration: 1ms;
 		}
 	}
 

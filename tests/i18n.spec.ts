@@ -39,9 +39,9 @@ const calls: Record<string, unknown[]> = {
 	'sheet.movedToList': [{ list: 'Weekend' }],
 	'group.named': [{ title: 'Weekend' }],
 	'lists.named': [{ name: 'Weekend' }],
-	'toast.removed': [{ what: 'Weekend' }],
-	'toast.removedWithDone': [{ what: 'Weekend', count: 3 }],
-	'toast.removedWithTasks': [
+	'toast.deletedGroup': [{ what: 'Weekend' }],
+	'toast.deletedWithDone': [{ what: 'Weekend', count: 3 }],
+	'toast.deletedWithTasks': [
 		{ what: 'Weekend', count: 1 },
 		{ what: 'Weekend', count: 3 }
 	],
@@ -114,7 +114,7 @@ describe('the catalogue', () => {
 		expect(en.sync.waiting({ count: 3 })).toBe('3 changes are waiting to go.');
 		expect(en.import.summary({ tasks: 1, groups: 1 })).toBe('Add 1 task in 1 group?');
 		expect(en.import.summary({ tasks: 2, groups: 3 })).toBe('Add 2 tasks in 3 groups?');
-		expect(en.toast.removedWithTasks({ what: 'x', count: 1 })).toBe('x and 1 task');
-		expect(en.toast.removedWithTasks({ what: 'x', count: 2 })).toBe('x and 2 tasks');
+		expect(en.toast.deletedWithTasks({ what: 'x', count: 1 })).toBe('x and 1 task');
+		expect(en.toast.deletedWithTasks({ what: 'x', count: 2 })).toBe('x and 2 tasks');
 	});
 });

@@ -633,9 +633,13 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	await expect(remove).toBeEnabled();
 	await remove.click();
 
-	// The group and everything in it, and a toast that says how much went.
+	/*
+	 * The group and everything in it, and a toast that says how much went — in
+	 * the same word the button that did it uses, and the same word a task's own
+	 * message uses.
+	 */
 	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);
-	await expect(page.getByRole('status').filter({ hasText: /Removed/ })).toBeVisible();
+	await expect(page.getByRole('status').last()).toContainText('Deleted “My list” and 2 done.');
 });
 
 test('a lift interrupted by the row leaving does not stick', async ({ page }) => {
@@ -1559,6 +1563,149 @@ test('a run of taps at the end of the words never ticks the task', async ({ page
 
 	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
 	await expect(page.getByRole('textbox').first()).toBeFocused();
+});
+
+/**
+ * Pull a row leftwards, the way a finger does: down on the words, across, up.
+ *
+ * It starts at the far end of the words so there is room to travel, and moves
+ * in steps because the gesture is decided on the first move rather than on the
+ * release — one jump straight to the end would say nothing about direction on
+ * the way there.
+ */
+async function pull(page: Page, locator: ReturnType<Page['getByRole']>, by: number) {
+	const box = (await locator.boundingBox())!;
+	const from = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(from.x - by, from.y, { steps: 8 });
+	await page.mouse.up();
+}
+
+test('a task pulled leftwards is ticked off, and pulling it again takes it away', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+	await addTask(page, 'Coffee');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+
+	await pull(page, words, 120);
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+
+	/*
+	 * The second pull is offered on exactly the rows the delete mark is: getting
+	 * rid of a task is earned by the task being finished with.
+	 */
+	await pull(page, words, 120);
+	await expect(task(page, 'Bread')).toHaveCount(0);
+	await expect(task(page, 'Coffee')).toBeVisible();
+
+	await page.reload();
+	await expect(task(page, 'Bread')).toHaveCount(0);
+});
+
+test('a task pulled away can be had back from the message it leaves', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+
+	await pull(page, words, 120);
+	await pull(page, words, 120);
+
+	// The same way out the mark in the gutter takes, so it leaves the same
+	// message with the same way back rather than a second delete beside it.
+	const toast = page.getByRole('status').filter({ hasText: /deleted/i });
+	await expect(toast).toBeVisible();
+	await toast.getByRole('button', { name: 'Undo?' }).click();
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+
+	await page.reload();
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+});
+
+test('the mark that deletes a done task is there through both pulls', async ({ page }) => {
+	/*
+	 * The pull is the way to it for a hand already moving; the mark is the way
+	 * for one that is not. Neither stands in for the other.
+	 */
+	await addTask(page, 'Bread');
+
+	// Off the sheet first: adding tasks pushes the add row down under the
+	// pointer, and a pointer resting on a row is not what this is about.
+	await page.mouse.move(0, 0);
+
+	const mark = page.getByRole('button', { name: 'Delete task' });
+	await expect(mark).toHaveCount(0);
+
+	await pull(page, page.getByRole('button', { name: 'Bread', exact: true }), 120);
+	await expect(mark).toBeVisible();
+
+	await mark.click();
+	await expect(task(page, 'Bread')).toHaveCount(0);
+});
+
+test('a pull does not open the row it was made on', async ({ page }) => {
+	/*
+	 * The finger comes up on the very button the taps are counted on, so the
+	 * click it fires has to go the way a drop's does — or every pull would open
+	 * the row for editing behind the tick it had just made.
+	 */
+	await addTask(page, 'Bread');
+
+	await pull(page, page.getByRole('button', { name: 'Bread', exact: true }), 120);
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.getByRole('textbox')).toHaveCount(0);
+});
+
+test('a pull that stops short gives, and then changes nothing', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+	const box = (await words.boundingBox())!;
+	const from = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(from.x - 24, from.y, { steps: 4 });
+
+	// The row gives under the hand, as far as the margin the writing is held off
+	// the paper's drawn edge by, and no further.
+	const given = await page
+		.locator('[data-task]')
+		.first()
+		.evaluate((el) => getComputedStyle(el).translate);
+	expect(given).not.toBe('none');
+
+	await page.mouse.up();
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+	await expect(page.getByRole('textbox')).toHaveCount(0);
+});
+
+test('a finger going down the page scrolls it rather than ticking anything', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+	const box = (await words.boundingBox())!;
+	const from = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+
+	/*
+	 * Mostly down and a little across, which is what a thumb scrolling a list
+	 * actually does. The direction is asked once, when the movement is first big
+	 * enough to mean anything, and the answer holds for the rest of the gesture —
+	 * so wandering sideways later cannot turn a scroll into a tick.
+	 */
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(from.x - 8, from.y + 60, { steps: 6 });
+	await page.mouse.move(from.x - 200, from.y + 60, { steps: 6 });
+	await page.mouse.up();
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
 });
 
 test('one tap folds a group, and two open its name', async ({ page }) => {

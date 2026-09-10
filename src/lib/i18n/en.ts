@@ -60,7 +60,7 @@ export const en = {
 		untitled: 'Untitled group',
 		/*
 		 * The same fact in the middle of a sentence rather than as a name, so it
-		 * is lower case and reads as a phrase: "Removed the untitled group."
+		 * is lower case and reads as a phrase: "Deleted the untitled group."
 		 * Two strings and not one, because a language that inflects would need
 		 * two anyway and English only looks as though it does not.
 		 *
@@ -70,7 +70,7 @@ export const en = {
 		untitledInSentence: 'the untitled group',
 		/*
 		 * A title somebody typed, quoted, wherever it is dropped into a sentence
-		 * the app is saying. Without the quotes a message reads "Removed
+		 * the app is saying. Without the quotes a message reads "Deleted
 		 * Weekend and 3 done" and the eye has to find where the name stopped —
 		 * and a group called "and" or "done" makes a sentence out of nothing.
 		 * Curly quotes, as everywhere else here.
@@ -111,9 +111,17 @@ export const en = {
 
 	toast: {
 		deleted: 'Deleted.',
-		removed: ({ what }: { what: string }) => `Removed ${what}.`,
-		/** A removed group says how many finished tasks went with it. */
-		removedWithDone: ({ what, count }: { what: string; count: number }) =>
+		/*
+		 * The same verb a task's own message uses, and the same verb as the
+		 * button that did it: the mark in the gutter reads DELETE GROUP, and a
+		 * message answering it with "Removed" is a second word for one act. A
+		 * task says only "Deleted." because there is nothing about it worth
+		 * repeating; a group names itself, because what went with it is a whole
+		 * heading and everything that was filed under it.
+		 */
+		deletedGroup: ({ what }: { what: string }) => `Deleted ${what}.`,
+		/** A deleted group says how many finished tasks went with it. */
+		deletedWithDone: ({ what, count }: { what: string; count: number }) =>
 			`${what} and ${count} done`,
 		/*
 		 * And a group carried to the corner says how many tasks did, done or
@@ -122,7 +130,7 @@ export const en = {
 		 * in whatever state it is in, and counting only the finished ones would
 		 * report less than went.
 		 */
-		removedWithTasks: ({ what, count }: { what: string; count: number }) =>
+		deletedWithTasks: ({ what, count }: { what: string; count: number }) =>
 			`${what} and ${count} ${plural(count, 'task', 'tasks')}`,
 		cleared: ({ count }: { count: number }) => `Cleared ${count}.`,
 		/** A move is the one change a finger makes that it cannot see undone. */
@@ -224,6 +232,13 @@ export const en = {
 		new: 'New list',
 		/** A list that has never left this device has no code to show. */
 		localOnly: 'Local only, never synced',
+		/*
+		 * What the asterisk beside a list's name says. A group carried onto
+		 * another list is the one change here that cannot then be looked at, so
+		 * the mark stands until the tab is closed — and read aloud it has to be
+		 * the fact rather than the punctuation.
+		 */
+		arrived: 'Something new arrived',
 		/*
 		 * A list's name, quoted, wherever the app says it back — the same rule
 		 * a group's name follows, and for the same reason: a list is named

@@ -1308,7 +1308,7 @@ relative` rather than a transform, which does not apply to an inline box.
       one", which is also why the blur handler has to be `() => addGroup()`
       rather than `addGroup`, or the event lands in the argument that decides.
 
-101.  **A group's name is quoted where the app says it back.** "Removed Weekend
+101.  **A group's name is quoted where the app says it back.** "Deleted Weekend
       and 3 done" leaves the reader to work out where the name stopped, and a
       group called "and" or "done" makes a sentence out of nothing. Not in an
       announcement, where a quotation mark is noise or silence depending on the
@@ -1868,6 +1868,180 @@ relative` rather than a transform, which does not apply to an inline box.
       column lies over the first group's title, and the hit test reads the pill
       and the column as one box — so taking a carried group "back to the sheet"
       now means below the column rather than merely off the pill.
+
+127.  **A task is ticked off by pulling it leftwards, and the tick lands under
+      the finger.** The sheet already had three ways to tick a row and every
+      one of them asks the hand to be accurate: aim at a 44px box, or tap the
+      same few characters twice without straying into the last three of them.
+      A pull asks for nothing but a direction, which is what a thumb going down
+      a shopping list can actually give — so it is the gesture for the thing
+      the app is most often doing.
+
+      **Leftwards, because the box is on the left.** The words are pushed
+      towards the box at the head of the row and the box takes the tick, which
+      is a sentence about this row rather than a convention borrowed from
+      somewhere else. It also settles the collision for free: rightwards is
+      already the paper turning over, and on a row that draws a link the two
+      gestures begin on the same element — the words there are a plain
+      container rather than a button, so they are not among the controls the
+      turn stands aside for. `drag.swiping` is `drag.turning` the other way
+      round, and it is the whole of what the two have to say to each other.
+
+      **Nothing waits for the finger to come up.** The tick lands the moment
+      the hand passes the reach, with the buzz that says so. Held back for the
+      release it would put a wait on the one thing the gesture is for, and
+      there would be nothing to wait for: past the reach there is no other
+      thing the movement could still turn out to have been. The reach is a
+      number of pixels rather than a fraction of the row, for the reason the
+      flick that commits a turn is — a pull is a movement of the hand, and a
+      hand does not know how wide the paper is.
+
+      **One pull ticks it off and the next takes it away.** They are the two
+      things standing at the two ends of a done row — the box at the head of it
+      and the mark out in the gutter — reached from anywhere along the row
+      without having to aim at either, which is the whole of what the gesture
+      is for. A half-done row is finished off, which is what a tap on its box
+      does too.
+
+      The second pull is offered on exactly the rows the mark is: nothing on a
+      row still to do, because getting rid of a task is earned by the task
+      being finished with, and that rule is not this gesture's to relax. A pull
+      that only ever ticked was the other option, with a pull on a done row
+      putting it back to to-do; it was the tidier symmetry and the wrong one,
+      because un-ticking is a rare correction that the box two centimetres away
+      already answers, and taking a finished row off the sheet is the thing a
+      hand going down a list actually wants next.
+
+      **It does not stand in for the mark**, which is drawn through both pulls.
+      The pull is the way to it for a hand already moving; the mark is the way
+      for one that is not, and it is the only one of the two that can be seen.
+      A gesture that quietly replaced a visible control would take the app's one
+      discoverable delete away in exchange for one nobody can find.
+
+      And it goes out through the same `pop()` the mark does, so the pop, the
+      answer from the phone and the ten-second `UNDO?` are the delete that was
+      already there rather than a second one written beside it. Two consequences
+      worth naming: the swing home stands aside while the row is going, or two
+      animations argue over one element and the row swings back into place while
+      it is being deleted; and the handler that clears the pull answers only its
+      own animation, or the pop ending stands the row back up for the frame
+      before it goes.
+
+      **The row gives, and how far is the paper's business.** It slides into
+      the margin the writing is held off the drawn edge by — the column every
+      delete mark stands in — and stops there, capped in the stylesheet rather
+      than in the hand that pushes it, because it is a fact about the sheet.
+      The hand carries on past that, and the last stretch of the pull is spent
+      against a row with nowhere left to go, which is what pushing a sheet that
+      is already against something feels like and what the tick then lands out
+      of. Without the give a pull that stopped short said nothing at all, and a
+      gesture that reports nothing until it reports everything reads as broken
+      on every attempt that misses.
+
+      **It shares nothing with the three presses on the same words.** A press
+      is stillness and this is movement, so the press has already given the
+      gesture up by the time the finger is eight pixels along; the taps are
+      decided on release and this never gets there, because the click that
+      would follow is swallowed in the capture phase the way a drop's is.
+      Without that swallow every pull opened the row for editing behind the
+      tick it had just made. It did cost `pressDrag` a correction: it released
+      any capture on the pointer id it was holding, which took the pull's own
+      capture away with it and killed any pull that began before the eighth
+      pixel. It now releases only a capture it took itself.
+
+      **And the direction is asked once**, when the movement first passes the
+      slack. The sheet is what scrolls and the paper is what turns, so a
+      gesture that begins as either of those stays that until the finger comes
+      up — fighting over the answer every time a thumb wandered back across the
+      diagonal would put a tick at the end of half the scrolls on the sheet.
+
+128.  **A deleted group says "Deleted", not "Removed".** The mark in the gutter
+      is named DELETE GROUP and the message that answered it said something
+      else, which is two words for one act on one control — and the message a
+      deleted task leaves has always been "Deleted." So the group's now reads
+      "Deleted “Weekend” and 3 done." and the pair agree: whatever went, the
+      sheet says the same thing about it, in the word the button used.
+
+      The catalogue keys went with the wording. `toast.removed`,
+      `removedWithDone` and `removedWithTasks` are `deletedGroup`,
+      `deletedWithDone` and `deletedWithTasks`, which puts them beside
+      `deletedList` under one verb — a key named after a word the app no longer
+      says is the kind of thing that stays wrong for a year, and the catalogue
+      is meant to be read in one sitting.
+
+      Nothing about the act changed: the header's mark still only offers it on
+      a group with nothing left to do, the corner fold still takes one in
+      whatever state it is in and still counts tasks rather than done ones, and
+      both still leave the ten-second `UNDO?`.
+
+129.  **The corner buzzes when a group reaches it, and again when it takes
+      one.** Every other offer on the sheet answers a finger arriving by
+      changing weight under it — a rule going dashed, a line drawn heavier —
+      and the corner is the one that cannot: what says a group is over the bin
+      is the mark boiling, which is a change of drawing rather than of weight
+      and is the slowest thing on the sheet to read. It is also the one target
+      a finger reaches by leaving the writing entirely, so the eye is furthest
+      from where the answer is. The phone says it instead: one tap on arrival,
+      and `taken()` — dot dot, something is gone — on the drop.
+
+      Neither is a new pattern. They are the first and second of the three
+      lengths in `feel.ts`, and the two beats are exactly what a group struck
+      out in the gutter already answers with, so the two ways of getting rid of
+      a group now feel the same as well as reading the same.
+
+      **On the edge, never on the state.** A finger held over the corner would
+      otherwise buzz on every pointer move the browser reported, and a run of
+      taps with a rhythm to it is a notification — which this app does not
+      send. So `dragGroup`'s `move` reads `overFold` before and after and fires
+      only where it turns true; carrying the group off and back says it again,
+      because it is the arrival being told rather than the state.
+
+      The drop's answer is called at the drop site rather than inside
+      `removeGroup`, which the header's mark reaches through too: that mark
+      says its own two beats at its own site, on the rule that every control
+      answers explicitly rather than through one listener told where to stand
+      aside. The corner is not a control — it is a place — so without a call of
+      its own nothing on that path would have said anything at all.
+
+130.  **A list a group was carried onto wears an asterisk until the tab is
+      closed.** Sending a group to another list is the one change a person
+      makes here that they cannot then look at: it is off this sheet and onto
+      one that is not on the screen. The message says where it went and is gone
+      in ten seconds, and after that nothing said which of four names now had
+      something new under it — the switcher looked exactly as it had before the
+      group moved.
+
+      **Session state, written nowhere.** It is a fact about this reading of
+      the app rather than about the list, so it belongs to the tab and dies
+      with it — a mark saying "new" that survived a week of closing the browser
+      would be saying something else. It is not the other devices' business
+      either, which is the rule the collapsed groups and the theme already
+      follow. An array of arrivals rather than a set of ids, because two groups
+      can be sent to one list and taking one of them back does not mean nothing
+      arrived; the undo removes one entry, and a list unmade by the undo of a
+      drop that invented it loses its entries with the rest of itself.
+
+      **It stays after you have been to look.** The alternative — clearing it
+      on arrival at that list — was tempting and is a different promise: it
+      would make the mark mean "unseen" rather than "something came here this
+      session", and then a glance at the wrong list would spend it. The session
+      is the boundary that was asked for and it is the one a person can state.
+
+      **A character, and inside the name.** Graphe draws its own asterisk —
+      measured, not assumed, the way `[` was found missing — so it needs no
+      drawing, exactly as the `+` on the last row and the `¢` in the code
+      column need none. It sits inside the name's own span rather than beside
+      it: as a flex item of its own it takes the row's gap, which is the gap
+      between two things at opposite ends of a row and is precisely what stood
+      the `+` off in a column of its own before that row was tightened. Inside,
+      it is a mark and a word with a space between them, it cannot be reached
+      by the ellipsis, and one arrangement serves the pill and both columns.
+
+      It pushes the name along rather than being given a column of its own on
+      every row — the rule a task's count follows, and for the same reason:
+      reserving the space would indent every list to line up a mark most of
+      them do not have. Read aloud it is the fact and not the punctuation,
+      which is what the code column does with its own mark two lines down.
 
 ## Known limits
 
