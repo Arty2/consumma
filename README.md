@@ -64,7 +64,7 @@ hand without marking anything ready are in
 
 Nothing on the sheet is labelled, so this is the whole of what it answers to.
 Most of it is one tap doing the common thing; the rest is a long press —
-about half a second — or a second tap inside a third of one.
+about half a second — a second tap inside a third of one, or a pull sideways.
 
 Everything below is a live record: if a gesture here disagrees with the app,
 the app is right and this file is a bug.
@@ -80,10 +80,19 @@ the app is right and this file is a bug.
 | The words      | Two taps           | Marks it done                                             |
 | The words      | Three taps         | Marks it half done                                        |
 | The words      | Four taps          | Back to where it started, and open for editing again      |
+| The words      | Pull it leftwards  | To-do ⇄ done                                              |
 | The words      | Hold, then drag    | Picks the task up, including into another group           |
 | The words      | `F2`               | Opens the row for editing                                 |
 | A done task    | Tap the mark       | Deletes it, with an undo                                  |
 | Anywhere on it | `Alt+↑` / `Alt+↓`  | Moves it, across group boundaries at the ends             |
+
+Pulling a row leftwards pushes the words towards the box at the head of it,
+and the box takes the tick. The row gives as far as the margin the writing is
+held off the paper's drawn edge by and then stops; the hand carries on, and
+the tick lands where it gets to — under the finger, with a buzz, rather than
+waiting for it to come up. Pulling a done row is how it goes back to to-do,
+and pulling a half-done one finishes it off. Rightwards is not this: that is
+the sheet turning over, and it only takes hold on bare paper.
 
 A run of taps that begins in the last few characters of a task never climbs
 that ladder — reaching for the end of a line means adding to it, so two taps

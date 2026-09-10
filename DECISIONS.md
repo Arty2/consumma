@@ -1869,6 +1869,66 @@ relative` rather than a transform, which does not apply to an inline box.
       and the column as one box — so taking a carried group "back to the sheet"
       now means below the column rather than merely off the pill.
 
+127.  **A task is ticked off by pulling it leftwards, and the tick lands under
+      the finger.** The sheet already had three ways to tick a row and every
+      one of them asks the hand to be accurate: aim at a 44px box, or tap the
+      same few characters twice without straying into the last three of them.
+      A pull asks for nothing but a direction, which is what a thumb going down
+      a shopping list can actually give — so it is the gesture for the thing
+      the app is most often doing.
+
+      **Leftwards, because the box is on the left.** The words are pushed
+      towards the box at the head of the row and the box takes the tick, which
+      is a sentence about this row rather than a convention borrowed from
+      somewhere else. It also settles the collision for free: rightwards is
+      already the paper turning over, and on a row that draws a link the two
+      gestures begin on the same element — the words there are a plain
+      container rather than a button, so they are not among the controls the
+      turn stands aside for. `drag.swiping` is `drag.turning` the other way
+      round, and it is the whole of what the two have to say to each other.
+
+      **Nothing waits for the finger to come up.** The tick lands the moment
+      the hand passes the reach, with the buzz that says so. Held back for the
+      release it would put a wait on the one thing the gesture is for, and
+      there would be nothing to wait for: past the reach there is no other
+      thing the movement could still turn out to have been. The reach is a
+      number of pixels rather than a fraction of the row, for the reason the
+      flick that commits a turn is — a pull is a movement of the hand, and a
+      hand does not know how wide the paper is.
+
+      **It toggles, as the box it is standing in for does.** A pull that only
+      ever ticked would answer a mistaken tick with nothing at all, and the way
+      back from a gesture ought to be the gesture. A half-done row is finished
+      off, which is what a tap on its box does too.
+
+      **The row gives, and how far is the paper's business.** It slides into
+      the margin the writing is held off the drawn edge by — the column every
+      delete mark stands in — and stops there, capped in the stylesheet rather
+      than in the hand that pushes it, because it is a fact about the sheet.
+      The hand carries on past that, and the last stretch of the pull is spent
+      against a row with nowhere left to go, which is what pushing a sheet that
+      is already against something feels like and what the tick then lands out
+      of. Without the give a pull that stopped short said nothing at all, and a
+      gesture that reports nothing until it reports everything reads as broken
+      on every attempt that misses.
+
+      **It shares nothing with the three presses on the same words.** A press
+      is stillness and this is movement, so the press has already given the
+      gesture up by the time the finger is eight pixels along; the taps are
+      decided on release and this never gets there, because the click that
+      would follow is swallowed in the capture phase the way a drop's is.
+      Without that swallow every pull opened the row for editing behind the
+      tick it had just made. It did cost `pressDrag` a correction: it released
+      any capture on the pointer id it was holding, which took the pull's own
+      capture away with it and killed any pull that began before the eighth
+      pixel. It now releases only a capture it took itself.
+
+      **And the direction is asked once**, when the movement first passes the
+      slack. The sheet is what scrolls and the paper is what turns, so a
+      gesture that begins as either of those stays that until the finger comes
+      up — fighting over the answer every time a thumb wandered back across the
+      diagonal would put a tick at the end of half the scrolls on the sheet.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

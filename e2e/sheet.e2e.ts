@@ -1561,6 +1561,106 @@ test('a run of taps at the end of the words never ticks the task', async ({ page
 	await expect(page.getByRole('textbox').first()).toBeFocused();
 });
 
+/**
+ * Pull a row leftwards, the way a finger does: down on the words, across, up.
+ *
+ * It starts at the far end of the words so there is room to travel, and moves
+ * in steps because the gesture is decided on the first move rather than on the
+ * release — one jump straight to the end would say nothing about direction on
+ * the way there.
+ */
+async function pull(page: Page, locator: ReturnType<Page['getByRole']>, by: number) {
+	const box = (await locator.boundingBox())!;
+	const from = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(from.x - by, from.y, { steps: 8 });
+	await page.mouse.up();
+}
+
+test('a task pulled leftwards is ticked off, and pulling it again puts it back', async ({
+	page
+}) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+
+	await pull(page, words, 120);
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+
+	/*
+	 * The way back is the gesture itself. What the pull means is what the box at
+	 * the head of the row means, and that is a tap that toggles.
+	 */
+	await pull(page, words, 120);
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+
+	await page.reload();
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+});
+
+test('a pull does not open the row it was made on', async ({ page }) => {
+	/*
+	 * The finger comes up on the very button the taps are counted on, so the
+	 * click it fires has to go the way a drop's does — or every pull would open
+	 * the row for editing behind the tick it had just made.
+	 */
+	await addTask(page, 'Bread');
+
+	await pull(page, page.getByRole('button', { name: 'Bread', exact: true }), 120);
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'true');
+	await expect(page.getByRole('textbox')).toHaveCount(0);
+});
+
+test('a pull that stops short gives, and then changes nothing', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+	const box = (await words.boundingBox())!;
+	const from = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(from.x - 24, from.y, { steps: 4 });
+
+	// The row gives under the hand, as far as the margin the writing is held off
+	// the paper's drawn edge by, and no further.
+	const given = await page
+		.locator('[data-task]')
+		.first()
+		.evaluate((el) => getComputedStyle(el).translate);
+	expect(given).not.toBe('none');
+
+	await page.mouse.up();
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+	await expect(page.getByRole('textbox')).toHaveCount(0);
+});
+
+test('a finger going down the page scrolls it rather than ticking anything', async ({ page }) => {
+	await addTask(page, 'Bread');
+
+	const words = page.getByRole('button', { name: 'Bread', exact: true });
+	const box = (await words.boundingBox())!;
+	const from = { x: box.x + box.width - 8, y: box.y + box.height / 2 };
+
+	/*
+	 * Mostly down and a little across, which is what a thumb scrolling a list
+	 * actually does. The direction is asked once, when the movement is first big
+	 * enough to mean anything, and the answer holds for the rest of the gesture —
+	 * so wandering sideways later cannot turn a scroll into a tick.
+	 */
+	await page.mouse.move(from.x, from.y);
+	await page.mouse.down();
+	await page.mouse.move(from.x - 8, from.y + 60, { steps: 6 });
+	await page.mouse.move(from.x - 200, from.y + 60, { steps: 6 });
+	await page.mouse.up();
+
+	await expect(task(page, 'Bread')).toHaveAttribute('aria-checked', 'false');
+});
+
 test('one tap folds a group, and two open its name', async ({ page }) => {
 	await addTask(page, 'Bread');
 

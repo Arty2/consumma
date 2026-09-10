@@ -243,8 +243,15 @@
 		 * `lostpointercapture` puts the whole lift down: a group dragged
 		 * sideways, which is exactly what carrying one to the corner is, went
 		 * dead the moment it moved.
+		 *
+		 * A row being pulled leftwards to be ticked off is the same question
+		 * asked of a gesture going the other way. It is not covered by the guard
+		 * below either: a task naming an address draws its words in a plain
+		 * container rather than in a button, so a pull that began there and
+		 * wandered back across the middle would turn the paper out from under
+		 * the row still in hand.
 		 */
-		if (drag.dragging) {
+		if (drag.dragging || drag.swiping) {
 			dragStart = null;
 			return;
 		}
