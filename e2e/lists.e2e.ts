@@ -493,7 +493,14 @@ test('while a group is carried the corner answers for it', async ({ page }) => {
 	await carryTo(page, 'button[aria-haspopup="listbox"]');
 	await expect(page.locator('[data-newlist]')).toHaveCount(1);
 
-	await carryTo(page, 'section[data-group]');
+	/*
+	 * Back onto the sheet, and well down it: the column is as wide as the
+	 * writing now, so it lies over the first group's own title while it is
+	 * open — and the hit test reads the pill and the column as one box, which
+	 * is what keeps a finger from falling out of the switcher on the way into
+	 * the lists. Somewhere below the column is what "back to the sheet" means.
+	 */
+	await carryTo(page, '[data-newgroup]');
 	await expect(page.locator('[data-newlist]')).toHaveCount(0);
 
 	await page.mouse.up();

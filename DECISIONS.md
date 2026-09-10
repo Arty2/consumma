@@ -1834,12 +1834,40 @@ relative` rather than a transform, which does not apply to an inline box.
       difference the row needs; it is `aria-hidden`, so what is read aloud
       stays the plain words.
 
-      **The column's width is stated, not fitted.** Left to its contents, the
-      column a tap opens and the column a carried group opens came out
-      different widths — and even holding the same rows, a code appearing or a
-      name arriving would move the edge. A drop target that changes width under
-      the finger steering at it is a worse thing than a long name losing its
-      tail, and the pill above it already cuts one with the same ellipsis.
+      **The column's width is stated, not fitted — and what it is stated as is
+      the full width of the writing.** Left to its contents, the column a tap
+      opens and the column a carried group opens came out different widths, and
+      even holding the same rows a code appearing would move the edge. A drop
+      target that changes width under the finger steering at it is a worse
+      thing than a long name losing its tail, and the pill above it already
+      cuts one with the same ellipsis. Full width here means the paper's own
+      width less the room the writing keeps inside its drawn edges — the same
+      line every other line on either face begins and ends on.
+
+      **The two faces hang it differently, and have to.** The sheet's is out of
+      the flow, because it opens over a list a carried group is being steered
+      across and a column that pushed would move the thing being aimed at. The
+      panel's is in it. Both were tried the other way round: taken out of the
+      flow on the panel, the column lay over the full-bleed perforation that
+      rules the panel's sections off, cut the middle out of it and left its two
+      ends sticking out either side, which reads as a rule somebody broke
+      rather than as a column standing over one. Widening the column's _ground_
+      to cover the perforation whole only moved the damage — at the paper's
+      drawn width it painted over the paper's own side edges, so the sheet had
+      a gap in its outline for as long as the column was open.
+
+      In the flow it is wider than the box holding it, since the settings row
+      keeps the ✕'s column in reserve and carries the theme mark, so it
+      overflows the wrap to the right and nothing clips it. That is also why
+      `.pill` is capped with `max-width` rather than stretched with `width`: a
+      wrap sized to hold the column would have taken the pill with it, and the
+      pill is the one thing on the panel that has to come out exactly as wide
+      as it is on the sheet.
+
+      One consequence, worth knowing rather than fixing: at this width the open
+      column lies over the first group's title, and the hit test reads the pill
+      and the column as one box — so taking a carried group "back to the sheet"
+      now means below the column rather than merely off the pill.
 
 ## Known limits
 

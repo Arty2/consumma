@@ -512,14 +512,20 @@
 	}
 
 	/*
+	 * Capped by its box, not stretched to fill it.
+	 *
 	 * A block-level child doesn't inherit a flex parent's shrunk box just
-	 * because the parent shrank — the wrap narrows via flex-shrink, but without
-	 * this the pill still sizes to its own content and overflows past it. Both
-	 * faces now, since both wraps are flex items taking what is left of their
-	 * row.
+	 * because the parent shrank — the wrap narrows via flex-shrink, and without
+	 * something here the pill still sizes to its own content and overflows past
+	 * it. `width: 100%` did that job and one more nobody asked for: on the
+	 * panel, where the column below is in the flow and wider than the pill, the
+	 * wrap grew to hold the column and the pill grew with it — so the name came
+	 * out one width on the sheet and another on the back of the same sheet. A
+	 * maximum says the one thing that was wanted: no wider than the room, and
+	 * as wide as the words until then.
 	 */
 	.pill {
-		width: 100%;
+		max-width: 100%;
 	}
 
 	/*
@@ -559,6 +565,8 @@
 	 * paper, and turning it over does not move the pill.
 	 */
 	.wrap.menu {
+		/* What the column below hangs from, as on the sheet. */
+		position: relative;
 		min-width: 0;
 		/*
 		 * The room before the panel's first tear, held here rather than on the
@@ -608,7 +616,28 @@
 		display: flex;
 		flex-direction: column;
 		padding-top: 0.4rem;
+
 		background: var(--paper);
+		/*
+		 * **The width of the writing, and the same on both faces.**
+		 *
+		 * Full width here means the paper's full width less the room the writing
+		 * keeps inside its own edges — `--corner-x` at each side, which is where
+		 * every line on either face begins and ends. Not the pill's width and not
+		 * the column's own contents: the pill is as wide as one name, so a column
+		 * measured off it was a different width on every list and a different
+		 * width again the moment a code appeared, and a drop target that moves
+		 * under the finger steering at it is the wrong kind of surprise.
+		 *
+		 * A name too long for it is cut with the ellipsis the pill above already
+		 * uses. That is the trade, and at the full width of the paper it is one
+		 * that almost never comes due.
+		 *
+		 * A name too long for it is cut with the ellipsis the pill above already
+		 * uses — see below.
+		 */
+		left: 0;
+		width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x));
 	}
 
 	/*
@@ -620,8 +649,32 @@
 	 * overflows by, so the two cancel. Here it is given back by hand, and the
 	 * first rule lands the same hair below the name on both faces of the paper.
 	 */
+	/*
+	 * In the flow here, where the sheet's copy hangs out of it.
+	 *
+	 * The sheet's has to be out: it opens over a list a finger is steering a
+	 * carried group across, and a column that pushed that list down would move
+	 * the very thing being aimed at. Nothing on this face is being aimed at, so
+	 * the panel does the ordinary thing and makes room — and it must, because
+	 * this column is wider than the writing it sits in and the panel rules its
+	 * sections off with a full-bleed perforation. Laid over one, an opaque
+	 * column cuts the middle out of it and leaves its two ends sticking out
+	 * either side, which reads as a rule somebody broke.
+	 *
+	 * It is wider than the box that holds it — the settings row keeps the ✕'s
+	 * column in reserve and carries the theme mark — so it simply overflows the
+	 * wrap to the right. That is why the pill is capped rather than stretched
+	 * (see `.pill` above): a wrap sized to hold this would have taken the pill
+	 * with it, and the pill is the one thing on the panel that has to come out
+	 * exactly as wide as it is on the sheet.
+	 */
 	.dropdown.menu {
-		width: 100%;
+		/*
+		 * The pill is a touch target tall in a line box the face's own strut
+		 * decides, so it overhangs the box holding it by about this much and a
+		 * column laid directly under that box begins above the words it belongs
+		 * to. The sheet cancels it by painting the pill up by the same amount.
+		 */
 		margin-top: 5px;
 	}
 
@@ -781,10 +834,7 @@
 	.dropdown.sheet {
 		position: absolute;
 		top: 100%;
-		left: 0;
 		z-index: 2;
-		width: max(100%, 11rem);
-		max-width: calc(min(100vw, var(--paper-width)) - 2 * var(--corner-x));
 		padding-bottom: 0.4rem;
 	}
 
