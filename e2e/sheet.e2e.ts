@@ -633,9 +633,13 @@ test('a group can be removed only once nothing in it is left to do', async ({ pa
 	await expect(remove).toBeEnabled();
 	await remove.click();
 
-	// The group and everything in it, and a toast that says how much went.
+	/*
+	 * The group and everything in it, and a toast that says how much went — in
+	 * the same word the button that did it uses, and the same word a task's own
+	 * message uses.
+	 */
 	await expect(page.getByRole('button', { name: 'My list' })).toHaveCount(0);
-	await expect(page.getByRole('status').filter({ hasText: /Removed/ })).toBeVisible();
+	await expect(page.getByRole('status').last()).toContainText('Deleted “My list” and 2 done.');
 });
 
 test('a lift interrupted by the row leaving does not stick', async ({ page }) => {

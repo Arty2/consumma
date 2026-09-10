@@ -1308,7 +1308,7 @@ relative` rather than a transform, which does not apply to an inline box.
       one", which is also why the blur handler has to be `() => addGroup()`
       rather than `addGroup`, or the event lands in the argument that decides.
 
-101.  **A group's name is quoted where the app says it back.** "Removed Weekend
+101.  **A group's name is quoted where the app says it back.** "Deleted Weekend
       and 3 done" leaves the reader to work out where the name stopped, and a
       group called "and" or "done" makes a sentence out of nothing. Not in an
       announcement, where a quotation mark is noise or silence depending on the
@@ -1954,6 +1954,25 @@ relative` rather than a transform, which does not apply to an inline box.
       gesture that begins as either of those stays that until the finger comes
       up — fighting over the answer every time a thumb wandered back across the
       diagonal would put a tick at the end of half the scrolls on the sheet.
+
+128.  **A deleted group says "Deleted", not "Removed".** The mark in the gutter
+      is named DELETE GROUP and the message that answered it said something
+      else, which is two words for one act on one control — and the message a
+      deleted task leaves has always been "Deleted." So the group's now reads
+      "Deleted “Weekend” and 3 done." and the pair agree: whatever went, the
+      sheet says the same thing about it, in the word the button used.
+
+      The catalogue keys went with the wording. `toast.removed`,
+      `removedWithDone` and `removedWithTasks` are `deletedGroup`,
+      `deletedWithDone` and `deletedWithTasks`, which puts them beside
+      `deletedList` under one verb — a key named after a word the app no longer
+      says is the kind of thing that stays wrong for a year, and the catalogue
+      is meant to be read in one sitting.
+
+      Nothing about the act changed: the header's mark still only offers it on
+      a group with nothing left to do, the corner fold still takes one in
+      whatever state it is in and still counts tasks rather than done ones, and
+      both still leave the ten-second `UNDO?`.
 
 ## Known limits
 

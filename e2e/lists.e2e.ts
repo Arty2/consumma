@@ -518,7 +518,7 @@ test('a group let go on the fold is removed, tasks and all, with an undo', async
 
 	// It counts what went, done or not — the header's own mark is only ever
 	// drawn on a group with nothing left to do, and this one had something.
-	await expect(page.getByRole('status').last()).toContainText('Removed “Market” and 1 task.');
+	await expect(page.getByRole('status').last()).toContainText('Deleted “Market” and 1 task.');
 	expect(await titles(page)).toStrictEqual(['My list']);
 
 	/*

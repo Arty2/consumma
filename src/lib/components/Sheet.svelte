@@ -90,13 +90,13 @@
 		if (!gone) return;
 
 		const count = gone.tasks.length;
-		const went = finished ? t.toast.removedWithDone : t.toast.removedWithTasks;
+		const went = finished ? t.toast.deletedWithDone : t.toast.deletedWithTasks;
 		const what = count === 0 ? named(title) : went({ what: named(title), count });
 
 		// The confirm stops nothing here — the header only offers it on a finished
 		// group — so the undo is what covers a change of mind.
 		ui.say(
-			t.toast.removed({ what }),
+			t.toast.deletedGroup({ what }),
 			undoing(() => sheet.restoreGroup(gone))
 		);
 	}
