@@ -262,6 +262,29 @@ export const en = {
 		named: ({ name }: { name: string }) => `“${name}”`
 	},
 
+	/*
+	 * The guidance drawn over the page for somebody who arrived on an
+	 * invitation, and the only words this app says about itself.
+	 *
+	 * Two of them are on the screen, one on each face. `join` stands at the far
+	 * end of the arrow pointing at the burger, and it is word for word what
+	 * `menu.joinList` says — it names the section the arrow leads to, so an
+	 * arrow that promised anything else would send somebody looking for a
+	 * heading the panel does not have. `paste` stands under the ring round the
+	 * code field and says what a finger there will get, since an empty field
+	 * pastes on a tap: the ring says which thing, and no arrow can say what to
+	 * do with what it lands on.
+	 *
+	 * `said` is the whole of the same guidance for somebody who cannot see a
+	 * red arrow, which is why it is a sentence: speech has no corner of the
+	 * screen to point at. Announced once, on arrival, and never drawn.
+	 */
+	guide: {
+		join: 'Join list',
+		paste: 'Paste here',
+		said: 'You were sent a list. Open the menu at the top right, then paste the code under Join list.'
+	},
+
 	theme: {
 		dark: 'Theme — dark',
 		light: 'Theme — light',

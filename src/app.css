@@ -44,6 +44,28 @@
 	--ink: #000;
 	--paper: #fff;
 
+	/*
+	 * The biro, and the second of exactly two things in this app allowed to be
+	 * red. The first is the debug outline below, which is a tool for whoever is
+	 * building the app; this is the guidance drawn over the page for somebody
+	 * who arrived on an invitation, and it is the same argument from the other
+	 * side: a mark that is not part of the drawing must not be drawn in the
+	 * ink, or it is part of the drawing.
+	 *
+	 * It is not a third colour in the palette and it is not in the palette at
+	 * all — nothing on the sheet, in the panel or in a message is ever set in
+	 * it, and it is on screen only while somebody is being shown where the
+	 * code goes. The greyscale assertion in e2e/design.e2e.ts therefore had to
+	 * be told about it, which the debug outline never did: an outline is not a
+	 * colour that test reads and this is. What it is told is narrow — ink
+	 * inside `[data-guide-ink]` only — and a second test says nothing anywhere
+	 * is red until somebody arrives on an invitation. That pair is the whole
+	 * licence. Widening it is how two colours becomes three.
+	 *
+	 * One value for both themes. A biro does not know what it was written on.
+	 */
+	--guide: #ee2b30;
+
 	--hand: 'Graphe', ui-rounded, cursive;
 
 	/*
@@ -373,7 +395,8 @@
 /*
  * Every box on the page, outlined, while the debug switch is on.
  *
- * The one deliberate breach of the two colours, and red because red is the one
+ * One of the two deliberate breaches of the two colours — `--guide` above is
+ * the other — and red because red is the one
  * thing on this page that could not possibly be mistaken for part of it — an
  * outline in the ink would read as a drawn rule and be exactly what a layout
  * needs to be told apart from. This is a tool for whoever is building the app,

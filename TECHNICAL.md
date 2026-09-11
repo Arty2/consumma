@@ -283,6 +283,52 @@ every control there already owns a press — the ones that lift a task and a
 group. On the menu it can start anywhere: nothing in there owns a press, and a
 drag that crossed a button does not press it.
 
+### Arriving on an invitation
+
+| Where              | Gesture                | What happens                                                      |
+| ------------------ | ---------------------- | ----------------------------------------------------------------- |
+| A link ending `?j` | Open it                | A red arrow points at the burger, with `JOIN LIST` at its far end |
+| The burger         | Tap it                 | The paper turns, and the arrow follows it over                    |
+| The panel          | —                      | It opens at the code field, ringed in red, `PASTE HERE` under it  |
+| The code field     | Tap it while empty     | Pastes the code, and the marks go                                 |
+| Anywhere else      | Tap it, or press `Esc` | The marks go. Nothing else changes                                |
+
+SHARE hands over two lines: a link ending in `?j`, then the code. The flag is
+one character and it says only that whoever follows the link was sent a list —
+**the code is not in it**, and never is, in a query or a fragment or anywhere
+else on a URL. What it buys is that the app on the other end opens knowing
+somebody is holding a code, and can point at where it goes.
+
+The pointing is the one time this app says anything about itself, and it is
+drawn over the page rather than put into it — in red, because a mark in the ink
+would be part of the drawing. One mark and one word on each face, never more.
+On the sheet, an arrow to the burger with `JOIN LIST` written at the far end
+of it — word for word the heading it leads to, so the arrow does not promise a
+section the panel does not have.
+Once the paper is over, a ring thrown round the twelve places the code is
+written into, with `PASTE HERE` written under it and off to the left — the panel
+opens at that field rather than where it was last left.
+
+The panel has no arrow. One there had to end on a field a few millimetres of a
+screen that is already a column of controls, so its head came out smaller than
+the thing it was pointing at and read as a tick rather than as a direction. The
+ring says which thing, exactly; the word says what a finger there will get,
+since an empty field pastes on a tap. `PASTE HERE` stands to the left rather than
+centred under the ring: two words at display size reach most of the way across
+a phone, and the left is the side a phrase has room on.
+
+It never takes a press — it points at controls, and anything it swallowed would
+be the control it is pointing at. A press anywhere it is not pointing ends it,
+the way somebody pointing over your shoulder stops when you start doing
+something of your own; so does `Esc`, when no panel is open. Turning the paper
+back over without a code puts it back on the burger rather than giving up. A
+code reaching the field ends it for good.
+
+None of it is written down: it is on screen for this reading of the app and no
+other, and reloading the page — by then without the flag — arrives at an app
+that says nothing. A screen reader hears one sentence on arrival instead, since
+a red arrow says nothing out loud.
+
 Tick three tasks inside five seconds and a message offers to clear exactly
 those three. It is only ever an offer — nothing sweeps the sheet by itself —
 and it is made once per run rather than once per tick after the third.

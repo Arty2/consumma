@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import ConfirmModal from '$lib/components/ConfirmModal.svelte';
 	import CornerFold from '$lib/components/CornerFold.svelte';
+	import Guide from '$lib/components/Guide.svelte';
 	import ImportModal from '$lib/components/ImportModal.svelte';
 	import ListSwitcher from '$lib/components/ListSwitcher.svelte';
 	import Menu from '$lib/components/Menu.svelte';
@@ -24,6 +25,8 @@
 	import { t } from '$lib/i18n';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { invited } from '$lib/state/guide';
+	import { guide } from '$lib/state/guide.svelte';
 	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { ui } from '$lib/state/ui.svelte';
@@ -180,6 +183,9 @@
 	}
 
 	function openMenu() {
+		// The burger has been found; the guidance follows the paper over.
+		guide.saw('opened');
+
 		if (still()) {
 			panel = 'menu';
 			return;
@@ -316,6 +322,13 @@
 	 * when it is done; only then is it taken away.
 	 */
 	function closeMenu() {
+		/*
+		 * Back to the burger rather than gone. Somebody who opened the panel,
+		 * did not find the field and turned the paper back over is exactly who
+		 * this is for — see `next` in state/guide.ts.
+		 */
+		guide.saw('closed');
+
 		if (still()) {
 			panel = null;
 			return;
@@ -351,6 +364,28 @@
 			sheet.load();
 			ui.load();
 			sync.load();
+
+			/*
+			 * Somebody arrived on an invitation, and is holding a code with
+			 * nowhere obvious to put it.
+			 *
+			 * The flag is read here and taken off the address in the same
+			 * breath. It has done its work by now — a reload is not a fresh
+			 * arrival, and a link left sitting in the bar saying `?j` is
+			 * machinery showing. `replaceState` rather than a navigation: this
+			 * is the same page, and pushing would put the flag back one press
+			 * of Back away.
+			 *
+			 * Nothing is written down, here or anywhere else the guidance
+			 * touches. Arriving writes nothing, and arriving on an invitation
+			 * is still arriving.
+			 */
+			if (browser && invited(location.search)) {
+				guide.start(location.search);
+				history.replaceState(history.state, '', location.pathname + location.hash);
+				// Red arrows say nothing out loud. This is what they say instead.
+				ui.announce(t.guide.said);
+			}
 		});
 	});
 
@@ -598,6 +633,13 @@
 		{/if}
 	</ConfirmModal>
 {/if}
+
+<!--
+	Last, and over everything: the guidance drawn for somebody who arrived on an
+	invitation. It is nothing at all unless they did, and it waits for the paper
+	to stop turning before it measures anything — see `settled` in Guide.svelte.
+-->
+<Guide />
 
 <Toast />
 

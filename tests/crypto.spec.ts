@@ -219,6 +219,18 @@ describe('codeFrom', () => {
 		expect(codeFrom(`https://listula.example\n${'a1b2 c3d4 e5f6'}`)).toBe(CODE);
 	});
 
+	/*
+	 * The invitation's link now ends in the flag that says somebody was sent a
+	 * list — see INVITE in state/guide.ts. It is one more character on a word
+	 * that was already being dropped whole for its colon and its slashes, and
+	 * the `j` in it is not hex either, but the field reading this back is the
+	 * one place where being almost right is worse than being wrong.
+	 */
+	it('takes the code out of an invitation whose link carries the flag', () => {
+		expect(codeFrom(`https://listula.example/?j\n${'a1b2 c3d4 e5f6'}`)).toBe(CODE);
+		expect(codeFrom('https://listula.example/?j')).toBeNull();
+	});
+
 	it('is not fooled by a domain made of hex letters', () => {
 		/*
 		 * The trap this exists for. Strip the non-hex out of "listula.cafe" and

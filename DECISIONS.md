@@ -2125,6 +2125,76 @@ relative` rather than a transform, which does not apply to an inline box.
       deciding the catalogue at build time, which one static file cannot do
       per visitor.
 
+133.  **An invitation's link carries one character, and the app points at where
+      the code goes.** SHARE's two lines are now a link ending `?j` and the
+      code under it. The flag is not the code and cannot become one: it has no
+      value to carry, it says only that whoever followed this link was sent a
+      list, and §17's rule stands untouched — the code never travels in a URL,
+      as a query, as a fragment, or anywhere else. `codeFrom` was already
+      dropping the whole word for its colon and slashes, and a test now says so
+      of this shape too.
+
+      What the flag buys is the thing the invitation could not do before. The
+      recipient arrives holding a key, in front of a sheet where nothing is
+      labelled — no help screen, no tooltip, no empty-state copy, all of which
+      stays true (§12.14, decision 12). So the app does not explain itself: it
+      points. One mark and one word on each face. On the sheet, an arrow to the
+      burger with `JOIN LIST` at the far end of it — word for word the heading
+      it leads to, so the arrow does not promise a section the panel does not
+      have. On the panel, a ring thrown round the code field with `PASTE HERE`
+      under it, and the panel opened at that field rather than where it was
+      last left.
+
+      **The panel gets no arrow, and that is the second thing tried rather than
+      the first.** An arrow there had to end on a field a few millimetres of a
+      screen that is already a column of controls, so its head came out smaller
+      than the thing it was pointing at and read as a tick. The answer is not a
+      bigger arrow: a ring says which thing, exactly, and an arrow cannot say
+      what to do with what it lands on. The word does that — `paste` and not
+      the field's name, because an empty field pastes on a tap, so the word
+      names what a finger there will get. It sits to the left under the ring
+      rather than centred: two words at display size reach most of the way
+      across a phone, and the left is the side a phrase has room on.
+
+      The ring is **thrown, not traced**. `handOval` gained `jitter`, which
+      lets each sampled point off the true ellipse: `wobble` bends the line
+      between two points and leaves every radius correct, which above the size
+      of a word reads as a traced ellipse rather than as a hand. It gained
+      `steps` for the same reason — handPath bends each segment once, so twelve
+      samples is a ring at the width of a word and plainly a polygon at the
+      width of the paper. Both default to what every loop already drawn uses,
+      so the switcher's own is not re-cut by a rule about a mark that came
+      later.
+
+      **This is the second and last thing allowed to be red**, and it is the
+      same argument the debug outline makes from the other side: what is drawn
+      over the page must not be drawn in the ink, or it becomes part of the
+      drawing. It is a biro mark on a printed page, and the whole of what makes
+      that legible is that the biro is not the printing. The greyscale
+      assertion in e2e/design.e2e.ts had to be told about it, which the debug
+      outline never did — an outline is not a colour that test reads and this
+      is — so the exemption is narrow, named (`[data-guide-ink]`), and paired
+      with a second test saying nothing anywhere is red until somebody arrives
+      on an invitation. That pair is the whole licence.
+
+      The word is set in Graphe at display size rather than drawn as a path.
+      Everything else in this app is a path because everything else is a mark;
+      this is a word, and a word written in the app's own hand is the app
+      saying it. The marks beside it are paths like every other: `handSwoop`,
+      which is the one arrow here that knows both its ends, and `handOval`,
+      which already loops the list name when a group is carried to it.
+
+      **It writes nothing.** Arriving writes nothing (decision 121), and
+      arriving on an invitation is still arriving: the flag is read, taken off
+      the address with `replaceState` so a reload is not a second arrival, and
+      the guidance lives in memory for this reading of the app alone — the rule
+      the collapsed groups and `lists.arrivals` already follow. It never takes
+      a press, since everything it points at is a control. It ends on a code,
+      on `Esc`, or on a press anywhere it is not pointing, which is what
+      somebody pointing over your shoulder does when you start doing something
+      of your own; turning the paper back over without a code puts it back on
+      the burger rather than spending it.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

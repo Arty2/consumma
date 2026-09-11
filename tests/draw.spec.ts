@@ -16,6 +16,7 @@ import {
 	handScribble,
 	handSlashedCircle,
 	handSun,
+	handSwoop,
 	handSunMoon,
 	handTear,
 	handVertical
@@ -349,6 +350,62 @@ describe('handOval', () => {
 	it('is stable for a seed, so it never re-jitters on a render', () => {
 		expect(handOval(W, H, { seed: 8 })).toBe(handOval(W, H, { seed: 8 }));
 	});
+
+	/*
+	 * `jitter` is what tells a ring somebody threw round something from an
+	 * ellipse drawn unsteadily. `wobble` bends the line between two points and
+	 * leaves every radius correct, which above the size of a word reads as
+	 * traced; this lets the points themselves off the ellipse.
+	 */
+	describe('thrown rather than traced', () => {
+		it('is off by default, so every loop already drawn is untouched', () => {
+			expect(handOval(W, H, { seed: 3, wobble: 0, jitter: 0 })).toBe(
+				handOval(W, H, { seed: 3, wobble: 0 })
+			);
+		});
+
+		it('lets the points off the true ellipse', () => {
+			const radii = (d: string) =>
+				endpoints(d).map(({ x, y }) => Math.hypot((x - W / 2) / (W / 2), (y - H / 2) / (H / 2)));
+
+			/*
+			 * Traced: every point sits on the ellipse it was sampled from, to
+			 * the two decimals a path is written out with.
+			 */
+			for (const r of radii(handOval(W, H, { seed: 3, wobble: 0 }))) {
+				expect(r).toBeCloseTo(1, 3);
+			}
+
+			// Thrown: no two of its radii agree, and none is far out.
+			const loose = radii(handOval(W, H, { seed: 3, wobble: 0, jitter: 0.1 }));
+			expect(new Set(loose.map((r) => r.toFixed(4))).size).toBeGreaterThan(loose.length / 2);
+			for (const r of loose) {
+				expect(r).toBeGreaterThan(0.85);
+				expect(r).toBeLessThan(1.15);
+			}
+		});
+
+		/*
+		 * The pen going round twice, not two pens: the point it carries past
+		 * the start to is let off by the same amount the start was, so the
+		 * crossing does not disagree with itself about where the ring is.
+		 */
+		it('crosses its own start rather than stopping on it', () => {
+			const points = endpoints(handOval(W, H, { seed: 3, wobble: 0, jitter: 0.1, over: 1.9 }));
+			const first = points[0];
+			const last = points.at(-1)!;
+
+			expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeGreaterThan(1);
+			expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeLessThan(W / 3);
+		});
+
+		it('is still one unlifted stroke, and still stable for a seed', () => {
+			const ring = handOval(W, H, { seed: 8, jitter: 0.09, over: 1.9 });
+
+			expect(ring.match(/M /g)).toHaveLength(1);
+			expect(ring).toBe(handOval(W, H, { seed: 8, jitter: 0.09, over: 1.9 }));
+		});
+	});
 });
 
 describe('handBin', () => {
@@ -402,6 +459,61 @@ describe('handBin', () => {
 
 	it('is stable for a seed, so it never re-jitters on a render', () => {
 		expect(handBin(W, H, { seed: 8 })).toBe(handBin(W, H, { seed: 8 }));
+	});
+});
+
+describe('handSwoop', () => {
+	const FROM = { x: 40, y: 600 };
+	const TO = { x: 340, y: 90 };
+
+	it('starts and ends where it was told to', () => {
+		const points = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0 }));
+
+		expect(points[0]).toStrictEqual(FROM);
+		// The shaft's last point before the barb is the head itself.
+		expect(points.some((p) => p.x === TO.x && p.y === TO.y)).toBe(true);
+	});
+
+	it('bows off the straight line between them', () => {
+		const straight = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0, bow: 0 }));
+		const bowed = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0, bow: 0.3 }));
+
+		/*
+		 * The middle of the run is what moves; the two ends are pinned. A hand
+		 * reaching across a page does not draw a ruler's line, and a stroke that
+		 * came out straight would be the one mark here that looked printed.
+		 */
+		const middle = Math.floor(straight.length / 4);
+		expect(bowed[middle].x).not.toBe(straight[middle].x);
+		expect(bowed[0]).toStrictEqual(straight[0]);
+	});
+
+	/*
+	 * The barb is taken off the tangent at the head rather than off the straight
+	 * line between the ends. On a bowed stroke those differ by enough to read as
+	 * a barb stuck on at the wrong angle, so this is what says it followed the
+	 * curve: both legs come back off the head, never past it.
+	 */
+	it('puts both legs of the head behind the point', () => {
+		const points = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0 }));
+		/*
+		 * The barb is its own `M`, so after the shaft's head the endpoints run
+		 * leg, head again, leg — which is what makes it one polyline with a
+		 * corner rather than two strokes that happen to meet.
+		 */
+		const at = points.findIndex((p) => p.x === TO.x && p.y === TO.y);
+		const legs = [points[at + 1], points[at + 3]].filter(Boolean);
+
+		expect(legs).toHaveLength(2);
+		for (const leg of legs) {
+			// The run goes up and to the right, so a leg lies below and behind it.
+			expect(leg.y).toBeGreaterThan(TO.y);
+		}
+	});
+
+	it('is stable for a seed, and different for another', () => {
+		expect(handSwoop(FROM, TO, { seed: 8 })).toBe(handSwoop(FROM, TO, { seed: 8 }));
+		expect(handSwoop(FROM, TO, { seed: 8 })).not.toBe(handSwoop(FROM, TO, { seed: 9 }));
 	});
 });
 

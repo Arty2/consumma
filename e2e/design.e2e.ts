@@ -122,6 +122,19 @@ test('the palette is black on white and nothing else', async ({ page }) => {
 		const seen = new Set<string>();
 
 		for (const el of document.querySelectorAll('*')) {
+			/*
+			 * The guidance drawn over the page for somebody who arrived on an
+			 * invitation is the one thing here written in a colour, and it is
+			 * written over the app rather than in it — see `--guide` in app.css.
+			 * Named rather than inferred, exactly as the typeface carve-out is:
+			 * what is exempt is ink inside that layer and nothing else, so a
+			 * colour anywhere in the app proper still fails this.
+			 *
+			 * It is not on the page at all here. The test below is what says so,
+			 * and this exemption is worth nothing without it.
+			 */
+			if (el.closest('[data-guide-ink]')) continue;
+
 			const style = getComputedStyle(el);
 			for (const value of [style.color, style.backgroundColor, style.borderTopColor]) {
 				// Fully transparent is not a colour anyone can see.
@@ -140,11 +153,42 @@ test('the palette is black on white and nothing else', async ({ page }) => {
 	}
 });
 
+test('the guidance is the only colour, and it is not here unless it was asked for', async ({
+	page
+}) => {
+	/*
+	 * The exemption above is a hole in the rule that matters most in this app,
+	 * so this is the other half of it: nothing anywhere draws in the biro until
+	 * somebody arrives on an invitation, and what does then is only ever the
+	 * layer that was exempted.
+	 */
+	expect(await page.locator('[data-guide-ink]').count()).toBe(0);
+
+	const red = () =>
+		page.evaluate(
+			() =>
+				[...document.querySelectorAll('*')].filter((el) => {
+					const style = getComputedStyle(el);
+					for (const value of [style.color, style.backgroundColor, style.stroke]) {
+						if (value === 'rgba(0, 0, 0, 0)' || value === 'transparent' || value === 'none') {
+							continue;
+						}
+						const [r, g, b] = value.match(/\d+/g)?.slice(0, 3).map(Number) ?? [0, 0, 0];
+						if (r !== g || g !== b) return true;
+					}
+					return false;
+				}).length
+		);
+
+	expect(await red()).toBe(0);
+});
+
 test('debug draws every box, and only when it is asked to', async ({ page }) => {
 	/*
-	 * The one deliberate breach of the two colours. It is a tool for whoever is
-	 * building the app rather than a state the app has, so what matters is that
-	 * it cannot appear without being asked for.
+	 * One of the two deliberate breaches of the two colours — the guidance above
+	 * is the other. It is a tool for whoever is building the app rather than a
+	 * state the app has, so what matters is that it cannot appear without being
+	 * asked for.
 	 */
 	const outlined = () =>
 		page.evaluate(

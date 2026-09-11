@@ -181,7 +181,7 @@ test('COPY hands over the code and nothing else', async ({ page, context }) => {
 	expect(copied).not.toContain(new URL(page.url()).origin);
 });
 
-test('the invitation carries the link and the code together, with no query string', async ({
+test('the invitation carries the link and the code together, and never the code in the link', async ({
 	page
 }) => {
 	// The native sheet cannot be driven from a test, so it is stood in for and
@@ -215,13 +215,22 @@ test('the invitation carries the link and the code together, with no query strin
 	// Either half alone is useless, so one payload carries both.
 	const lines = shared[0].text.split('\n').filter((l) => l.trim() !== '');
 	expect(lines).toHaveLength(2);
-	expect(lines[0]).toBe(origin);
 	expect(lines[1].replace(/\s/g, '')).toBe(code);
 
-	// And the link stays bare — no query, no fragment.
-	expect(lines[0]).not.toContain('?');
-	expect(lines[0]).not.toContain('#');
+	/*
+	 * The link carries the flag that says somebody was sent a list, and that is
+	 * the whole of what it carries: one parameter, no value, nothing about the
+	 * list. What is being guarded here has not changed — the code is not in the
+	 * URL, in the query, in a fragment or anywhere else on it, whatever else
+	 * ends up on the link later.
+	 */
+	const link = new URL(lines[0]);
+	expect(link.origin).toBe(origin);
+	expect([...link.searchParams]).toStrictEqual([['j', '']]);
+	expect(link.hash).toBe('');
 	expect(lines[0]).not.toContain(code);
+	// Nor in pieces: four hex characters of it are four too many.
+	expect(lines[0]).not.toContain(code.slice(0, 4));
 });
 
 test('EXPORT copies the whole list and says how many', async ({ page, context }) => {
