@@ -38,6 +38,16 @@
 	/** Held clear of the thing it goes round, so the loop is a loop and not a box. */
 	const LOOP_X = 14;
 	const LOOP_Y = 17;
+	/**
+	 * How far off level the ring sits, and the word under it with it.
+	 *
+	 * One number for both, because they are one gesture: a hand that throws a
+	 * ring round something off level does not then write level underneath it.
+	 * Steeper than `--instruction-tilt`, which is the panel's own settled copy
+	 * leaning on the page — this is a biro mark made in a hurry over the top of
+	 * it, and the two should not read as the same hand.
+	 */
+	const TILT = -3.5;
 	/** The arrow stops this far short of what it points at. */
 	const REACH = 16;
 	/** And starts this far out from the word. */
@@ -249,7 +259,7 @@
 		return handOval(box.width + LOOP_X * 2, box.height + LOOP_Y * 2, {
 			seed: seedFrom('guide-loop'),
 			wobble: 1.8,
-			tilt: -3.5,
+			tilt: TILT,
 			/*
 			 * Sampled far more finely than a loop round a word, because this one
 			 * is drawn at the width of the paper — see `steps` in handOval. The
@@ -342,8 +352,18 @@
 			the same face the sheet is written in, one size up, in the biro.
 		-->
 		{#if placed && label}
-			<span class="word caps" bind:this={word} style:left="{placed.x}px" style:top="{placed.y}px"
-				>{label}</span
+			<!--
+				`rotate` as its own property rather than inside a transform: the
+				centring above it is a `translate`, and the two compose without
+				either clobbering the other — the same reason the panel centres
+				itself that way and leaves the transform free for the turn.
+			-->
+			<span
+				class="word caps"
+				bind:this={word}
+				style:left="{placed.x}px"
+				style:top="{placed.y}px"
+				style:rotate="{TILT}deg">{label}</span
 			>
 		{/if}
 	</div>
