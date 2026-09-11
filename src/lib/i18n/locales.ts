@@ -1,7 +1,7 @@
 /*
  * Which catalogues exist, and the two small decisions that sit above any one
- * of them: which language a browser is asking for, and which of the two
- * language and debug-state count as "the app should actually show it".
+ * of them: which language a browser is asking for, and which of that and a
+ * debug override actually gets shown.
  *
  * Nothing here is translated, deliberately. `LOCALE_NAMES` is what a picker
  * offering a language shows for it, and every phone that offers a language
@@ -43,16 +43,16 @@ export function detectLocale(languages: readonly string[]): Locale {
 }
 
 /**
- * Which catalogue is actually shown: the debug picker's choice while debug is
- * on, the detected one otherwise.
+ * Which catalogue is actually shown: whatever the debug picker was last set
+ * to, or the detected one if it was never touched.
  *
- * The picker is not on the panel until debug is — see diagnostics.svelte.ts —
- * and turning debug back off has to put the language back with it, or the one
- * control that reaches it is gone and a browser that had already guessed
- * right is stuck showing whatever was being previewed. Nothing is cleared to
- * get that: the override just stops being read, so switching debug on again
- * in the same tab picks up the same preview rather than asking again.
+ * The picker itself is not on the panel until debug is — see
+ * diagnostics.svelte.ts — but the choice it makes outlives the switch. Debug
+ * gates *reaching* the picker, not the effect of having used it: a choice
+ * that snapped back the moment debug went off would be a choice nobody could
+ * actually keep, which is a strange way to run something offered as a
+ * picker rather than a preview button.
  */
-export function resolveLocale(detected: Locale, override: Locale | null, debugOn: boolean): Locale {
-	return debugOn && override !== null ? override : detected;
+export function resolveLocale(detected: Locale, override: Locale | null): Locale {
+	return override ?? detected;
 }

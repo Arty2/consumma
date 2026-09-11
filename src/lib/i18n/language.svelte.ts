@@ -1,5 +1,4 @@
 import { browser } from '$app/environment';
-import { diagnostics } from '$lib/state/diagnostics.svelte';
 import { el } from './el';
 import { en } from './en';
 import type { Messages } from './en';
@@ -23,10 +22,11 @@ const CATALOGUES: Record<Locale, Messages> = { en, el };
  *
  * `override` is the debug picker's doing, and it is deliberately not written
  * to storage: it lives for as long as this tab does, the same reasoning
- * Menu.svelte's own `remembered` scroll position is held to. Someone testing
- * a translation reaches for the picker once each time they open debug; a
- * choice that survived a reload would be a second kind of state to explain
- * next to the one the switch itself already keeps.
+ * Menu.svelte's own `remembered` scroll position is held to. It does outlive
+ * the debug switch itself, though — turning debug off hides the picker again
+ * but does not touch this, so a language picked while debug was on is the
+ * language shown until the tab picks another or reloads. Only reaching the
+ * control is gated on debug; what it already did is not undone by leaving.
  */
 export class Language {
 	#detected = $state<Locale>(
@@ -34,7 +34,7 @@ export class Language {
 	);
 	override = $state<Locale | null>(null);
 
-	current = $derived(resolveLocale(this.#detected, this.override, diagnostics.enabled));
+	current = $derived(resolveLocale(this.#detected, this.override));
 	catalogue = $derived(CATALOGUES[this.current]);
 }
 

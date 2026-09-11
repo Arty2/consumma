@@ -3,7 +3,6 @@ import { t } from '../src/lib/i18n';
 import { el } from '../src/lib/i18n/el';
 import { en } from '../src/lib/i18n/en';
 import { language } from '../src/lib/i18n/language.svelte';
-import { diagnostics } from '../src/lib/state/diagnostics.svelte';
 
 /*
  * The catalogue is data, so what is worth testing about it is that none of it
@@ -157,19 +156,14 @@ describe('el agrees with itself about one and about many', () => {
 
 describe('t', () => {
 	afterEach(() => {
-		// Every test below leaves debug and the override behind it.
-		if (diagnostics.enabled) diagnostics.toggle();
 		language.override = null;
 	});
 
-	it('reads through to the detected catalogue while debug is off', () => {
-		language.override = 'el';
-		expect(diagnostics.enabled).toBe(false);
+	it('reads through to the detected catalogue with no override set', () => {
 		expect(t.task.delete).toBe(en.task.delete);
 	});
 
-	it('reads through to the override once debug is on', () => {
-		diagnostics.toggle();
+	it('reads through to the override once one is set, whether or not debug still is', () => {
 		language.override = 'el';
 		expect(t.task.delete).toBe(el.task.delete);
 
@@ -178,7 +172,6 @@ describe('t', () => {
 	});
 
 	it('forwards a function leaf rather than copying it', () => {
-		diagnostics.toggle();
 		language.override = 'el';
 		expect(t.group.named({ title: 'Weekend' })).toBe(el.group.named({ title: 'Weekend' }));
 	});

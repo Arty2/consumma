@@ -2103,9 +2103,12 @@ relative` rather than a transform, which does not apply to an inline box.
       real one would need a place to live once debug is off and there would be
       nothing sensible for it to say. It is not written to storage and does
       not survive a reload, on the same reasoning the panel's own remembered
-      scroll position is not, and only takes effect while debug is on: turn
-      the switch off and the language goes back to whatever the browser asked
-      for, since the one control that reaches it left with the switch.
+      scroll position is not. Debug only gates _reaching_ the picker, though,
+      not what tapping it did: turning the switch back off leaves whichever
+      catalogue was last picked on screen, rather than snapping back to the
+      browser's own answer — a choice undone by putting away the control that
+      made it is not a choice, and the point of a picker over a one-shot
+      preview button is that it can be left somewhere.
 
       **Language names are never run through the catalogue that names them.**
       `LOCALE_NAMES` sits beside the list of supported locales rather than

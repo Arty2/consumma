@@ -25,17 +25,14 @@ describe('detectLocale', () => {
 });
 
 describe('resolveLocale', () => {
-	it('is the detected language while debug is off, whatever the override says', () => {
-		expect(resolveLocale('en', 'el', false)).toBe('en');
-		expect(resolveLocale('el', null, false)).toBe('el');
+	it('is the detected language until something overrides it', () => {
+		expect(resolveLocale('en', null)).toBe('en');
+		expect(resolveLocale('el', null)).toBe('el');
 	});
 
-	it('is the override while debug is on, and only then', () => {
-		expect(resolveLocale('en', 'el', true)).toBe('el');
-	});
-
-	it('falls back to detected while debug is on with no override chosen yet', () => {
-		expect(resolveLocale('en', null, true)).toBe('en');
+	it('is the override once there is one, and stays that whatever set it', () => {
+		expect(resolveLocale('en', 'el')).toBe('el');
+		expect(resolveLocale('el', 'en')).toBe('en');
 	});
 });
 

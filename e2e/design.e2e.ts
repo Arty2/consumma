@@ -202,6 +202,26 @@ test('the debug switch is not on the panel until it is on', async ({ page }) => 
 	await expect(page.getByRole('dialog', { name: 'Menu' })).toBeVisible();
 });
 
+test('a language picked in debug outlives turning debug off', async ({ page }) => {
+	/*
+	 * Only reaching the picker is gated on debug — what tapping it did is not
+	 * undone by putting the switch away again, or a preview would be a choice
+	 * nobody could actually keep.
+	 */
+	await turnOnDebug(page);
+	await openMenu(page);
+
+	await page.getByRole('button', { name: 'Ελληνικά' }).click();
+	await expect(page.getByRole('button', { name: 'Εισαγωγή' })).toBeVisible();
+
+	await page.getByRole('button', { name: /^Debug/ }).click();
+	await expect(page.getByRole('button', { name: /^Debug/ })).toHaveCount(0);
+
+	// Still Greek: the switch is off, the catalogue is not back to English.
+	await expect(page.getByRole('button', { name: 'Εισαγωγή' })).toBeVisible();
+	await expect(page.getByRole('button', { name: 'Import' })).toHaveCount(0);
+});
+
 test('one handwritten face, served from our origin, and only one', async ({ page }) => {
 	const families = await page.evaluate(() => [...document.fonts].map((f) => f.family));
 

@@ -307,9 +307,10 @@ its language from the browser's own on every load, matching by the primary
 language tag (`el-GR` gets the Greek catalogue the same as `el`) and falling
 back to English. The picker's own choice is not written anywhere and does not
 survive a reload — it lives for as long as the tab does, the same way the
-panel's own scroll position does — and turning debug back off puts the
-language back to whatever the browser asked for, since the one control that
-reaches it is gone with the switch. The button for whichever catalogue is
+panel's own scroll position does — but it does survive turning debug back
+off: only reaching the picker needs debug on, and a catalogue it already
+switched to keeps showing once the switch is off again. The button for
+whichever catalogue is
 showing stands full ink; the others are drawn faint, the same weight-only
 distinction the sheet uses between an empty add row and a written one.
 

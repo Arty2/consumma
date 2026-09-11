@@ -729,9 +729,11 @@
 					nothing else here changes. It previews a translation regardless of
 					what the browser asked for; it is not a preference and is not
 					written anywhere, on the same reasoning the panel's own remembered
-					scroll position is not — see language.svelte.ts. Turning debug back
-					off puts the language back with it, so this is the only place its
-					effect can be undone as well as made.
+					scroll position is not — see language.svelte.ts. Debug only gates
+					reaching this row, not what tapping it did: turning the switch back
+					off leaves whichever catalogue was picked showing, since a choice
+					that snapped back the moment the switch did would not be a choice
+					anyone could keep.
 
 					The current catalogue's own button stands full ink; the others are
 					drawn faint, the same weight-only distinction the add row's box
