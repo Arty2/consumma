@@ -146,6 +146,21 @@ export const el = {
 		named: ({ name }: { name: string }) => `«${name}»`
 	},
 
+	/*
+	 * `join` is not translated freely: it is the word written beside the arrow
+	 * that points at the burger, and what it names is what is behind that
+	 * button — so it has to be the same word `menu.join` uses, or the arrow
+	 * sends somebody to look for something the panel does not call that.
+	 *
+	 * Set in caps by the stylesheet, never in JS, so the tonos drops on its own
+	 * — the page's own `lang` is the catalogue's language (see +layout.svelte),
+	 * and ΣΥΜΜΕΤΟΧΗ comes out right without a `lang` written here.
+	 */
+	guide: {
+		join: 'Συμμετοχή',
+		said: 'Σου έστειλαν μια λίστα. Άνοιξε το μενού πάνω δεξιά και επικόλλησε τον κωδικό κάτω από τη Συμμετοχή σε λίστα.'
+	},
+
 	theme: {
 		dark: 'Θέμα — σκοτεινό',
 		light: 'Θέμα — φωτεινό',
