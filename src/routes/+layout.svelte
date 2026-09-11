@@ -3,6 +3,7 @@
 	import '../app.css';
 	import { handUnderlineTile } from '$lib/draw/hand';
 	import { seedFrom } from '$lib/draw/rng';
+	import { language } from '$lib/i18n/language.svelte';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { theme } from '$lib/state/theme.svelte';
 
@@ -54,6 +55,30 @@
 	 */
 	$effect(() => {
 		untrack(() => theme.load());
+	});
+
+	/*
+	 * The page's own `lang`, kept in step with the catalogue.
+	 *
+	 * This is what makes every catalogue string set in caps capitalise
+	 * correctly without a `lang` written at each of the many places one is
+	 * shown — src/lib/doc/lang.ts's `langOf` does the same job for a person's
+	 * own words, sniffed one string at a time because a task can hold a Greek
+	 * word on an English-language phone; the whole catalogue, in contrast, is
+	 * one language at a time, so the app's own `lang` is that language, and a
+	 * more specific `lang` on a piece of user text still wins where the two
+	 * meet, because that is how the attribute has always worked.
+	 *
+	 * `language.current` is already settled by the time this first runs — see
+	 * language.svelte.ts, which detects at construction rather than through a
+	 * `load()` — so there is nothing to flash *within* the app. What still
+	 * flashes is the one line prerendering cannot avoid: the page is built as
+	 * English, and a phone that prefers Greek repaints in it the instant this
+	 * script runs, rather than opening in it. Known and accepted; see §132 in
+	 * DECISIONS.md.
+	 */
+	$effect(() => {
+		document.documentElement.lang = language.current;
 	});
 
 	/*

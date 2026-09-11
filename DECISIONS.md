@@ -2073,6 +2073,55 @@ relative` rather than a transform, which does not apply to an inline box.
       before. Both are commented where they are declared, so the next reader
       finds the reason before the inconsistency.
 
+132.  **The app has a second catalogue, Greek, and picks between them by
+      reading the browser rather than asking.** No language setting exists on
+      the panel — there is nothing to ask, since the phone already knows and a
+      question with an obvious answer is a tap nobody wanted to make. `el-GR`
+      and `el-CY` both get the Greek catalogue; anything else falls back to
+      English, which is both the default and, today, the only other catalogue
+      there is.
+
+      `Messages`, the type every catalogue is checked against, had to stop
+      being `typeof en` directly and become a widened version of it (`Widen`
+      in en.ts) — held to the literal English sentence at every leaf, a second
+      catalogue could never compile anything but that same sentence back. The
+      widening only drops literal-ness; a missing leaf, a renamed one, or a
+      function called with the wrong shape still fails the build by name,
+      which is the whole reason `Messages` is derived rather than declared
+      twice.
+
+      `doc.firstGroup` — see §131 — is translated after all, against what its
+      own comment used to say. Every other leaf is a sentence the app is
+      saying and stays out of a person's own words; this one is the app naming
+      itself, and the point of naming your first list after the app stops
+      landing the moment the name is one a reader cannot read. The Greek
+      catalogue writes Λιστούλα there, once, the same as any other leaf.
+
+      **A debug-only picker previews a translation without touching the
+      browser's own answer.** One boxed button per catalogue, on the same
+      panel the debug switch already unlocks — not a real setting, since a
+      real one would need a place to live once debug is off and there would be
+      nothing sensible for it to say. It is not written to storage and does
+      not survive a reload, on the same reasoning the panel's own remembered
+      scroll position is not, and only takes effect while debug is on: turn
+      the switch off and the language goes back to whatever the browser asked
+      for, since the one control that reaches it left with the switch.
+
+      **Language names are never run through the catalogue that names them.**
+      `LOCALE_NAMES` sits beside the list of supported locales rather than
+      inside either catalogue: every phone that offers a choice of language
+      shows each one in its own script, and a Greek reader choosing between
+      "English" and "Greek" would be reading the language they came to get
+      away from to find the one they want.
+
+      **A prerendered page cannot know the browser's language before it is
+      built**, so the initial paint is always English and — on a phone that
+      prefers Greek — redraws in it the instant the page's own script runs.
+      Known and accepted rather than solved, the same way the theme's own
+      pre-paint flash was solved and this one is not: fixing it would mean
+      deciding the catalogue at build time, which one static file cannot do
+      per visitor.
+
 ## Known limits
 
 - **Lose the code, lose the list.** No account, no email, no recovery. EXPORT

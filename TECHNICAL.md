@@ -300,6 +300,19 @@ is what turns it on, with a buzz to say the press landed, and the button it
 puts there is what turns it off again. Nothing about it syncs or leaves the
 device.
 
+With debug on, the panel also carries a language picker — one boxed button
+per catalogue the app has, English and Greek today. It previews a
+translation regardless of what the browser asked for; the app otherwise picks
+its language from the browser's own on every load, matching by the primary
+language tag (`el-GR` gets the Greek catalogue the same as `el`) and falling
+back to English. The picker's own choice is not written anywhere and does not
+survive a reload — it lives for as long as the tab does, the same way the
+panel's own scroll position does — and turning debug back off puts the
+language back to whatever the browser asked for, since the one control that
+reaches it is gone with the switch. The button for whichever catalogue is
+showing stands full ink; the others are drawn faint, the same weight-only
+distinction the sheet uses between an empty add row and a written one.
+
 ### What the sheet reads
 
 Counts and prices are read off the text and never stored beside it. A number
@@ -434,3 +447,7 @@ check) removes lists that have gone six months without an edit.
   origin serving the JavaScript.
 - **Hobby is non-commercial.** The moment this has a paid tier or ads it
   moves to Pro.
+- **The first paint is always English.** The page is prerendered and cannot
+  read the browser it will end up in, so a phone set to Greek sees the sheet
+  redraw in Greek the instant the page's own script runs, rather than opening
+  in it.
