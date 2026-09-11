@@ -53,7 +53,7 @@ Whoever receives it opens the app and puts the code into JOIN, which takes it
 straight out of a pasted invitation. The link in that message ends in `?j` —
 one character saying that whoever follows it was sent a list, and nothing else;
 the code is on the second line, never in the URL. Arriving that way, the app
-draws a red arrow to the way in and a loop round the field the code goes in,
+draws a red arrow to the way in and rings the field the code goes in,
 and takes both away the moment the code lands or a finger goes anywhere else.
 It is the one time this app explains anything, it is drawn over the page rather
 than added to it, and it is never seen twice. Both devices then hold the same list,

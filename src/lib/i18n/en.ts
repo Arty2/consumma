@@ -266,12 +266,12 @@ export const en = {
 	 * The guidance drawn over the page for somebody who arrived on an
 	 * invitation, and the only words this app says about itself.
 	 *
-	 * One of them is on the screen. `join` is written beside the arrow that
-	 * points at the burger, and it is the name of what is behind that button
-	 * rather than an instruction to press it — the mark says press, the word
-	 * says what. The second arrow gets no word at all: it ends in a loop round
-	 * the field, on a face that is already a column of words, and a third mark
-	 * there would be laid over them.
+	 * Two words, one on each face, and each is the name of a thing rather than
+	 * an instruction — the mark says press, the word says what. `join` stands
+	 * at the far end of the arrow pointing at the burger and names what is
+	 * behind it. `paste` stands under the ring round the code field and names
+	 * what a finger there will get, since an empty field pastes on a tap: the
+	 * ring says which thing, and no arrow can say what to do with it.
 	 *
 	 * `said` is the whole of the same guidance for somebody who cannot see a
 	 * red arrow, which is why it is a sentence: speech has no corner of the
@@ -279,6 +279,7 @@ export const en = {
 	 */
 	guide: {
 		join: 'Join',
+		paste: 'Paste',
 		said: 'You were sent a list. Open the menu at the top right, then paste the code under Join list.'
 	},
 

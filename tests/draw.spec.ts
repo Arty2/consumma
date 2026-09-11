@@ -350,6 +350,62 @@ describe('handOval', () => {
 	it('is stable for a seed, so it never re-jitters on a render', () => {
 		expect(handOval(W, H, { seed: 8 })).toBe(handOval(W, H, { seed: 8 }));
 	});
+
+	/*
+	 * `jitter` is what tells a ring somebody threw round something from an
+	 * ellipse drawn unsteadily. `wobble` bends the line between two points and
+	 * leaves every radius correct, which above the size of a word reads as
+	 * traced; this lets the points themselves off the ellipse.
+	 */
+	describe('thrown rather than traced', () => {
+		it('is off by default, so every loop already drawn is untouched', () => {
+			expect(handOval(W, H, { seed: 3, wobble: 0, jitter: 0 })).toBe(
+				handOval(W, H, { seed: 3, wobble: 0 })
+			);
+		});
+
+		it('lets the points off the true ellipse', () => {
+			const radii = (d: string) =>
+				endpoints(d).map(({ x, y }) => Math.hypot((x - W / 2) / (W / 2), (y - H / 2) / (H / 2)));
+
+			/*
+			 * Traced: every point sits on the ellipse it was sampled from, to
+			 * the two decimals a path is written out with.
+			 */
+			for (const r of radii(handOval(W, H, { seed: 3, wobble: 0 }))) {
+				expect(r).toBeCloseTo(1, 3);
+			}
+
+			// Thrown: no two of its radii agree, and none is far out.
+			const loose = radii(handOval(W, H, { seed: 3, wobble: 0, jitter: 0.1 }));
+			expect(new Set(loose.map((r) => r.toFixed(4))).size).toBeGreaterThan(loose.length / 2);
+			for (const r of loose) {
+				expect(r).toBeGreaterThan(0.85);
+				expect(r).toBeLessThan(1.15);
+			}
+		});
+
+		/*
+		 * The pen going round twice, not two pens: the point it carries past
+		 * the start to is let off by the same amount the start was, so the
+		 * crossing does not disagree with itself about where the ring is.
+		 */
+		it('crosses its own start rather than stopping on it', () => {
+			const points = endpoints(handOval(W, H, { seed: 3, wobble: 0, jitter: 0.1, over: 1.9 }));
+			const first = points[0];
+			const last = points.at(-1)!;
+
+			expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeGreaterThan(1);
+			expect(Math.hypot(last.x - first.x, last.y - first.y)).toBeLessThan(W / 3);
+		});
+
+		it('is still one unlifted stroke, and still stable for a seed', () => {
+			const ring = handOval(W, H, { seed: 8, jitter: 0.09, over: 1.9 });
+
+			expect(ring.match(/M /g)).toHaveLength(1);
+			expect(ring).toBe(handOval(W, H, { seed: 8, jitter: 0.09, over: 1.9 }));
+		});
+	});
 });
 
 describe('handBin', () => {

@@ -44,17 +44,16 @@
 	const OFF = 24;
 
 	/**
-	 * One word, and only beside the first arrow.
+	 * One word on each face, and each names what the mark beside it is for.
 	 *
-	 * On the sheet the arrow needs it: it ends at a 22px glyph in the corner of
-	 * an otherwise empty page, and what is behind that glyph is the whole
-	 * question. In the panel it would be the third mark on a face that is
-	 * already a column of words — it would land on top of them, and it would be
-	 * telling somebody to paste while pointing at the field that pastes by
-	 * itself when it is tapped. The loop says which thing; the arrow says where.
-	 * Nothing there needs naming.
+	 * On the sheet it is the far end of the arrow, and it says what is behind
+	 * the glyph the arrow lands on. In the panel it stands under the ring and
+	 * says what to do with what is inside it — which is the thing an arrow
+	 * cannot say, and the reason the panel has a word rather than a second
+	 * arrow. `paste` is the word because the empty field pastes on a tap: it
+	 * names what a finger there will get, not what the field is called.
 	 */
-	const label = $derived(guide.step === 'burger' ? t.guide.join : null);
+	const label = $derived(guide.step === 'code' ? t.guide.paste : t.guide.join);
 
 	/**
 	 * Measures the target and the word together, because the arrow is drawn
@@ -189,12 +188,21 @@
 	});
 
 	/**
-	 * Where the word goes: away from the thing being pointed at, and towards
-	 * the middle of the screen from there, which is where a hand writing on a
-	 * page has room.
+	 * Where the word goes, and the two steps answer differently because the two
+	 * marks do.
 	 *
-	 * Read off the target's own quadrant rather than fixed per step, so a panel
-	 * scrolled somewhere unexpected does not put the word on top of the mark.
+	 * On the sheet the word is the far end of an arrow, so it stands away from
+	 * what is being pointed at and towards the middle of the screen, which is
+	 * where a hand writing on a page has room. Its quadrant is read off the
+	 * target rather than fixed, so a sheet scrolled somewhere unexpected does
+	 * not put the word on top of the mark.
+	 *
+	 * In the panel there is no arrow to be the far end of. The word is written
+	 * against the ring instead — under it and off to one side, the way a hand
+	 * rings a thing and then writes beside the ring rather than starting a
+	 * second mark somewhere else on the page. Off to the side and not centred,
+	 * because centred under the ring is directly over the JOIN button, and a
+	 * word laid across a button reads as a label on it.
 	 */
 	const placed = $derived.by(() => {
 		if (!box || width === 0) return null;
@@ -202,33 +210,72 @@
 		const cx = box.x + box.width / 2;
 		const cy = box.y + box.height / 2;
 
+		if (guide.step !== 'code') {
+			return {
+				x: cx < width / 2 ? width * 0.62 : width * 0.38,
+				y: cy < height / 2 ? height * 0.66 : height * 0.32
+			};
+		}
+
+		/*
+		 * Clear of the ring's own bottom, not the field's, and kept on the
+		 * screen: the ring is nearly as wide as the paper, so a fixed step to
+		 * the side would carry the word off the edge of a narrow one.
+		 */
+		const said = wordBox ?? { width: 90, height: 32 };
+		const margin = 12;
+		const aside = cx + box.width * 0.3;
+
 		return {
-			x: cx < width / 2 ? width * 0.62 : width * 0.38,
-			y: cy < height / 2 ? height * 0.66 : height * 0.32
+			x: Math.min(Math.max(aside, margin + said.width / 2), width - margin - said.width / 2),
+			y: cy + box.height / 2 + LOOP_Y + said.height / 2 + 10
 		};
 	});
 
-	/** Round what is being pointed at, and only on the field: see below. */
+	/**
+	 * Round what is being pointed at, and only on the field: see below.
+	 *
+	 * Thrown rather than drawn. `jitter` is what makes that the difference:
+	 * a wobbled ellipse is a true ellipse drawn unsteadily — every radius still
+	 * correct — and at this size that reads as traced. A ring somebody threw
+	 * round something is fatter on one side and runs out of room at the end,
+	 * and it carries well past where it started rather than closing on it.
+	 */
 	const loop = $derived.by(() => {
 		if (!box || guide.step !== 'code') return null;
 
 		return handOval(box.width + LOOP_X * 2, box.height + LOOP_Y * 2, {
 			seed: seedFrom('guide-loop'),
-			wobble: 1.6,
-			tilt: -2.5
+			wobble: 1.8,
+			tilt: -3.5,
+			/*
+			 * Sampled far more finely than a loop round a word, because this one
+			 * is drawn at the width of the paper — see `steps` in handOval. The
+			 * overshoot is counted in those steps, so it grows with them: this
+			 * is about a sixth of the way round again, which is a pen carrying
+			 * past its own start rather than stopping on it.
+			 */
+			steps: 26,
+			over: 2.4,
+			jitter: 0.055
 		});
 	});
 
 	/*
-	 * The arrow, from the word to the target.
+	 * The arrow, from the word to the target — and only on the sheet.
+	 *
+	 * The panel has none. An arrow there had to end on the field, which is a
+	 * few millimetres of a screen that is already a column of controls, so its
+	 * head came out smaller than the thing it was pointing at and read as a
+	 * tick rather than as a direction. What answers that is not a bigger arrow:
+	 * the ring already says which thing, exactly, and a word beside the ring
+	 * says what to do with it. Two marks, no third.
 	 *
 	 * It stops short at both ends — clear of the word, so the two are not one
-	 * mark, and clear of what it points at, so the thing can still be seen. On
-	 * the field it stops clear of the loop as well, which is drawn round the
-	 * box rather than on it.
+	 * mark, and clear of what it points at, so the thing can still be seen.
 	 */
 	const swoop = $derived.by(() => {
-		if (!box || !placed) return null;
+		if (!box || !placed || guide.step !== 'burger') return null;
 
 		const cx = box.x + box.width / 2;
 		const cy = box.y + box.height / 2;

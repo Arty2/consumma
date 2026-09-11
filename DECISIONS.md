@@ -2138,11 +2138,31 @@ relative` rather than a transform, which does not apply to an inline box.
       recipient arrives holding a key, in front of a sheet where nothing is
       labelled — no help screen, no tooltip, no empty-state copy, all of which
       stays true (§12.14, decision 12). So the app does not explain itself: it
-      points. An arrow to the burger with `JOIN` written beside it, and once
-      the paper is over, an arrow and a loop round the field, with the panel
-      opened at that field rather than where it was last left. The second mark
-      gets no word — the loop says which thing, and the panel is a column of
-      words already.
+      points. One mark and one word on each face. On the sheet, an arrow to the
+      burger with `JOIN` at the far end of it. On the panel, a ring thrown
+      round the code field with `PASTE` under it, and the panel opened at that
+      field rather than where it was last left.
+
+      **The panel gets no arrow, and that is the second thing tried rather than
+      the first.** An arrow there had to end on a field a few millimetres of a
+      screen that is already a column of controls, so its head came out smaller
+      than the thing it was pointing at and read as a tick. The answer is not a
+      bigger arrow: a ring says which thing, exactly, and an arrow cannot say
+      what to do with what it lands on. The word does that — `paste` and not
+      the field's name, because an empty field pastes on a tap, so the word
+      names what a finger there will get. It sits off to one side under the
+      ring rather than centred, since centred is directly over the JOIN button
+      and a word laid across a button reads as a label on it.
+
+      The ring is **thrown, not traced**. `handOval` gained `jitter`, which
+      lets each sampled point off the true ellipse: `wobble` bends the line
+      between two points and leaves every radius correct, which above the size
+      of a word reads as a traced ellipse rather than as a hand. It gained
+      `steps` for the same reason — handPath bends each segment once, so twelve
+      samples is a ring at the width of a word and plainly a polygon at the
+      width of the paper. Both default to what every loop already drawn uses,
+      so the switcher's own is not re-cut by a rule about a mark that came
+      later.
 
       **This is the second and last thing allowed to be red**, and it is the
       same argument the debug outline makes from the other side: what is drawn

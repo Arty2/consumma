@@ -67,13 +67,7 @@ test('it follows the paper over and loops the field the code goes in', async ({ 
 
 	const layer = guide(page);
 	await expect(layer).toBeVisible();
-
-	/*
-	 * And no word, which is the sketch's own answer: the panel is a column of
-	 * words already, so a third mark there would be written over them — and the
-	 * loop says which thing without naming it.
-	 */
-	await expect(layer.locator('span')).toHaveCount(0);
+	await expect(layer.getByText('Paste')).toBeVisible();
 
 	/*
 	 * The panel opens at the field rather than where it was last left: JOIN
@@ -83,8 +77,21 @@ test('it follows the paper over and loops the field the code goes in', async ({ 
 	const field = page.locator('[data-guide="code"]');
 	await expect(field).toBeInViewport();
 
-	// Two marks now: the arrow and the loop round the field.
-	expect(await layer.locator('svg path').count()).toBe(2);
+	/*
+	 * One drawn mark, not two. The panel has no arrow: one had to end on a
+	 * field a few millimetres tall, so its head came out smaller than the thing
+	 * it pointed at. The ring says which thing and the word says what to do
+	 * with it.
+	 */
+	expect(await layer.locator('svg path').count()).toBe(1);
+
+	/*
+	 * And the word stands clear of the ring rather than inside it — written
+	 * beside a mark, the way a hand does, not laid over what the mark is round.
+	 */
+	const ring = (await field.boundingBox())!;
+	const said = (await layer.getByText('Paste').boundingBox())!;
+	expect(said.y).toBeGreaterThan(ring.y + ring.height);
 });
 
 test('a code landing in the field is the end of it', async ({ page }) => {
@@ -105,7 +112,7 @@ test('turning the paper back over puts it back on the burger', async ({ page }) 
 	await page.goto('/?j');
 	await menuButton(page).click();
 	await settle(page);
-	await expect(guide(page).locator('svg path')).toHaveCount(2);
+	await expect(guide(page).getByText('Paste')).toBeVisible();
 
 	/*
 	 * Somebody who opened the panel, did not find the field and turned the

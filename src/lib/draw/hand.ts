@@ -429,7 +429,7 @@ export function handScribble(width: number, height: number, options: HandOptions
 export function handOval(
 	width: number,
 	height: number,
-	options: HandOptions & { tilt?: number }
+	options: HandOptions & { tilt?: number; jitter?: number; over?: number; steps?: number }
 ): string {
 	const cx = width / 2;
 	const cy = height / 2;
@@ -440,16 +440,49 @@ export function handOval(
 	/*
 	 * Twelve is enough for handPath's bends to read as a curve rather than as a
 	 * polygon, and few enough that the wobble lands on the shape rather than
-	 * sanding it smooth.
+	 * sanding it smooth — at the size of a word, which is the size every loop
+	 * in the app was drawn at until one was thrown round a whole row.
+	 *
+	 * It does not hold at any size. handPath bends each segment exactly once,
+	 * about a control point at its midpoint, so a ring sampled this coarsely is
+	 * a twelve-sided figure with slightly bowed sides; at ninety pixels across
+	 * that is a ring and at three hundred it is plainly a polygon. The fix is
+	 * more points, not more wobble — wobble bows the sides further and makes it
+	 * a rounder polygon. Named rather than derived from the size, so no mark
+	 * already drawn is re-cut by a rule about a mark that came later.
 	 */
-	const steps = 12;
+	const steps = options.steps ?? 12;
 	/** How far past the start the pen goes, in steps. */
-	const over = 0.7;
+	const over = options.over ?? 0.7;
+
+	/*
+	 * How far each point is let off the true ellipse, as a fraction of the
+	 * radius it sits on.
+	 *
+	 * `wobble` bends the line *between* two points; this moves the points
+	 * themselves, and the two say different things. A wobbled ellipse is a
+	 * true ellipse drawn by an unsteady hand — every radius still correct,
+	 * which at any size above a glyph reads as traced. A ring somebody threw
+	 * round a word is not an ellipse at all: it is fatter on one side, it runs
+	 * out of room at the end and hurries, and no two of its radii agree. That
+	 * is what this is for, and why it is off by default — the switcher's own
+	 * loop is drawn at the size of a word, where there is no room for it to
+	 * tell and the extra numbers would only be a second thing to keep in step.
+	 */
+	const jitter = options.jitter ?? 0;
+	const loose = jitter > 0 ? rng(options.seed + 977) : null;
 
 	const at = (turn: number): Pt => {
 		const a = (turn / steps) * Math.PI * 2;
-		const x = Math.cos(a) * (width / 2);
-		const y = Math.sin(a) * (height / 2);
+		/*
+		 * Read off `turn` rather than off a counter, so the point the pen
+		 * carries past the start to is let off by the same amount the start
+		 * was — a crossing where the two ends disagree about the radius is two
+		 * pens, not one going round twice.
+		 */
+		const off = loose ? 1 + (loose() * 2 - 1) * jitter : 1;
+		const x = Math.cos(a) * (width / 2) * off;
+		const y = Math.sin(a) * (height / 2) * off;
 		return { x: cx + x * cos - y * sin, y: cy + x * sin + y * cos };
 	};
 

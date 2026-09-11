@@ -158,6 +158,13 @@ export const el = {
 	 */
 	guide: {
 		join: 'Συμμετοχή',
+		/*
+		 * Under the ring, and an imperative the way the English is: it names
+		 * what a finger on the empty field will get, not what the field is
+		 * called. Singular — one person is being spoken to, and it is the
+		 * same register the rest of this catalogue uses.
+		 */
+		paste: 'Επικόλληση',
 		said: 'Σου έστειλαν μια λίστα. Άνοιξε το μενού πάνω δεξιά και επικόλλησε τον κωδικό κάτω από τη Συμμετοχή σε λίστα.'
 	},
 
