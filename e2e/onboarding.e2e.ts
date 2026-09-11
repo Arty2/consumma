@@ -32,7 +32,7 @@ test('an invitation points at the burger, and the flag does not stay in the addr
 	// The word beside the arrow is written, not drawn: it is real text in the
 	// app's own face, and a screen reader never sees it because the layer is
 	// hidden from the tree.
-	await expect(guide(page).getByText('Join')).toBeVisible();
+	await expect(guide(page).getByText('Join list')).toBeVisible();
 
 	/*
 	 * The flag has done its work by the time the first mark is on screen, and a
@@ -67,7 +67,7 @@ test('it follows the paper over and loops the field the code goes in', async ({ 
 
 	const layer = guide(page);
 	await expect(layer).toBeVisible();
-	await expect(layer.getByText('Paste')).toBeVisible();
+	await expect(layer.getByText('Paste here')).toBeVisible();
 
 	/*
 	 * The panel opens at the field rather than where it was last left: JOIN
@@ -90,7 +90,7 @@ test('it follows the paper over and loops the field the code goes in', async ({ 
 	 * beside a mark, the way a hand does, not laid over what the mark is round.
 	 */
 	const ring = (await field.boundingBox())!;
-	const said = (await layer.getByText('Paste').boundingBox())!;
+	const said = (await layer.getByText('Paste here').boundingBox())!;
 	expect(said.y).toBeGreaterThan(ring.y + ring.height);
 });
 
@@ -112,7 +112,7 @@ test('turning the paper back over puts it back on the burger', async ({ page }) 
 	await page.goto('/?j');
 	await menuButton(page).click();
 	await settle(page);
-	await expect(guide(page).getByText('Paste')).toBeVisible();
+	await expect(guide(page).getByText('Paste here')).toBeVisible();
 
 	/*
 	 * Somebody who opened the panel, did not find the field and turned the
@@ -122,7 +122,7 @@ test('turning the paper back over puts it back on the burger', async ({ page }) 
 	await page.keyboard.press('Escape');
 	await settle(page);
 
-	await expect(guide(page).getByText('Join')).toBeVisible();
+	await expect(guide(page).getByText('Join list')).toBeVisible();
 });
 
 test('anything else put it away', async ({ page }) => {

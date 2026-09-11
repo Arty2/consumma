@@ -221,10 +221,17 @@
 		 * Clear of the ring's own bottom, not the field's, and kept on the
 		 * screen: the ring is nearly as wide as the paper, so a fixed step to
 		 * the side would carry the word off the edge of a narrow one.
+		 *
+		 * To the left, which is the side a phrase has room on. It is two words
+		 * now rather than one, and set at display size two words reach most of
+		 * the way across a phone — off to the right there was nothing to move
+		 * into, and the clamp below would have pinned it to the edge, which is
+		 * a word stopped by the screen rather than placed. Left it starts where
+		 * the writing on either face starts, and runs the way reading does.
 		 */
-		const said = wordBox ?? { width: 90, height: 32 };
+		const said = wordBox ?? { width: 190, height: 32 };
 		const margin = 12;
-		const aside = cx + box.width * 0.3;
+		const aside = cx - box.width * 0.3;
 
 		return {
 			x: Math.min(Math.max(aside, margin + said.width / 2), width - margin - said.width / 2),
