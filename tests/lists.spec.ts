@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addGroup, deleteGroup } from '../src/lib/doc/ops';
 import { createClock, type Ctx } from '../src/lib/doc/stamp';
 import { emptyDoc, type Doc } from '../src/lib/doc/types';
-import { FIRST_GROUP } from '../src/lib/state/doc.svelte';
+import { firstGroupTitle } from '../src/lib/state/doc.svelte';
 import { nameFor, parseIndex, type ListEntry } from '../src/lib/state/lists';
 
 function fixedCtx(clientId = 'one'): Ctx {
@@ -92,7 +92,7 @@ describe('nameFor', () => {
 	}
 
 	it('falls back to the default on a document with no groups', () => {
-		expect(nameFor(emptyDoc())).toBe(FIRST_GROUP);
+		expect(nameFor(emptyDoc())).toBe(firstGroupTitle());
 	});
 
 	it('reads the first live group in order', () => {
@@ -116,7 +116,7 @@ describe('nameFor', () => {
 		withGroups();
 		doc = addGroup(doc, ctx, { id: 'g1', title: '' });
 
-		expect(nameFor(doc)).toBe(FIRST_GROUP);
+		expect(nameFor(doc)).toBe(firstGroupTitle());
 	});
 
 	it('falls back to the default once every group has been deleted', () => {
@@ -124,6 +124,6 @@ describe('nameFor', () => {
 		doc = addGroup(doc, ctx, { id: 'g1', title: 'Groceries' });
 		doc = deleteGroup(doc, ctx, 'g1');
 
-		expect(nameFor(doc)).toBe(FIRST_GROUP);
+		expect(nameFor(doc)).toBe(firstGroupTitle());
 	});
 });

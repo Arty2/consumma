@@ -39,8 +39,13 @@ export const en = {
 	 * worth knowing before a second catalogue exists.
 	 *
 	 * It is the app's own name, which is a little list and so is already the
-	 * word for what the group is. That also makes it the one string here that
-	 * a second catalogue leaves alone: a name is not translated.
+	 * word for what the group is — and unlike everything else here, that makes
+	 * it the one string a second catalogue does *not* leave alone. Every other
+	 * leaf is a sentence the app is saying; this one is the app naming itself,
+	 * the way a person opening their first list in Greek would call it
+	 * Λιστούλα rather than Listula. A name is still not looked up or declined
+	 * by anything that reads it — el.ts simply writes its own word here, once,
+	 * the same as it writes every other leaf.
 	 *
 	 * `looseEnds` never syncs: it is assembled on read and is only ever an
 	 * accessible name. See src/lib/doc/view.ts.
@@ -222,6 +227,11 @@ export const en = {
 		 */
 		debug: ({ on }: { on: boolean }) => `Debug: ${on ? 'On' : 'Off'}`,
 		debugLog: 'Debug log',
+		/**
+		 * The debug picker's own accessible name — see language.svelte.ts. Only
+		 * ever on screen with the log beside it, and gone the moment debug is.
+		 */
+		language: 'Language',
 		credit: 'Dialectic Acheropoieton',
 		/*
 		 * A hard space before the last name, so the two authors are never split
@@ -340,3 +350,30 @@ export const en = {
 			'This list has never been synced, so it is nowhere but here. Deleting takes all of it with it, and there is no code to come back with.'
 	}
 } as const;
+
+/*
+ * `as const` above is what lets every leaf be checked against the sentence
+ * actually written — `toast.clear` is the literal type `'CLEAR?'`, not the
+ * general `string`, so a stray edit to one spelling and not the other would
+ * fail a comparison naming exactly which. That precision is wasted on a
+ * second catalogue, which is a different sentence at every leaf on purpose:
+ * held to `typeof en` directly, el.ts would fail to compile the moment it
+ * wrote anything but 'CLEAR?' back. `Widen` throws away only the literal-ness
+ * of a leaf, never its shape — a plain string stays a plain string, and a
+ * function keeps its exact parameter types and has only its return value
+ * widened, recursively, for the leaves that build a sentence from a bare
+ * ternary rather than through `plural()` and so would otherwise still return
+ * one of English's own two literal sentences. `Messages` still catches a
+ * missing leaf, a renamed one, or an argument of the wrong shape, and only
+ * that.
+ */
+type Widen<T> = T extends (...args: infer Args) => infer Return
+	? (...args: Args) => Widen<Return>
+	: T extends string
+		? string
+		: T extends object
+			? { -readonly [K in keyof T]: Widen<T[K]> }
+			: T;
+
+/** The shape every catalogue has to have — see the comment above `Widen`. */
+export type Messages = Widen<typeof en>;

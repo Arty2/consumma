@@ -16,8 +16,17 @@ import { KEYS, keysFor, persist, read, write, type ListKeySet } from './storage'
  * it becomes a real group title the moment anything is put on a fresh sheet,
  * and from then on it syncs, exports and merges like a title anybody typed. See
  * the note beside `doc.firstGroup` in src/lib/i18n/en.ts.
+ *
+ * A function, and called at the point a group is actually created, rather
+ * than a constant read once at import time — which language that is has not
+ * necessarily been decided yet when this module is first evaluated, since
+ * `language.load()` runs later, in an effect. Reading `t` fresh here is what
+ * lets a phone that turns out to prefer Greek still get Λιστούλα rather than
+ * whatever `t` happened to resolve to before anyone asked it.
  */
-export const FIRST_GROUP: string = t.doc.firstGroup;
+export function firstGroupTitle(): string {
+	return t.doc.firstGroup;
+}
 
 /**
  * The document, in runes, backed by localStorage.
@@ -101,7 +110,7 @@ export class Sheet {
 		 */
 		if (ops.liveGroups(this.doc).length === 0) {
 			this.#quiet = true;
-			this.addGroup(FIRST_GROUP);
+			this.addGroup(firstGroupTitle());
 			this.#quiet = false;
 		}
 	}
