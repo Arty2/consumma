@@ -283,6 +283,43 @@ every control there already owns a press — the ones that lift a task and a
 group. On the menu it can start anywhere: nothing in there owns a press, and a
 drag that crossed a button does not press it.
 
+### Arriving on an invitation
+
+| Where              | Gesture                | What happens                                            |
+| ------------------ | ---------------------- | ------------------------------------------------------- |
+| A link ending `?j` | Open it                | A red arrow points at the burger, with `JOIN` beside it |
+| The burger         | Tap it                 | The paper turns, and the arrow follows it over          |
+| The panel          | —                      | It opens at the code field, looped in red               |
+| The code field     | Tap it while empty     | Pastes the code, and the marks go                       |
+| Anywhere else      | Tap it, or press `Esc` | The marks go. Nothing else changes                      |
+
+SHARE hands over two lines: a link ending in `?j`, then the code. The flag is
+one character and it says only that whoever follows the link was sent a list —
+**the code is not in it**, and never is, in a query or a fragment or anywhere
+else on a URL. What it buys is that the app on the other end opens knowing
+somebody is holding a code, and can point at where it goes.
+
+The pointing is the one time this app says anything about itself, and it is
+drawn over the page rather than put into it — in red, because a mark in the ink
+would be part of the drawing. Two marks, never more: an arrow to the burger
+with the word `JOIN` written beside it, and then, once the paper is over, an
+arrow and a loop round the twelve places the code is written into. The panel
+opens at that field rather than where it was last left. The second arrow gets
+no word: the loop already says which thing, and the panel is a column of words
+to begin with.
+
+It never takes a press — it points at controls, and anything it swallowed would
+be the control it is pointing at. A press anywhere it is not pointing ends it,
+the way somebody pointing over your shoulder stops when you start doing
+something of your own; so does `Esc`, when no panel is open. Turning the paper
+back over without a code puts it back on the burger rather than giving up. A
+code reaching the field ends it for good.
+
+None of it is written down: it is on screen for this reading of the app and no
+other, and reloading the page — by then without the flag — arrives at an app
+that says nothing. A screen reader hears one sentence on arrival instead, since
+a red arrow says nothing out loud.
+
 Tick three tasks inside five seconds and a message offers to clear exactly
 those three. It is only ever an offer — nothing sweeps the sheet by itself —
 and it is made once per run rather than once per tick after the third.

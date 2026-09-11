@@ -31,6 +31,8 @@
 	import { t } from '$lib/i18n';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
+	import { INVITE } from '$lib/state/guide';
+	import { guide } from '$lib/state/guide.svelte';
 	import { lists } from '$lib/state/lists.svelte';
 	import { sync } from '$lib/state/sync.svelte';
 	import { statusText } from '$lib/sync/status';
@@ -76,6 +78,8 @@
 
 	let panel = $state<HTMLElement | null>(null);
 	let scroller = $state<HTMLElement | null>(null);
+	/** The code field's own box, for the guidance to be brought to. */
+	let field = $state<HTMLElement | null>(null);
 	/*
 	 * How far the paper has been turned back by a finger, in degrees. A drag is
 	 * the same gesture as the animation now — the panel is the back of a sheet
@@ -139,9 +143,21 @@
 	 * getting at it meant selecting into the middle of a sentence. On its own
 	 * line it is one thing to grab.
 	 *
-	 * The link is bare. The code is never a query parameter or a fragment.
+	 * The link carries one character and the code is not it. `?j` says only
+	 * that whoever follows this link was sent a list — it is a fact about the
+	 * person arriving, not about the list, and there is nothing in it to read.
+	 * The code stays on the second line, in the message, where it has always
+	 * been: never a query parameter, never a fragment, and never in the link.
+	 *
+	 * What the flag buys is the one thing the invitation could not do before:
+	 * the app on the other end opens knowing that this is somebody holding a
+	 * code, and can point at where it goes. Without it the link lands on a
+	 * blank sheet that says nothing, and the second line of the message is a
+	 * key with no visible lock.
 	 */
-	const invitation = $derived(sync.code ? `${location.origin}\n${formatCode(sync.code)}` : '');
+	const invitation = $derived(
+		sync.code ? `${location.origin}/?${INVITE}\n${formatCode(sync.code)}` : ''
+	);
 
 	/*
 	 * Back where it was left. Set before the first paint the panel is visible
@@ -152,6 +168,35 @@
 	$effect(() => {
 		if (!scroller || remembered === 0) return;
 		scroller.scrollTop = remembered;
+	});
+
+	/*
+	 * Brought to the field, when somebody is being shown where the code goes.
+	 *
+	 * JOIN LIST is the last section of the panel and on a phone it is well
+	 * below the fold, so an arrow pointing at it would be pointing off the
+	 * bottom of the screen. The panel therefore opens at the field rather than
+	 * where it was last left — this visit is not about where they were
+	 * standing, it is about where they are being sent.
+	 *
+	 * Scrolled by arithmetic on the scroller rather than by `scrollIntoView`,
+	 * which walks up the ancestors and would take the page behind the panel
+	 * with it.
+	 */
+	$effect(() => {
+		if (guide.step !== 'code' || !scroller || !field) return;
+
+		const gap = field.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+		scroller.scrollTop += gap - (scroller.clientHeight - field.offsetHeight) / 2;
+	});
+
+	/*
+	 * A code reached the field, so the guidance has been answered — by a paste,
+	 * by the field reading the clipboard itself, or by somebody typing it in.
+	 * What happens to it afterwards is the app's ordinary business.
+	 */
+	$effect(() => {
+		if (entered.trim() !== '') guide.saw('coded');
 	});
 
 	// Nothing else advances the clock, so the cooldown would never clear while
@@ -638,7 +683,16 @@
 			<h2 class="caps">{t.menu.joinList}</h2>
 			<TextRule text={t.menu.joinList} seed="joinlist" centred />
 
-			<CodeField bind:value={entered} label={t.menu.code} />
+			<!--
+				What the guidance points at, when somebody arrived on an
+				invitation. The wrapper and not the field itself: the loop goes
+				round the twelve places a code is written into, and a loop drawn
+				round the `<label>`'s own box would be drawn round the input that
+				sits over it rather than round what can be seen.
+			-->
+			<div class="code-in" data-guide="code" bind:this={field}>
+				<CodeField bind:value={entered} label={t.menu.code} />
+			</div>
 
 			{#if joining}
 				<!-- Ask whether to merge or discard. Never decide silently. -->
@@ -1243,6 +1297,16 @@
 	.action:disabled {
 		opacity: 0.4;
 		cursor: default;
+	}
+
+	/*
+	 * As wide as the twelve places and no wider. The field centres itself; this
+	 * wrapper exists so the guidance has a box to draw a loop round, and a
+	 * full-width one would put that loop round the panel instead.
+	 */
+	.code-in {
+		width: fit-content;
+		margin: 0 auto;
 	}
 
 	.ask {

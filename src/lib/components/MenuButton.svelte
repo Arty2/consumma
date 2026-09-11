@@ -65,6 +65,7 @@
 	use:longPress={{ onpress: press }}
 	aria-label={t.menu.label}
 	title={t.menu.label}
+	data-guide="burger"
 >
 	<svg viewBox="0 0 {SIZE} {SIZE}" width={SIZE} height={SIZE} aria-hidden="true">
 		<path d={burger} class="drawn" />

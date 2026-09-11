@@ -16,6 +16,7 @@ import {
 	handScribble,
 	handSlashedCircle,
 	handSun,
+	handSwoop,
 	handSunMoon,
 	handTear,
 	handVertical
@@ -402,6 +403,61 @@ describe('handBin', () => {
 
 	it('is stable for a seed, so it never re-jitters on a render', () => {
 		expect(handBin(W, H, { seed: 8 })).toBe(handBin(W, H, { seed: 8 }));
+	});
+});
+
+describe('handSwoop', () => {
+	const FROM = { x: 40, y: 600 };
+	const TO = { x: 340, y: 90 };
+
+	it('starts and ends where it was told to', () => {
+		const points = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0 }));
+
+		expect(points[0]).toStrictEqual(FROM);
+		// The shaft's last point before the barb is the head itself.
+		expect(points.some((p) => p.x === TO.x && p.y === TO.y)).toBe(true);
+	});
+
+	it('bows off the straight line between them', () => {
+		const straight = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0, bow: 0 }));
+		const bowed = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0, bow: 0.3 }));
+
+		/*
+		 * The middle of the run is what moves; the two ends are pinned. A hand
+		 * reaching across a page does not draw a ruler's line, and a stroke that
+		 * came out straight would be the one mark here that looked printed.
+		 */
+		const middle = Math.floor(straight.length / 4);
+		expect(bowed[middle].x).not.toBe(straight[middle].x);
+		expect(bowed[0]).toStrictEqual(straight[0]);
+	});
+
+	/*
+	 * The barb is taken off the tangent at the head rather than off the straight
+	 * line between the ends. On a bowed stroke those differ by enough to read as
+	 * a barb stuck on at the wrong angle, so this is what says it followed the
+	 * curve: both legs come back off the head, never past it.
+	 */
+	it('puts both legs of the head behind the point', () => {
+		const points = endpoints(handSwoop(FROM, TO, { seed: 3, wobble: 0 }));
+		/*
+		 * The barb is its own `M`, so after the shaft's head the endpoints run
+		 * leg, head again, leg — which is what makes it one polyline with a
+		 * corner rather than two strokes that happen to meet.
+		 */
+		const at = points.findIndex((p) => p.x === TO.x && p.y === TO.y);
+		const legs = [points[at + 1], points[at + 3]].filter(Boolean);
+
+		expect(legs).toHaveLength(2);
+		for (const leg of legs) {
+			// The run goes up and to the right, so a leg lies below and behind it.
+			expect(leg.y).toBeGreaterThan(TO.y);
+		}
+	});
+
+	it('is stable for a seed, and different for another', () => {
+		expect(handSwoop(FROM, TO, { seed: 8 })).toBe(handSwoop(FROM, TO, { seed: 8 }));
+		expect(handSwoop(FROM, TO, { seed: 8 })).not.toBe(handSwoop(FROM, TO, { seed: 9 }));
 	});
 });
 

@@ -667,6 +667,73 @@ export function handArrow(size: number, options: HandOptions): string {
 }
 
 /**
+ * A long arrow bowed between two points, for the one thing in this app that
+ * points at another: the guide drawn over the page when somebody arrives on an
+ * invitation.
+ *
+ * `handArrow` is a glyph — a fixed diagonal inside its own square, saying
+ * "out" on a button. This is the other kind of arrow entirely: a stroke drawn
+ * across the page from where the hand is to the thing being named, so it has
+ * to know both ends and it has to bow, because a hand reaching across a page
+ * does not draw a ruler's line. The bow is perpendicular to the run and peaks
+ * at the middle; its sign is the caller's, since which side an arrow sweeps
+ * round is a fact about what it is going past.
+ *
+ * The barb is taken off the tangent at the head rather than off the straight
+ * line between the ends — on a bowed stroke those differ by enough to read as
+ * a barb stuck on at the wrong angle.
+ */
+export function handSwoop(from: Pt, to: Pt, options: HandOptions & { bow?: number }): string {
+	const dx = to.x - from.x;
+	const dy = to.y - from.y;
+	const span = Math.hypot(dx, dy) || 1;
+
+	// Unit normal to the run, which is the way the bow goes.
+	const nx = -dy / span;
+	const ny = dx / span;
+	const bow = (options.bow ?? 0.2) * span;
+
+	/*
+	 * Eight is enough for the bow to read as one sweep rather than as a bent
+	 * line, and few enough that handPath's own wobble still lands on it. The
+	 * stroke is long, so `subdivide` is not what is wanted here — its cuts are
+	 * evenly spaced along a straight run and would flatten the curve.
+	 */
+	const steps = 8;
+	const points: Pt[] = [];
+
+	for (let i = 0; i <= steps; i++) {
+		const s = i / steps;
+		// A parabola through both ends, peaking at the middle.
+		const lift = 4 * s * (1 - s) * bow;
+		points.push({ x: from.x + dx * s + nx * lift, y: from.y + dy * s + ny * lift });
+	}
+
+	const shaft = handPath(points, options);
+
+	const before = points[steps - 1];
+	const heading = Math.atan2(to.y - before.y, to.x - before.x);
+	/* Big enough to be seen across a page, and never bigger than the stroke. */
+	const head = Math.min(span * 0.22, 34);
+	/** How far each leg is swung back off the heading. */
+	const spread = 0.44;
+
+	const barb = handPath(
+		[
+			{
+				x: to.x - Math.cos(heading - spread) * head,
+				y: to.y - Math.sin(heading - spread) * head
+			},
+			to,
+			{ x: to.x - Math.cos(heading + spread) * head, y: to.y - Math.sin(heading + spread) * head }
+		],
+		{ ...options, seed: options.seed + 409 }
+	);
+
+	return `${shaft} ${barb}`;
+}
+
+/**
  * A circle with a stroke through it: the list could not be reached.
  *
  * Not a warning triangle and not a crossed-out cloud — being offline is a
