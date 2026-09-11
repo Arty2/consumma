@@ -1,25 +1,25 @@
-import { en } from './en';
+import { language } from './language.svelte';
+import type { Messages } from './en';
+
+export type { Messages } from './en';
 
 /**
  * Everything the app says, as one object.
  *
- * `t` is a reference to the English catalogue and nothing more — no lookup, no
- * key parsing, no fallback chain. A component reads `t.task.delete` the way it
- * would read any other constant, so a missing string is a type error at build
- * time rather than a `???` on somebody's screen.
+ * `t` reads through to whichever catalogue `language.catalogue` currently
+ * holds — the browser's own language by default, or the debug picker's
+ * choice while debug is on (see language.svelte.ts). A component still
+ * writes `t.task.delete` exactly as it did when there was only English: the
+ * indirection is a `Proxy` rather than a lookup table keyed by section, so
+ * every read forwards straight to the live catalogue and nothing here has to
+ * know the catalogue's shape to do it.
  *
- * When there is a second language, this is the file that grows: `t` becomes a
- * `$derived` off a stored preference and the catalogues are selected here. The
- * components do not change, because they never knew there was only one.
+ * The `get` trap is what makes this reactive rather than merely convenient:
+ * `language.catalogue` is a `$derived` read at the moment each property is
+ * asked for, inside whatever template or effect is asking, so Svelte tracks
+ * the dependency there and re-renders when the language changes — the same
+ * way any other computed reactive value would, wherever it is read from.
  */
-export const t = en;
-
-/**
- * The shape every catalogue has to have.
- *
- * Derived from the English one rather than declared beside it, so the two can
- * never disagree: adding a string to `en.ts` immediately makes every other
- * catalogue incomplete, and TypeScript says which one and where. There is only
- * one catalogue today, and this is what makes the second one cheap.
- */
-export type Messages = typeof en;
+export const t: Messages = new Proxy({} as Messages, {
+	get: (_target, property: string) => Reflect.get(language.catalogue, property)
+});

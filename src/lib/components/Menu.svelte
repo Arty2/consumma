@@ -29,6 +29,8 @@
 	import { seedFrom } from '$lib/draw/rng';
 	import { tapped } from '$lib/feel';
 	import { t } from '$lib/i18n';
+	import { language } from '$lib/i18n/language.svelte';
+	import { LOCALE_NAMES, SUPPORTED_LOCALES } from '$lib/i18n/locales';
 	import { diagnostics } from '$lib/state/diagnostics.svelte';
 	import { sheet } from '$lib/state/doc.svelte';
 	import { INVITE } from '$lib/state/guide';
@@ -776,6 +778,41 @@
 					{/if}
 				</div>
 
+				<!--
+					One button per catalogue, so a third language is a third button and
+					nothing else here changes. It previews a translation regardless of
+					what the browser asked for; it is not a preference and is not
+					written anywhere, on the same reasoning the panel's own remembered
+					scroll position is not — see language.svelte.ts. Debug only gates
+					reaching this row, not what tapping it did: turning the switch back
+					off leaves whichever catalogue was picked showing, since a choice
+					that snapped back the moment the switch did would not be a choice
+					anyone could keep.
+
+					The current catalogue's own button stands full ink; the others are
+					drawn faint, the same weight-only distinction the add row's box
+					uses between empty and written — a colour would say the same thing
+					twice, and this app has none to spend on it.
+				-->
+				<div class="pair wrap langs" role="group" aria-label={t.menu.language}>
+					{#each SUPPORTED_LOCALES as locale (locale)}
+						<button
+							type="button"
+							class="caps boxed"
+							class:current={language.current === locale}
+							aria-pressed={language.current === locale}
+							lang={locale}
+							onclick={() => {
+								tapped();
+								language.override = locale;
+							}}
+						>
+							<HandRect seed="btnlang-{locale}" wobble={1.4} radius={3} />
+							{LOCALE_NAMES[locale]}
+						</button>
+					{/each}
+				</div>
+
 				{#if diagnostics.entries.length > 0}
 					<div class="log" role="log" aria-label={t.menu.debugLog}>
 						{#each diagnostics.entries as entry, i (i)}
@@ -1257,6 +1294,16 @@
 	 */
 	.pair.debug {
 		margin-top: 2.5rem;
+	}
+
+	/*
+	 * The same weight-only distinction the add row's box uses between empty
+	 * and written: full ink is the catalogue actually on screen, faint is
+	 * everything a tap would switch to. Opacity on the whole button rather
+	 * than a class read by HandRect, so the box and the word fade together.
+	 */
+	.langs button:not(.current) {
+		opacity: var(--faint);
 	}
 
 	/*

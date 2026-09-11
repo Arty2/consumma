@@ -1,7 +1,7 @@
 import { isId } from '../doc/id';
 import { liveGroups } from '../doc/ops';
 import type { Doc } from '../doc/types';
-import { FIRST_GROUP } from './doc.svelte';
+import { firstGroupTitle } from './doc.svelte';
 
 /**
  * One remembered list. Never carries a name or a code of its own — both are
@@ -80,5 +80,5 @@ export function parseIndex(json: string | null): ListIndex | null {
  */
 export function nameFor(doc: Doc): string {
 	const title = liveGroups(doc)[0]?.title;
-	return title ? title : FIRST_GROUP;
+	return title ? title : firstGroupTitle();
 }
